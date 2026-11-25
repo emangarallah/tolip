@@ -58,10 +58,10 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
 // Ensure upload directory exists
 const UPLOADS_DIR = path.resolve(__dirname, 'public/uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
+if (process.env.NODE_ENV !== 'production' && !fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
-app.use('/uploads', express.static(UPLOADS_DIR));
+if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UPLOADS_DIR));
 
 function validateProductVariants(variants: any): string | null {
   if (!Array.isArray(variants) || variants.length < 1 || variants.length > 50) {
