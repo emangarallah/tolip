@@ -1,6 +1,7 @@
 import React from 'react';
 
 export const TulipOpeningMark: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <span className="tulip-opening-3d" aria-hidden="false">
   <img
     src="/images/tolip-logo.png"
     alt="شعار توليب للعناية بالبشرة والجسم"
@@ -17,4 +18,5 @@ export const TulipOpeningMark: React.FC<{ className?: string }> = ({ className =
       }
     }}
   />
+  </span>
 );
