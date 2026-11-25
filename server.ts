@@ -61,7 +61,8 @@ function getAdminPayload(req: Request): { email: string; id: string } | null {
   const currentAdmin = db.getAdminInfo();
   if (
     payload.id !== currentAdmin.id ||
-    payload.email.toLowerCase() !== currentAdmin.email.toLowerCase()
+    payload.email.toLowerCase() !== currentAdmin.email.toLowerCase() ||
+    payload.sessionVersion !== db.getAdminSessionVersion()
   ) {
     return null;
   }
@@ -562,7 +563,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
 
     const admin = db.getAdminInfo();
     loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
-    const token = generateToken({ email: admin.email, id: admin.id });
+    const token = generateToken({ email: admin.email, id: admin.id, sessionVersion: db.getAdminSessionVersion() });
 
     res.json({
       success: true,
@@ -604,7 +605,7 @@ app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Respons
     }
 
     const updated = db.updateAdminCredentials(newEmail, newPassword);
-    const newToken = generateToken({ email: updated.email, id: updated.id });
+    const newToken = generateToken({ email: updated.email, id: updated.id, sessionVersion: db.getAdminSessionVersion() });
 
     res.json({
       success: true,
