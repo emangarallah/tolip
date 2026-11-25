@@ -4,7 +4,7 @@ export const TulipOpeningMark: React.FC<{ className?: string }> = ({ className =
   <img
     src="/images/tolip-logo.png"
     alt="شعار توليب للعناية بالبشرة والجسم"
-    className={className}
+    className={`${className} tulip-opening-logo`}
     width="420"
     height="420"
     decoding="async"
