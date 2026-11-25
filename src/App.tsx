@@ -332,9 +332,9 @@ export default function App() {
 
   if (isLoading || !settings || !splashMinimumElapsed) {
     return (
-      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFF7F5] px-5 py-8 text-[#5B2638]">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F8C9D9]/55 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#FBE8D8]/70 blur-3xl" />
+      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#F3D0DC] px-5 py-8 text-[#5B2638]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#EAAFC4]/60 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#F7E0E7]/75 blur-3xl" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
           <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
@@ -348,8 +348,8 @@ export default function App() {
             </p>
           </div>
 
-          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#F4D5E0]">
-            <div className="h-full w-2/5 rounded-full bg-[#C94F7B] animate-pulse" />
+          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#E7B5C7]">
+            <div className="h-full w-2/5 rounded-full bg-[#B83F6B] animate-pulse" />
           </div>
         </div>
       </main>
