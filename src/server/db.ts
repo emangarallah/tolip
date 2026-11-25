@@ -789,7 +789,7 @@ class StoreDatabase {
   }
 
   public createCategory(input: Omit<Category, 'id' | 'createdAt'>): Category {
-    const id = `cat-${Date.now()}`;
+    const id = `cat-${crypto.randomUUID()}`;
     const newCategory: Category = {
       ...input,
       id,
@@ -803,9 +803,12 @@ class StoreDatabase {
   public updateCategory(id: string, partial: Partial<Category>): Category | null {
     const idx = this.data.categories.findIndex((c) => c.id === id);
     if (idx === -1) return null;
+    const current = this.data.categories[idx];
     this.data.categories[idx] = {
-      ...this.data.categories[idx],
+      ...current,
       ...partial,
+      id: current.id,
+      createdAt: current.createdAt,
     };
     this.persist();
     return this.data.categories[idx];
@@ -909,7 +912,7 @@ class StoreDatabase {
   }
 
   public createProduct(input: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Product {
-    const id = `prod-${Date.now()}`;
+    const id = `prod-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
     const newProduct: Product = {
       ...input,
@@ -925,9 +928,12 @@ class StoreDatabase {
   public updateProduct(id: string, partial: Partial<Product>): Product | null {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return null;
+    const current = this.data.products[idx];
     this.data.products[idx] = {
-      ...this.data.products[idx],
+      ...current,
       ...partial,
+      id: current.id,
+      createdAt: current.createdAt,
       updatedAt: new Date().toISOString(),
     };
     this.persist();
@@ -944,9 +950,9 @@ class StoreDatabase {
 
   // --- Orders Methods ---
   public createOrder(input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Order {
-    const orderNum = `TLP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderNum = `TLP-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const now = new Date().toISOString();
-    const id = `ord-${Date.now()}`;
+    const id = `ord-${crypto.randomUUID()}`;
 
     const newOrder: Order = {
       ...input,
