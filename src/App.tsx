@@ -706,7 +706,7 @@ export default function App() {
                 <h3 className="text-lg font-bold text-[#1F2421] dark:text-white">{t.otherChannels}</h3>
                 <div className="space-y-3 text-xs">
                   <a
-                    href={settings.facebookUrl}
+                    href="https://www.facebook.com/share/1FrKX6pP1p/"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-3 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] hover:border-[#1877F2] transition-colors"
@@ -716,7 +716,7 @@ export default function App() {
                   </a>
 
                   <a
-                    href={settings.instagramUrl}
+                    href="https://www.instagram.com/tolip.s14?utm_source=qr&bqrl=bTV2YmJoZ3dsZmZh"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-3 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] hover:border-[#E1306C] transition-colors"
