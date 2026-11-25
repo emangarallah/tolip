@@ -49,8 +49,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onClose,
   onStoreUpdated,
 }) => {
-  if (!isOpen) return null;
-
   // Authentication state
   const [token, setToken] = useState<string>(() => localStorage.getItem('tulip_admin_token') || '');
   const [adminEmail, setAdminEmail] = useState('');
@@ -129,10 +127,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
-    if (token) {
+    if (isOpen && token) {
       loadAdminData();
     }
-  }, [token]);
+  }, [token, isOpen]);
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -406,6 +404,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     delivered: { text: 'تم التسليم', color: 'bg-green-100 text-green-800' },
     cancelled: { text: 'ملغي', color: 'bg-red-100 text-red-800' },
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
