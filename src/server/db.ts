@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { Pool } from 'pg';
 import type {
   Category,
   Product,
@@ -701,6 +702,8 @@ function createDefaultDatabase(): DatabaseSchema {
 
 class StoreDatabase {
   private data: DatabaseSchema;
+  private pool: Pool | null = null;
+  private persistQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.data = this.loadDatabase();
@@ -756,7 +759,56 @@ class StoreDatabase {
     }
   }
 
+  public async initializePersistentStore(): Promise<void> {
+    if (process.env.NODE_ENV !== 'production') return;
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) throw new Error('Production requires DATABASE_URL for Neon PostgreSQL.');
+    if (this.pool) return;
+
+    const pool = new Pool({ connectionString, max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000 });
+    await pool.query('SELECT 1');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tolip_store_state (
+        id smallint PRIMARY KEY CHECK (id = 1),
+        payload jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    const result = await pool.query('SELECT payload FROM tolip_store_state WHERE id = 1');
+    this.pool = pool;
+    if (result.rows.length) {
+      this.data = result.rows[0].payload as DatabaseSchema;
+      const adminEmail = process.env.ADMIN_EMAIL!.trim();
+      const adminPassword = process.env.ADMIN_PASSWORD!;
+      const salt = crypto.createHash('sha256').update(`tolip-admin-salt:${adminEmail.toLowerCase()}`).digest('hex').slice(0, 32);
+      this.data.adminUser.email = adminEmail;
+      this.data.adminUser.salt = salt;
+      this.data.adminUser.passwordHash = hashPassword(adminPassword, salt);
+    } else {
+      await pool.query(
+        'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
+        [JSON.stringify(this.data)]
+      );
+    }
+    await this.persist();
+    await this.flushPersistence();
+  }
+
+  public async flushPersistence(): Promise<void> {
+    await this.persistQueue;
+  }
+
   private persist() {
+    if (this.pool) {
+      const snapshot = JSON.stringify(this.data);
+      this.persistQueue = this.persistQueue.then(async () => {
+        await this.pool!.query(
+          'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now()',
+          [snapshot]
+        );
+      });
+      return;
+    }
     this.saveDirect(this.data);
   }
 
