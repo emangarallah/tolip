@@ -533,9 +533,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div className="p-3 rounded-xl bg-[#F8F6F2] dark:bg-[#1E2320] border border-[#EBE4DC] dark:border-[#2D332F] text-[11px] text-[#717772] dark:text-[#8D9690] space-y-1">
                 <p className="font-bold text-[#1F2421]">ملاحظة أمان:</p>
-                <p>البريد الافتراضي: <span className="font-mono">admin@tulip.ye</span></p>
-                <p>كلمة المرور الافتراضية: <span className="font-mono">tulip_admin_secure_2026</span></p>
-                <p className="text-[#8C4A5E]">يمكنكِ تغيير البريد وكلمة المرور في أي وقت من قسم الأمان.</p>
+                <p>استخدمي بيانات المسؤول التي تم إعدادها بشكل آمن لتسجيل الدخول.</p>
+                <p className="text-[#8C4A5E]">لا تعرض صفحة الدخول البريد أو كلمة المرور الافتراضية حفاظًا على أمان لوحة التحكم.</p>
               </div>
             </div>
           </div>
