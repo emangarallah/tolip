@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { X, Heart, MessageCircle, Plus, Minus, Check, Sparkles, AlertCircle } from 'lucide-react';
-import type { Product, StoreSettings, ProductVariant } from '../types/store.ts';
+import type { Product, ProductVariant } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
 interface ProductDetailModalProps {
   product: Product | null;
-  settings: StoreSettings;
   similarProducts: Product[];
   isFavorite: boolean;
   language: Language;
@@ -17,7 +16,6 @@ interface ProductDetailModalProps {
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
-  settings,
   similarProducts,
   isFavorite,
   language,
