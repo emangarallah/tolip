@@ -719,7 +719,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           isActive: true,
                         });
                       }}
-                      className="px-4 py-2.5 rounded-xl bg-white border border-[#D9D2C9] text-xs font-bold hover:bg-[#FAF8F5] transition-all flex items-center gap-2"
+                      className="px-4 py-3 min-h-11 rounded-xl bg-[#C74169] text-white border border-[#A92F53] text-xs font-extrabold hover:bg-[#A92F53] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#C74169]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E06287] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161917]"
                     >
                       <Plus className="w-4 h-4" />
                       <span>إضافة قسم جديد</span>
@@ -926,7 +926,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           isActive: true,
                         });
                       }}
-                      className="px-4 py-2 rounded-xl bg-[#1F2421] text-white text-xs font-bold hover:bg-[#C74169] transition-all flex items-center gap-2 shadow-sm"
+                      className="px-4 py-3 min-h-11 rounded-xl bg-[#C74169] text-white border border-[#A92F53] text-xs font-extrabold hover:bg-[#A92F53] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#C74169]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E06287] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161917]"
                     >
                       <Plus className="w-4 h-4" />
                       <span>إضافة قسم جديد</span>
