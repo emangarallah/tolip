@@ -125,7 +125,7 @@ export default function App() {
     try {
       const [settingsRes, catsRes, prodsRes] = await Promise.all([
         fetch('/api/settings'),
-        fetch('/api/categories'),
+        fetch('/api/categories', { cache: 'no-store' }),
         fetch('/api/products'),
       ]);
 
