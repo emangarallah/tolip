@@ -24,18 +24,32 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Admin authentication middleware
-function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+// Validate the bearer token against the current admin record, not only its signature.
+function getAdminPayload(req: Request): { email: string; id: string } | null {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'غير مصرح لك بالوصول. يرجى تسجيل الدخول كمسؤول.' });
-    return;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token) return null;
+
+  const payload = verifyToken(token);
+  if (!payload) return null;
+
+  const currentAdmin = db.getAdminInfo();
+  if (
+    payload.id !== currentAdmin.id ||
+    payload.email.toLowerCase() !== currentAdmin.email.toLowerCase()
+  ) {
+    return null;
   }
 
-  const token = authHeader.split(' ')[1];
-  const payload = verifyToken(token);
+  return payload;
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const payload = getAdminPayload(req);
   if (!payload) {
-    res.status(401).json({ error: 'جلسة العمل منتهية أو غير صالحة. يرجى إعادة تسجيل الدخول.' });
+    res.status(401).json({ error: 'غير مصرح لك بالوصول. يرجى تسجيل الدخول كمسؤول.' });
     return;
   }
 
@@ -69,7 +83,7 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
 // ==========================================
 app.get('/api/categories', (req: Request, res: Response) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true';
+    const includeInactive = req.query.includeInactive === 'true' && Boolean(getAdminPayload(req));
     const categories = db.getCategories(includeInactive);
     res.json(categories);
   } catch (err) {
@@ -137,7 +151,7 @@ app.get('/api/products', (req: Request, res: Response) => {
       isFeatured: isFeatured === 'true',
       isBestSeller: isBestSeller === 'true',
       inStockOnly: inStockOnly === 'true',
-      includeInactive: includeInactive === 'true',
+      includeInactive: includeInactive === 'true' && Boolean(getAdminPayload(req)),
       sortBy: sortBy as any,
     });
     res.json(products);
@@ -149,7 +163,7 @@ app.get('/api/products', (req: Request, res: Response) => {
 app.get('/api/products/:id', (req: Request, res: Response) => {
   try {
     const product = db.getProductById(req.params.id);
-    if (!product) {
+    if (!product || (!product.isActive && !getAdminPayload(req))) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;
     }
