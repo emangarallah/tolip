@@ -85,7 +85,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMsg(language === 'ar' ? 'يرجى إدخال رقم الهاتف.' : 'Please enter your phone number.');
       return;
     }
-    if (phone.replace(/\\D/g, '').length < 7) {
+    if (phone.replace(/\D/g, '').length < 7) {
       setErrorMsg(language === 'ar' ? 'يرجى إدخال رقم هاتف صحيح.' : 'Please enter a valid phone number.');
       return;
     }
