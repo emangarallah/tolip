@@ -47,7 +47,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const totalPrice = currentPrice !== null ? currentPrice * quantity : null;
 
   const handleWhatsAppOrder = () => {
-    if (!product || !selectedVariant || !product.inStock) return;
+    if (!product || !selectedVariant || !product.inStock || selectedVariant.stock <= 0) return;
     onOrder(product, selectedVariant.id, quantity);
   };
 
@@ -239,7 +239,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => setQuantity(Math.min(selectedVariant?.stock || 1, 99, quantity + 1))}
                     aria-label="Increase quantity"
                     className="p-1.5 rounded-full hover:bg-[#F4EFEA] dark:hover:bg-[#282F2B] text-[#1F2421] dark:text-white transition-colors"
                   >
@@ -279,7 +279,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <button
                 type="button"
                 onClick={handleWhatsAppOrder}
-                disabled={!product.inStock || !selectedVariant}
+                disabled={!product.inStock || !selectedVariant || selectedVariant.stock <= 0}
                 className={`w-full py-3.5 px-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   product.inStock
                     ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-md'
