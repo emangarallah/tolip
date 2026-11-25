@@ -149,7 +149,15 @@ export default function App() {
 
   // Theme & Language toggles
   const handleToggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
+    // Apply immediately so every Tailwind dark: style switches in the same tap.
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    try {
+      localStorage.setItem('tulip_theme', nextTheme);
+    } catch (error) {
+      console.error('Unable to persist theme preference:', error);
+    }
+    setTheme(nextTheme);
   };
 
   const handleToggleLanguage = () => {
