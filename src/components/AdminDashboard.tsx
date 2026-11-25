@@ -50,7 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onStoreUpdated,
 }) => {
   // Authentication state
-  const [token, setToken] = useState<string>(() => localStorage.getItem('tulip_admin_token') || '');
+  const [token, setToken] = useState<string>(() => sessionStorage.getItem('tulip_admin_token') || '');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -109,7 +109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       if (statsRes.status === 401) {
         // Token expired or invalid
-        localStorage.removeItem('tulip_admin_token');
+        sessionStorage.removeItem('tulip_admin_token');
         setToken('');
         return;
       }
@@ -148,7 +148,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         throw new Error(data.error || 'فشل تسجيل الدخول');
       }
 
-      localStorage.setItem('tulip_admin_token', data.token);
+      sessionStorage.setItem('tulip_admin_token', data.token);
       setToken(data.token);
       setAdminPassword('');
       showToast('مرحباً بك في لوحة تحكم متجر توليب!');
@@ -160,7 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('tulip_admin_token');
+    sessionStorage.removeItem('tulip_admin_token');
     setToken('');
     setStats(null);
   };
@@ -365,7 +365,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setCurrentPass('');
       setNewPass('');
       if (data.token) {
-        localStorage.setItem('tulip_admin_token', data.token);
+        sessionStorage.setItem('tulip_admin_token', data.token);
         setToken(data.token);
       }
     } catch (err: any) {
