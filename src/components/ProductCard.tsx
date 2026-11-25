@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, ShoppingBag, MessageCircle, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Eye } from 'lucide-react';
 import type { Product, StoreSettings } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
@@ -10,7 +10,6 @@ interface ProductCardProps {
   language: Language;
   onToggleFavorite: (product: Product) => void;
   onViewDetails: (product: Product) => void;
-  onAddToCart: (product: Product, variantId?: string) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -20,7 +19,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   language,
   onToggleFavorite,
   onViewDetails,
-  onAddToCart,
 }) => {
   const t = translations[language];
 
@@ -35,41 +33,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   // Has discount?
   const hasDiscount = minPrice !== null && originalPrice && originalPrice > minPrice;
-
-  // Direct WhatsApp single item quick order URL generator
-  const getDirectWhatsAppUrl = () => {
-    const variantName = primaryVariant?.name || (language === 'ar' ? 'قياسي' : 'Standard');
-    const unitPriceStr =
-      primaryVariant?.price !== null && primaryVariant?.price !== undefined
-        ? `${primaryVariant.price.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
-        : t.contactForPrice;
-    const totalStr = unitPriceStr;
-
-    const message =
-      language === 'ar'
-        ? `مرحبًا متجر توليب، أرغب في طلب المنتج التالي:
-
-اسم المنتج: ${product.name}
-الحجم / النوع: ${variantName}
-الكمية: 1
-سعر الوحدة: ${unitPriceStr}
-الإجمالي: ${totalStr}
-
-أرجو تأكيد الطلب وتفاصيل التوصيل.`
-        : `Hello Tolipe Natural Care, I would like to order the following product:
-
-Product Name: ${product.name}
-Size / Variant: ${variantName}
-Quantity: 1
-Unit Price: ${unitPriceStr}
-Total: ${totalStr}
-
-Please confirm order availability and delivery details.`;
-
-    const phone = settings.whatsappPhone.replace(/\D/g, '');
-    const targetPhone = phone.startsWith('967') ? phone : `967${phone}`;
-    return `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
-  };
 
   return (
     <div className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
@@ -185,34 +148,20 @@ Please confirm order availability and delivery details.`;
             )}
           </div>
 
-          {/* Action Buttons: WhatsApp Direct & Add to Cart */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Quick WhatsApp Order */}
-            <a
-              href={getDirectWhatsAppUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-semibold bg-[#25D366]/10 text-[#1B8340] dark:text-[#42E67D] hover:bg-[#25D366]/20 border border-[#25D366]/30 transition-all text-center"
-              title={t.orderWhatsApp}
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-              <span className="truncate">{t.orderWhatsApp}</span>
-            </a>
-
-            {/* Add to Cart / View Details */}
-            <button
-              onClick={() => onAddToCart(product, primaryVariant?.id)}
-              disabled={!product.inStock}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-semibold transition-all ${
-                product.inStock
-                  ? 'bg-[#1F2421] text-white hover:bg-[#C74169] dark:bg-[#2D332F] dark:hover:bg-[#C74169]'
-                  : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>{t.addToCart}</span>
-            </button>
-          </div>
+          {/* Single order action: product details allow the customer to choose a size before delivery details. */}
+          <button
+            type="button"
+            onClick={() => onViewDetails(product)}
+            disabled={!product.inStock}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs font-bold transition-all ${
+              product.inStock
+                ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-sm'
+                : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>{t.orderWhatsApp}</span>
+          </button>
         </div>
       </div>
     </div>
