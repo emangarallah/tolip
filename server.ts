@@ -145,7 +145,7 @@ app.post('/api/categories', requireAdmin, (req: Request, res: Response) => {
       res.status(400).json({ error: 'اسم القسم مطلوب' });
       return;
     }
-    const slug = typeof req.body.slug === 'string' && req.body.slug.trim() ? req.body.slug.trim().toLowerCase() : \`category-\${crypto.randomUUID()}\`;
+    const slug = typeof req.body.slug === 'string' && req.body.slug.trim() ? req.body.slug.trim().toLowerCase() : 'category-' + crypto.randomUUID();
     const newCategory = db.createCategory({
       name: name.trim(),
       slug,
@@ -248,7 +248,7 @@ app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
       res.status(400).json({ error: variantsError });
       return;
     }
-    const slug = typeof req.body.slug === 'string' && req.body.slug.trim() ? req.body.slug.trim().toLowerCase() : \`product-\${crypto.randomUUID()}\`;
+    const slug = typeof req.body.slug === 'string' && req.body.slug.trim() ? req.body.slug.trim().toLowerCase() : 'product-' + crypto.randomUUID();
     const newProduct = db.createProduct({
       name: name.trim(),
       slug,
