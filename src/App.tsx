@@ -783,6 +783,7 @@ export default function App() {
         language={language}
         onClose={() => setSelectedProduct(null)}
         onToggleFavorite={handleToggleFavorite}
+        onOrder={handleStartOrder}
         onSelectSimilarProduct={(p) => setSelectedProduct(p)}
       />
 
