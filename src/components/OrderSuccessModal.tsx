@@ -18,11 +18,12 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
   language,
   onClose,
 }) => {
+  const [copied, setCopied] = React.useState(false);
+
   if (!order) return null;
 
   const t = translations[language];
   const isRtl = language === 'ar';
-  const [copied, setCopied] = React.useState(false);
 
   const handleCopyOrderNumber = () => {
     navigator.clipboard.writeText(order.orderNumber);
