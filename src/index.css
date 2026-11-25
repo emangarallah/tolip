@@ -21,8 +21,8 @@
   body {
     min-width: 320px;
     min-height: 100svh;
-    background-color: #FCFCFA;
-    color: #1F2421;
+    background-color: #FFF9F7;
+    color: #5B2638;
     overflow-x: hidden;
     transition: background-color 0.25s ease, color 0.25s ease;
   }
@@ -35,8 +35,8 @@
 
 /* Custom styling for luxury touch */
 ::selection {
-  background-color: #F8D7E3;
-  color: #832742;
+  background-color: #F6C9D8;
+  color: #7E2D4B;
 }
 
 html.dark ::selection {
@@ -51,7 +51,7 @@ html.dark ::selection {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F4F4F0;
+  background: #FFF0F2;
 }
 
 html.dark ::-webkit-scrollbar-track {
@@ -59,7 +59,7 @@ html.dark ::-webkit-scrollbar-track {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D8D8D2;
+  background: #E8B7C7;
   border-radius: 4px;
 }
 
@@ -68,7 +68,7 @@ html.dark ::-webkit-scrollbar-thumb {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #B8B8B0;
+  background: #D98BA5;
 }
 
 html.dark ::-webkit-scrollbar-thumb:hover {
