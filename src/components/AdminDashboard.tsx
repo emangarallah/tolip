@@ -696,7 +696,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           features: ['طبيعي 100%'],
                           usageInstructions: '',
                           images: ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-                          variants: [{ id: `v-${Date.now()}`, name: 'حجم قياسي', price: null, stock: 10 }],
+                          variants: [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }],
                           isFeatured: false,
                           isBestSeller: false,
                           isActive: true,
@@ -1488,7 +1488,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           ...editingProduct,
                           variants: [
                             ...curVariants,
-                            { id: `v-${Date.now()}`, name: `حجم ${curVariants.length + 1}`, price: null, stock: 10 },
+                            { id: `v-${crypto.randomUUID()}`, name: `حجم ${curVariants.length + 1}`, price: null, stock: 10 },
                           ],
                         });
                       }}
@@ -1530,9 +1530,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             dir="ltr"
                           />
                         </div>
-                        <div className="col-span-3">
+                        <div className="col-span-2">
                           <input
                             type="number"
+                            min="0"
                             value={v.originalPrice === null || v.originalPrice === undefined ? '' : v.originalPrice}
                             onChange={(e) => {
                               const newV = [...(editingProduct.variants || [])];
@@ -1541,6 +1542,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               setEditingProduct({ ...editingProduct, variants: newV });
                             }}
                             placeholder="قبل الخصم"
+                            aria-label="السعر السابق"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={v.stock ?? 0}
+                            onChange={(e) => {
+                              const newV = [...(editingProduct.variants || [])];
+                              const stock = e.target.value === '' ? 0 : Math.max(0, Math.floor(Number(e.target.value)));
+                              newV[vIdx] = { ...newV[vIdx], stock };
+                              setEditingProduct({ ...editingProduct, variants: newV });
+                            }}
+                            placeholder="المخزون"
+                            aria-label="المخزون المتاح"
                             className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
                             dir="ltr"
                           />
