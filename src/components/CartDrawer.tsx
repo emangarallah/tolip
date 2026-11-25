@@ -16,6 +16,7 @@ interface CartDrawerProps {
   language: Language;
   onClose: () => void;
   onUpdate: (productId: string, variantId: string, quantity: number) => void;
+  onVariantChange: (productId: string, oldVariantId: string, newVariantId: string, quantity: number) => void;
   onRemove: (productId: string, variantId: string) => void;
   onCheckout: (items: OrderDraftItem[]) => void;
 }
@@ -78,7 +79,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h3 className="text-sm font-bold text-[#33252A] dark:text-white line-clamp-2">{product.name}</h3>
-                        <p className="text-xs text-[#8A737B] mt-1">{variant.name}</p>
+                        <select value={line.variantId} onChange={(e) => onVariantChange(line.productId, line.variantId, e.target.value, line.quantity)} aria-label={language === 'ar' ? 'اختيار الحجم أو النوع' : 'Choose variant'} className="mt-1 max-w-full rounded-lg border border-[#E7DDE0] dark:border-[#343C36] bg-white dark:bg-[#202622] px-2 py-1 text-[11px] text-[#6F5B63] dark:text-[#C0C9C2]">
+                          {product.variants.filter((entry) => entry.stock > 0).map((entry) => <option key={entry.id} value={entry.id}>{entry.name}{entry.price !== null ? ` — ${entry.price.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}` : ''}</option>)}
+                        </select>
                       </div>
                       <button onClick={() => onRemove(line.productId, line.variantId)} aria-label="Remove item" className="p-1.5 text-[#A85C72] hover:bg-[#FFF0F4] rounded-lg"><Trash2 className="w-4 h-4"/></button>
                     </div>
