@@ -32,18 +32,8 @@ import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
-  // Theme State ('light' | 'dark')
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const savedTheme = localStorage.getItem('tulip_theme');
-      if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-    } catch {
-      return 'light';
-    }
-  });
+  // Keep Tolip's blush-and-ivory brand palette light so the transparent PNG logo never sits on a black surface.
+  const [theme, setTheme] = useState<Theme>('light');
 
   // Language State ('ar' | 'en')
   const [language, setLanguage] = useState<Language>(() => {
@@ -153,17 +143,16 @@ export default function App() {
     fetchStoreData();
   }, []);
 
-  // Theme & Language toggles
+  // Keep the storefront in its light brand palette; do not switch to a black dark-mode surface.
   const handleToggleTheme = () => {
-    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
-    // Apply immediately so every Tailwind dark: style switches in the same tap.
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
     try {
-      localStorage.setItem('tulip_theme', nextTheme);
+      localStorage.setItem('tulip_theme', 'light');
     } catch (error) {
       console.error('Unable to persist theme preference:', error);
     }
-    setTheme(nextTheme);
+    setTheme('light');
   };
 
   const handleToggleLanguage = () => {
@@ -269,24 +258,24 @@ export default function App() {
 
   if (isLoading || !settings || !splashMinimumElapsed) {
     return (
-      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFFCFA] px-5 py-8 text-[#1F2421] dark:bg-[#121513] dark:text-[#F1F4F2]">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F9DDE7]/55 blur-3xl dark:bg-[#6A2035]/20" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#E7EFD9]/70 blur-3xl dark:bg-[#31452F]/20" />
+      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFF7F5] px-5 py-8 text-[#5B2638]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F8C9D9]/55 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#FBE8D8]/70 blur-3xl" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
           <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
 
           <div className="mt-7 space-y-2">
-            <p className="text-xl font-bold leading-relaxed text-[#D45283] dark:text-[#F08CAF]">
+            <p className="text-xl font-bold leading-relaxed text-[#B83F6B]">
               لقد تم اختيار منتجك بكل عناية
             </p>
-            <p className="text-base font-semibold leading-8 text-[#262626] dark:text-[#DDE3DE]">
+            <p className="text-base font-semibold leading-8 text-[#6A4552]">
               ليضيف لمسة من الجمال والتميز إلى يومك.
             </p>
           </div>
 
-          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#F5DDE6] dark:bg-[#39232B]">
-            <div className="h-full w-2/5 rounded-full bg-[#D45283] dark:bg-[#F08CAF] animate-pulse" />
+          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#F4D5E0]">
+            <div className="h-full w-2/5 rounded-full bg-[#C94F7B] animate-pulse" />
           </div>
         </div>
       </main>
@@ -294,7 +283,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-[#F1F4F2] selection:bg-[#F8D7E3] dark:selection:bg-[#6A2035] selection:text-[#832742] dark:selection:text-[#FCE8EF] transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-[#FFF9F7] text-[#5B2638] selection:bg-[#F8D7E3] dark:selection:bg-[#6A2035] selection:text-[#832742] dark:selection:text-[#FCE8EF] transition-colors duration-200">
       {/* 1. Header & Navigation */}
       <Navbar
         settings={settings}
