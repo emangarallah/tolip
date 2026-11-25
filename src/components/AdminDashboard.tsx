@@ -269,8 +269,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       showToast(isNew ? 'تمت إضافة القسم الجديد بنجاح!' : 'تم تحديث القسم بنجاح!');
       setEditingCategory(null);
-      loadAdminData();
-      onStoreUpdated();
+      await loadAdminData();
+      await onStoreUpdated();
     } catch (err: any) {
       alert(err.message);
     }
