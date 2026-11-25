@@ -15,7 +15,9 @@ import type {
 dotenv.config();
 
 // In-app database file location
-const DB_DIR = path.resolve(process.cwd(), 'data');
+const DB_DIR = process.env.VERCEL && process.env.NODE_ENV === 'production'
+  ? path.resolve(process.cwd(), 'dist/data')
+  : path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'store_database.json');
 
 interface DatabaseSchema {
