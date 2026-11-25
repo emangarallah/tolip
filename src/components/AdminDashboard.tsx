@@ -205,13 +205,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         method: 'DELETE',
         headers: authHeaders(),
       });
-      if (res.ok) {
-        showToast('تم حذف المنتج بنجاح');
-        loadAdminData();
-        onStoreUpdated();
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'فشل في حذف المنتج');
       }
-    } catch (err) {
-      alert('فشل في حذف المنتج');
+      showToast('تم حذف المنتج بنجاح');
+      loadAdminData();
+      onStoreUpdated();
+    } catch (err: any) {
+      alert(err.message || 'فشل في حذف المنتج');
     }
   };
 
@@ -272,13 +274,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         method: 'DELETE',
         headers: authHeaders(),
       });
-      if (res.ok) {
-        showToast('تم حذف القسم بنجاح');
-        loadAdminData();
-        onStoreUpdated();
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'فشل في حذف القسم');
       }
-    } catch (err) {
-      alert('فشل في حذف القسم');
+      showToast('تم حذف القسم بنجاح');
+      loadAdminData();
+      onStoreUpdated();
+    } catch (err: any) {
+      alert(err.message || 'فشل في حذف القسم');
     }
   };
 
