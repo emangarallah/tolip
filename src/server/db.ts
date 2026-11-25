@@ -1,6 +1,4 @@
 import dotenv from 'dotenv';
-dotenv.config();
-
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -12,6 +10,8 @@ import type {
   AdminStats,
   OrderStatus,
 } from '../types/store.ts';
+
+dotenv.config();
 
 // In-app database file location
 const DB_DIR = path.resolve(process.cwd(), 'data');
