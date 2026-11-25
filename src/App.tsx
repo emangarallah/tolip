@@ -341,7 +341,6 @@ export default function App() {
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
-                    onOrder={(p) => handleStartOrder(p)}
                         onOrder={(p) => handleStartOrder(p)}
                       />
                     ))}
@@ -381,10 +380,11 @@ export default function App() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                            isFavorite={favorites.includes(product.id)}
+                        isFavorite={favorites.includes(product.id)}
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
+                        onOrder={(p) => handleStartOrder(p)}
                       />
                     ))}
                   </div>
@@ -572,14 +572,14 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {sortedProducts.map((product) => (
                   <ProductCard
-                    key={product.id}
-                    product={product}
-                    settings={settings}
-                    isFavorite={favorites.includes(product.id)}
-                    language={language}
-                    onToggleFavorite={handleToggleFavorite}
-                    onViewDetails={(p) => setSelectedProduct(p)}
-                  />
+                        key={product.id}
+                        product={product}
+                        isFavorite={favorites.includes(product.id)}
+                        language={language}
+                        onToggleFavorite={handleToggleFavorite}
+                        onViewDetails={(p) => setSelectedProduct(p)}
+                        onOrder={(p) => handleStartOrder(p)}
+                      />
                 ))}
               </div>
             )}
