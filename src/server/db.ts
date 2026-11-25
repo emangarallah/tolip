@@ -785,6 +785,33 @@ class StoreDatabase {
     }
   }
 
+  // Keep the requested perfumes section available in existing Neon stores too.
+  // Older persistent rows may have been created before this category was seeded.
+  private ensurePerfumesCategory(): void {
+    if (!Array.isArray(this.data.categories)) this.data.categories = [];
+
+    const existing = this.data.categories.find((category) => category.id === 'cat-perfumes');
+    if (existing) {
+      existing.name = 'العطور والروائح والبخور';
+      existing.slug = 'perfumes-and-bakhour';
+      existing.isActive = true;
+      existing.description = existing.description || 'عطور راقية وبخور يمني فاخر وبودرة وروائح معطرة تدوم طويلاً وتمنحك أثراً عبقاً لا يُنسى.';
+      existing.image = existing.image || '/src/assets/images/product_perfume_incense_1795590419608.jpg';
+      return;
+    }
+
+    this.data.categories.push({
+      id: 'cat-perfumes',
+      name: 'العطور والروائح والبخور',
+      slug: 'perfumes-and-bakhour',
+      description: 'عطور راقية وبخور يمني فاخر وبودرة وروائح معطرة تدوم طويلاً وتمنحك أثراً عبقاً لا يُنسى.',
+      image: '/src/assets/images/product_perfume_incense_1795590419608.jpg',
+      sortOrder: Math.max(7, ...this.data.categories.map((category) => Number(category.sortOrder) || 0)) + 1,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   public async initializePersistentStore(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') return;
     const connectionString = process.env.DATABASE_URL;
@@ -817,6 +844,7 @@ class StoreDatabase {
         [JSON.stringify(this.data)]
       );
     }
+    this.ensurePerfumesCategory();
     await this.persist();
     await this.flushPersistence();
   }
