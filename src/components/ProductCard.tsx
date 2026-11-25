@@ -156,7 +156,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={() => onOrder(product)}
             disabled={!isAvailable}
             className={`w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs font-bold transition-all ${
-              product.inStock && hasAvailableVariant
+              isAvailable
                 ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-sm'
                 : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
             }`}
