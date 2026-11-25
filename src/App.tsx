@@ -163,9 +163,10 @@ export default function App() {
   // Open the delivery form directly for a single selected product.
   const handleStartOrder = (product: Product, variantId?: string, quantity = 1) => {
     const selectedVariant =
-      product.variants.find((variant) => variant.id === variantId) || product.variants[0];
+      product.variants.find((variant) => variant.id === variantId && variant.stock > 0) ||
+      product.variants.find((variant) => variant.stock > 0);
 
-    if (!selectedVariant || !product.inStock || selectedVariant.stock <= 0) return;
+    if (!selectedVariant || !product.inStock) return;
 
     setCheckoutProduct(product);
     setCheckoutVariantId(selectedVariant.id);
