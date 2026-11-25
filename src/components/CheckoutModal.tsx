@@ -8,6 +8,8 @@ interface CheckoutModalProps {
   product: Product | null;
   initialVariantId: string;
   initialQuantity: number;
+  cartItems?: OrderDraftItem[];
+  cartProducts?: Product[];
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
@@ -19,6 +21,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   initialVariantId,
   initialQuantity,
+  cartItems = [],
+  cartProducts = [],
   settings,
   language,
   onClose,
@@ -51,8 +55,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const selectedVariant =
     product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
 
-  const items: OrderDraftItem[] =
-    product && selectedVariant
+  const isCartCheckout = cartItems.length > 0;
+  const items: OrderDraftItem[] = isCartCheckout
+    ? cartItems
+    : product && selectedVariant
       ? [{
           id: `${product.id}_${selectedVariant.id}`,
           productId: product.id,
@@ -70,11 +76,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const selectedCityObj = settings.cities.find((c) => c.city === city);
   const deliveryFee = city === 'أخرى' || city === 'Other' ? null : selectedCityObj?.fee ?? null;
 
-  // Calculate the selected product and variant subtotal.
-  const itemsTotal =
-    selectedVariant && selectedVariant.price !== null
-      ? selectedVariant.price * quantity
-      : null;
+  // Calculate the subtotal for either a direct single-product order or the cart.
+  const itemsTotal = items.length > 0 && items.every((item) => item.price !== null)
+    ? items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0)
+    : null;
 
   const finalTotal = itemsTotal !== null && deliveryFee !== null ? itemsTotal + deliveryFee : itemsTotal;
 
@@ -129,13 +134,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMsg(language === 'ar' ? 'يرجى إدخال العنوان التفصيلي.' : 'Please enter your detailed address.');
       return;
     }
-    if (!product || !selectedVariant || !product.inStock || selectedVariant.stock <= 0) {
-      setErrorMsg(language === 'ar' ? 'المنتج أو الحجم المختار غير متوفر حاليًا.' : 'The selected product or variant is unavailable.');
+    if (!items.length) {
+      setErrorMsg(language === 'ar' ? 'السلة فارغة أو لا يوجد منتج صالح للطلب.' : 'Your cart is empty or has no valid items.');
       return;
     }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > Math.min(selectedVariant.stock, 99)) {
-      setErrorMsg(language === 'ar' ? 'يرجى اختيار كمية صحيحة بين 1 و99.' : 'Please choose a quantity between 1 and 99.');
-      return;
+    if (isCartCheckout) {
+      for (const item of items) {
+        const cartProduct = cartProducts.find((entry) => entry.id === item.productId);
+        const cartVariant = cartProduct?.variants.find((entry) => entry.id === item.variantId);
+        if (!cartProduct || !cartProduct.inStock || !cartVariant || cartVariant.stock < item.quantity || item.quantity < 1 || item.quantity > 99) {
+          setErrorMsg(language === 'ar' ? 'أحد المنتجات أو الكميات في السلة لم يعد متوفرًا. حدّث السلة وحاول مجددًا.' : 'A cart item or quantity is no longer available. Update your cart and try again.');
+          return;
+        }
+      }
+    } else {
+      if (!product || !selectedVariant || !product.inStock || selectedVariant.stock <= 0) {
+        setErrorMsg(language === 'ar' ? 'المنتج أو الحجم المختار غير متوفر حاليًا.' : 'The selected product or variant is unavailable.');
+        return;
+      }
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > Math.min(selectedVariant.stock, 99)) {
+        setErrorMsg(language === 'ar' ? 'يرجى اختيار كمية صحيحة بين 1 و99.' : 'Please choose a quantity between 1 and 99.');
+        return;
+      }
     }
 
     const customerDetails: CustomerDetails = {
