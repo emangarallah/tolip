@@ -24,6 +24,28 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+function validateProductVariants(variants: any): string | null {
+  if (!Array.isArray(variants) || variants.length < 1 || variants.length > 50) {
+    return 'يجب إضافة حجم أو نوع واحد على الأقل للمنتج.';
+  }
+  const ids = new Set<string>();
+  for (const variant of variants) {
+    if (!variant || typeof variant.id !== 'string' || !variant.id.trim()) return 'معرّف الحجم أو النوع غير صحيح.';
+    if (ids.has(variant.id)) return 'لا يمكن تكرار معرّف الحجم أو النوع.';
+    ids.add(variant.id);
+    if (typeof variant.name !== 'string' || !variant.name.trim()) return 'اسم الحجم أو النوع مطلوب.';
+    if (!Number.isInteger(variant.stock) || variant.stock < 0) return 'المخزون يجب أن يكون عددًا صحيحًا لا يقل عن صفر.';
+    if (variant.price !== null && variant.price !== undefined && (!Number.isFinite(variant.price) || variant.price < 0)) {
+      return 'سعر المنتج يجب أن يكون رقمًا موجبًا أو يترك فارغًا للاتفاق عبر واتساب.';
+    }
+    if (variant.originalPrice !== null && variant.originalPrice !== undefined &&
+        (!Number.isFinite(variant.originalPrice) || variant.originalPrice < 0)) {
+      return 'السعر السابق غير صحيح.';
+    }
+  }
+  return null;
+}
+
 // Validate the bearer token against the current admin record, not only its signature.
 function getAdminPayload(req: Request): { email: string; id: string } | null {
   const authHeader = req.headers.authorization;
@@ -208,8 +230,16 @@ app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
       res.status(400).json({ error: 'اسم المنتج مطلوب' });
       return;
     }
-    if (!categoryId) {
-      res.status(400).json({ error: 'يجب اختيار قسم للمنتج' });
+    if (!categoryId || !db.getCategoryById(String(categoryId))) {
+      res.status(400).json({ error: 'يجب اختيار قسم موجود للمنتج' });
+      return;
+    }
+    const incomingVariants = Array.isArray(variants) && variants.length > 0
+      ? variants
+      : [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }];
+    const variantsError = validateProductVariants(incomingVariants);
+    if (variantsError) {
+      res.status(400).json({ error: variantsError });
       return;
     }
     const slug = req.body.slug || name.trim().toLowerCase().replace(/[\s\W-]+/g, '-');
@@ -221,9 +251,7 @@ app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
       features: Array.isArray(features) ? features : [],
       usageInstructions: usageInstructions || '',
       images: Array.isArray(images) && images.length > 0 ? images : ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-      variants: Array.isArray(variants) && variants.length > 0 ? variants : [
-        { id: `v-${Date.now()}`, name: 'حجم قياسي', price: null, stock: 10 }
-      ],
+      variants: incomingVariants,
       isFeatured: Boolean(isFeatured),
       isBestSeller: Boolean(isBestSeller),
       isActive: isActive !== false,
@@ -237,6 +265,21 @@ app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
 
 app.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
   try {
+    if (req.body.name !== undefined && (typeof req.body.name !== 'string' || !req.body.name.trim())) {
+      res.status(400).json({ error: 'اسم المنتج مطلوب.' });
+      return;
+    }
+    if (req.body.categoryId !== undefined && !db.getCategoryById(String(req.body.categoryId))) {
+      res.status(400).json({ error: 'القسم المحدد غير موجود.' });
+      return;
+    }
+    if (req.body.variants !== undefined) {
+      const variantsError = validateProductVariants(req.body.variants);
+      if (variantsError) {
+        res.status(400).json({ error: variantsError });
+        return;
+      }
+    }
     const updated = db.updateProduct(req.params.id, req.body);
     if (!updated) {
       res.status(404).json({ error: 'المنتج غير موجود' });
