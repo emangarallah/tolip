@@ -2,11 +2,19 @@ import React from 'react';
 
 export const TulipOpeningMark: React.FC<{ className?: string }> = ({ className = '' }) => (
   <img
-    src="/tulip-original-logo.svg"
-    alt="شعار توليب الأصلي: اليد تحمل عبوة العناية محاطة بالنباتات، مع اسم توليب ووصف منتجات العناية بالبشرة والجسم"
+    src="/images/tolip-logo.png"
+    alt="شعار توليب للعناية بالبشرة والجسم"
     className={className}
     width="420"
     height="420"
     decoding="async"
+    onError={(event) => {
+      // Keep the existing opening screen working until the uploaded logo is in public/images.
+      const image = event.currentTarget;
+      if (image.dataset.fallbackApplied !== 'true') {
+        image.dataset.fallbackApplied = 'true';
+        image.src = '/tulip-original-logo.svg';
+      }
+    }}
   />
 );
