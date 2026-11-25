@@ -89,3 +89,41 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     overflow-x: clip;
   }
 }
+
+/* Gentle, attention-catching motion for the opening logo only. */
+.tulip-opening-logo {
+  transform-origin: 50% 58%;
+  animation:
+    tulip-logo-enter 1.25s cubic-bezier(0.2, 0.75, 0.25, 1) both,
+    tulip-logo-glow 3.2s ease-in-out 1.25s infinite;
+}
+
+@keyframes tulip-logo-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.82) rotate(-4deg);
+  }
+  68% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.045) rotate(1.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+@keyframes tulip-logo-glow {
+  0%, 100% {
+    filter: drop-shadow(0 10px 16px rgba(184, 63, 107, 0.10));
+  }
+  50% {
+    filter: drop-shadow(0 14px 23px rgba(184, 63, 107, 0.25));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tulip-opening-logo {
+    animation: none;
+  }
+}
