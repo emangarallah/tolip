@@ -28,10 +28,8 @@ import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
-import { CartDrawer } from './components/CartDrawer.tsx';
-import type { CartLine } from './components/CartDrawer.tsx';
 import { TrackingModal } from './components/TrackingModal.tsx';
-import type { Product, Category, StoreSettings, Order, OrderDraftItem } from './types/store.ts';
+import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
@@ -81,15 +79,6 @@ export default function App() {
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutVariantId, setCheckoutVariantId] = useState('');
   const [checkoutQuantity, setCheckoutQuantity] = useState(1);
-  const [cartLines, setCartLines] = useState<CartLine[]>(() => {
-    try {
-      const saved = localStorage.getItem('tolip_cart');
-      const parsed: unknown = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? parsed.filter((line): line is CartLine => Boolean(line && typeof line.productId === 'string' && typeof line.variantId === 'string' && Number.isInteger(line.quantity) && line.quantity > 0)) : [];
-    } catch { return []; }
-  });
-  const [cartCheckoutItems, setCartCheckoutItems] = useState<OrderDraftItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -126,11 +115,6 @@ export default function App() {
       console.error(e);
     }
   }, [language]);
-
-  // Persist the anonymous cart locally across visits.
-  useEffect(() => {
-    try { localStorage.setItem('tolip_cart', JSON.stringify(cartLines)); } catch (err) { console.error('Unable to persist cart:', err); }
-  }, [cartLines]);
 
   // Sync Favorites to localStorage
   useEffect(() => {
@@ -177,51 +161,6 @@ export default function App() {
   const t = translations[language];
   const isRtl = language === 'ar';
 
-  // Add the first available variant to the cart; customers can change the variant in the cart.
-  const handleAddToCart = (product: Product) => {
-    const variant = product.variants.find((entry) => entry.stock > 0);
-    if (!variant) return;
-    setCartLines((previous) => {
-      const existing = previous.find((line) => line.productId === product.id && line.variantId === variant.id);
-      if (existing) return previous.map((line) => line.productId === product.id && line.variantId === variant.id
-        ? { ...line, quantity: Math.min(variant.stock, 99, line.quantity + 1) } : line);
-      return [...previous, { productId: product.id, variantId: variant.id, quantity: 1 }];
-    });
-    // Keep the customer on the catalog so they can add more products.
-  };
-
-  const handleCartUpdate = (productId: string, variantId: string, quantity: number) => {
-    setCartLines((previous) => previous.map((line) => line.productId === productId && line.variantId === variantId
-      ? { ...line, quantity } : line).filter((line) => line.quantity > 0));
-  };
-
-  const handleCartVariantChange = (productId: string, oldVariantId: string, newVariantId: string, quantity: number) => {
-    const product = products.find((entry) => entry.id === productId);
-    const variant = product?.variants.find((entry) => entry.id === newVariantId);
-    if (!variant || variant.stock <= 0) return;
-    setCartLines((previous) => {
-      const next = previous.filter((line) => line.productId !== productId || line.variantId !== oldVariantId);
-      const existing = next.find((line) => line.productId === productId && line.variantId === newVariantId);
-      const safeQuantity = Math.min(variant.stock, 99, Math.max(1, quantity));
-      if (existing) return next.map((line) => line.productId === productId && line.variantId === newVariantId
-        ? { ...line, quantity: Math.min(variant.stock, 99, line.quantity + safeQuantity) } : line);
-      return [...next, { productId, variantId: newVariantId, quantity: safeQuantity }];
-    });
-  };
-
-  const handleCartRemove = (productId: string, variantId: string) => {
-    setCartLines((previous) => previous.filter((line) => line.productId !== productId || line.variantId !== variantId));
-  };
-
-  const handleCartCheckout = (items: OrderDraftItem[]) => {
-    setCartCheckoutItems(items);
-    setCheckoutProduct(null);
-    setCheckoutVariantId('');
-    setCheckoutQuantity(1);
-    setIsCartOpen(false);
-    setIsCheckoutOpen(true);
-  };
-
   // Open the delivery form directly for a single selected product.
   const handleStartOrder = (product: Product, variantId?: string, quantity = 1) => {
     const selectedVariant =
@@ -229,8 +168,6 @@ export default function App() {
       product.variants.find((variant) => variant.stock > 0);
 
     if (!selectedVariant || !product.inStock) return;
-
-    setCartCheckoutItems([]);
     setCheckoutProduct(product);
     setCheckoutVariantId(selectedVariant.id);
     setCheckoutQuantity(Math.max(1, Math.floor(quantity)));
@@ -426,8 +363,6 @@ export default function App() {
       <Navbar
         settings={settings}
         favoritesCount={favorites.filter((id) => products.some((product) => product.id === id)).length}
-        cartCount={cartLines.reduce((sum, line) => sum + line.quantity, 0)}
-        onOpenCart={() => setIsCartOpen(true)}
         onOpenTracking={() => setIsTrackingOpen(true)}
         activeTab={activeTab}
         language={language}
@@ -510,7 +445,6 @@ export default function App() {
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
                         onOrder={(p) => handleStartOrder(p)}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -554,7 +488,6 @@ export default function App() {
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
                         onOrder={(p) => handleStartOrder(p)}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -756,7 +689,6 @@ export default function App() {
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
                         onOrder={(p) => handleStartOrder(p)}
-                        onAddToCart={handleAddToCart}
                       />
                 ))}
               </div>
@@ -918,17 +850,6 @@ export default function App() {
           MODALS & DRAWERS
       ------------------------------------------------------------- */}
 
-      <CartDrawer
-        isOpen={isCartOpen}
-        products={products}
-        lines={cartLines}
-        language={language}
-        onClose={() => setIsCartOpen(false)}
-        onUpdate={handleCartUpdate}
-        onVariantChange={handleCartVariantChange}
-        onRemove={handleCartRemove}
-        onCheckout={handleCartCheckout}
-      />
       <TrackingModal isOpen={isTrackingOpen} language={language} onClose={() => setIsTrackingOpen(false)} />
 
       {/* Single-product delivery form */}
@@ -937,8 +858,6 @@ export default function App() {
         product={checkoutProduct}
         initialVariantId={checkoutVariantId}
         initialQuantity={checkoutQuantity}
-        cartItems={cartCheckoutItems}
-        cartProducts={products}
         settings={settings}
         language={language}
         onClose={() => {
@@ -946,15 +865,12 @@ export default function App() {
           setCheckoutProduct(null);
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
-          setCartCheckoutItems([]);
         }}
         onOrderSuccess={(order, whatsappUrl) => {
           setIsCheckoutOpen(false);
           setCheckoutProduct(null);
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
-          if (cartCheckoutItems.length > 0) setCartLines([]);
-          setCartCheckoutItems([]);
           setCompletedOrder({ order, whatsappUrl });
         }}
       />
