@@ -1,24 +1,24 @@
 import React from 'react';
 import { Heart, MessageCircle, Eye } from 'lucide-react';
-import type { Product, StoreSettings } from '../types/store.ts';
+import type { Product } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
 interface ProductCardProps {
   product: Product;
-  settings: StoreSettings;
   isFavorite: boolean;
   language: Language;
   onToggleFavorite: (product: Product) => void;
   onViewDetails: (product: Product) => void;
+  onOrder: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
-  settings,
   isFavorite,
   language,
   onToggleFavorite,
   onViewDetails,
+  onOrder,
 }) => {
   const t = translations[language];
 
@@ -151,7 +151,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Single order action: product details allow the customer to choose a size before delivery details. */}
           <button
             type="button"
-            onClick={() => onViewDetails(product)}
+            onClick={() => onOrder(product)}
             disabled={!product.inStock}
             className={`w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs font-bold transition-all ${
               product.inStock
