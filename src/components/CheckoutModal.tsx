@@ -8,8 +8,6 @@ interface CheckoutModalProps {
   product: Product | null;
   initialVariantId: string;
   initialQuantity: number;
-  cartItems?: OrderDraftItem[];
-  cartProducts?: Product[];
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
@@ -21,8 +19,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   initialVariantId,
   initialQuantity,
-  cartItems = [],
-  cartProducts = [],
   settings,
   language,
   onClose,
@@ -55,28 +51,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const selectedVariant =
     product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
 
-  const isCartCheckout = cartItems.length > 0;
-  const items: OrderDraftItem[] = isCartCheckout
-    ? cartItems
-    : product && selectedVariant
-      ? [{
-          id: `${product.id}_${selectedVariant.id}`,
-          productId: product.id,
-          productName: product.name,
-          variantId: selectedVariant.id,
-          variantName: selectedVariant.name,
-          price: selectedVariant.price ?? null,
-          quantity,
-          image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
-          categoryName: product.categoryName,
-        }]
-      : [];
+  const items: OrderDraftItem[] = product && selectedVariant
+    ? [{
+        id: `${product.id}_${selectedVariant.id}`,
+        productId: product.id,
+        productName: product.name,
+        variantId: selectedVariant.id,
+        variantName: selectedVariant.name,
+        price: selectedVariant.price ?? null,
+        quantity,
+        image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
+        categoryName: product.categoryName,
+      }]
+    : [];
 
   // Selected city info
   const selectedCityObj = settings.cities.find((c) => c.city === city);
   const deliveryFee = city === 'أخرى' || city === 'Other' ? null : selectedCityObj?.fee ?? null;
 
-  // Calculate the subtotal for either a direct single-product order or the cart.
+  // Calculate the subtotal for the selected product.
   const itemsTotal = items.length > 0 && items.every((item) => item.price !== null)
     ? items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0)
     : null;
@@ -135,7 +128,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
     if (!items.length) {
-      setErrorMsg(language === 'ar' ? 'السلة فارغة أو لا يوجد منتج صالح للطلب.' : 'Your cart is empty or has no valid items.');
+      setErrorMsg(language === 'ar' ? 'السلة فارغة أو لا يوجد منتج صالح للطلب.' : 'No valid product is selected.');
       return;
     }
     if (isCartCheckout) {
