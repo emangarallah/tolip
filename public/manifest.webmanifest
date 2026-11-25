@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "توليب – Tolipe Natural Care",
+  "short_name": "توليب",
+  "description": "متجر توليب للعناية الطبيعية بالبشرة والجسم والشعر والعطور.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFF7F5",
+  "theme_color": "#FFF7F5",
+  "categories": ["shopping", "beauty"],
+  "icons": [
+    {
+      "src": "/images/tolip-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
