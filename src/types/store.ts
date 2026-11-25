@@ -42,7 +42,7 @@ export interface Category {
   createdAt: string;
 }
 
-export interface CartItem {
+export interface OrderDraftItem {
   id: string; // unique item key: `${productId}_${variantId}`
   productId: string;
   productName: string;
