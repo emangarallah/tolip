@@ -64,7 +64,10 @@ export default function App() {
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('tulip_favorites');
-      return saved ? JSON.parse(saved) : [];
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+        : [];
     } catch {
       return [];
     }
@@ -358,14 +361,21 @@ export default function App() {
       {/* 1. Header & Navigation */}
       <Navbar
         settings={settings}
-        favoritesCount={favorites.length}
+        favoritesCount={favorites.filter((id) => products.some((product) => product.id === id)).length}
         activeTab={activeTab}
         language={language}
         theme={theme}
         onNavigate={handleNavigate}
         onOpenFavorites={() => {
+          // Open the full saved list without carrying over category/search/stock filters.
           setActiveTab('products');
+          setSelectedCategoryId('all');
+          setFilterSearchQuery('');
+          setFilterInStockOnly(false);
+          setFilterBestSellersOnly(false);
+          setProductSortBy('newest');
           setShowFavoritesOnly(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onOpenSearch={() => setIsSearchOpen(true)}
         onToggleTheme={handleToggleTheme}
@@ -642,9 +652,15 @@ export default function App() {
             {/* Products Grid */}
             {sortedProducts.length === 0 ? (
               <div className="py-16 text-center space-y-3 bg-white dark:bg-[#181C19] rounded-3xl border border-[#EFE9E2] dark:border-[#262C28] p-8">
-                <p className="text-base font-bold text-[#1F2421] dark:text-white">{t.noProductsFound}</p>
+                <p className="text-base font-bold text-[#1F2421] dark:text-white">
+                  {showFavoritesOnly
+                    ? (language === 'ar' ? 'لم تضيفي منتجات إلى المفضلة بعد' : 'Your wishlist is empty')
+                    : t.noProductsFound}
+                </p>
                 <p className="text-xs text-[#717772] dark:text-[#8D9690]">
-                  {language === 'ar' ? 'جربي إعادة ضبط خيارات الفلترة أو تصفح كافة الأقسام.' : 'Try adjusting your filters or browse all categories.'}
+                  {showFavoritesOnly
+                    ? (language === 'ar' ? 'اضغطي على علامة القلب في أي منتج لحفظه هنا والعودة إليه لاحقًا.' : 'Tap the heart on any product to save it here for later.')
+                    : (language === 'ar' ? 'جربي إعادة ضبط خيارات الفلترة أو تصفح كافة الأقسام.' : 'Try adjusting your filters or browse all categories.')}
                 </p>
                 <button
                   onClick={() => {
@@ -653,6 +669,7 @@ export default function App() {
                     setFilterBestSellersOnly(false);
                     setFilterSearchQuery('');
                     setShowFavoritesOnly(false);
+                    setActiveTab('products');
                   }}
                   className="px-5 py-2.5 rounded-full bg-[#1F2421] dark:bg-[#2D332F] text-white text-xs font-bold hover:bg-[#C74169] transition-all"
                 >
