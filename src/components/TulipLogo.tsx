@@ -4,6 +4,7 @@ interface TulipLogoProps {
   className?: string;
   customLogoUrl?: string;
   showText?: boolean;
+  letterMark?: boolean;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -11,8 +12,29 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
   className = '',
   customLogoUrl,
   showText = true,
+  letterMark = false,
   size = 'md',
 }) => {
+  // Optional typographic mark used in the site header instead of the flower icon.
+  if (letterMark) {
+    const markSize = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-12 h-12' : 'w-10 h-10';
+    const titleSize = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-xl';
+    const subSize = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-[11px]' : 'text-[10px]';
+    return (
+      <div className={`flex items-center gap-2.5 ${className}`}>
+        <div className={`flex ${markSize} shrink-0 items-center justify-center rounded-xl border border-[#F5E1E8] bg-gradient-to-br from-[#FFF0F4] to-[#F2F8F4] shadow-sm`} aria-hidden="true">
+          <span className="font-serif text-2xl font-bold leading-none text-[#C74169]">T</span>
+        </div>
+        {showText && (
+          <div className="flex flex-col text-right leading-none select-none">
+            <span className={`${titleSize} font-bold tracking-tight text-[#1F2421] dark:text-white`}>توليب</span>
+            <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>Tolipe Natural Care</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // If custom logo image is provided in settings, render it with graceful fallback
   if (customLogoUrl && customLogoUrl.trim().length > 0) {
     const imgHeight = size === 'sm' ? 'h-8' : size === 'lg' ? 'h-14' : 'h-10';
