@@ -15,9 +15,9 @@ import type {
 dotenv.config();
 
 // In-app database file location
-const DB_DIR = process.env.VERCEL && process.env.NODE_ENV === 'production'
-  ? path.resolve(process.cwd(), 'dist/data')
-  : path.resolve(process.cwd(), 'data');
+// Keep the seed outside Vite's public dist directory. Vercel includes this
+// file only in the API function bundle via vercel.json includeFiles.
+const DB_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'store_database.json');
 
 interface DatabaseSchema {
@@ -85,7 +85,7 @@ export function verifyToken(token: string): { email: string; id: string; session
 // Initial seed data based on the exact user specification
 function createDefaultDatabase(): DatabaseSchema {
   const adminSalt = crypto.randomBytes(16).toString('hex');
-  const initialPassword = process.env.ADMIN_PASSWORD || 'tulip_admin_secure_2026';
+  const initialPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(32).toString('base64url');
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@tulip.ye';
 
   const defaultSettings: StoreSettings = {
