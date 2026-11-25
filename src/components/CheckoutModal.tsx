@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { X, MapPin, Phone, User, MessageCircle, AlertCircle, Navigation, Loader2 } from 'lucide-react';
-import type { CartItem, CustomerDetails, StoreSettings, Order } from '../types/store.ts';
+import type { OrderDraftItem, CustomerDetails, StoreSettings, Order } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
 interface CheckoutModalProps {
   isOpen: boolean;
-  items: CartItem[];
+  items: OrderDraftItem[];
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
