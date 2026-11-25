@@ -704,6 +704,9 @@ class StoreDatabase {
   private data: DatabaseSchema;
   private pool: Pool | null = null;
   private persistQueue: Promise<void> = Promise.resolve();
+  private requestTail: Promise<void> = Promise.resolve();
+  private activeClient: any = null;
+  private activeRequestRelease: (() => void) | null = null;
 
   constructor() {
     this.data = this.loadDatabase();
@@ -794,11 +797,55 @@ class StoreDatabase {
     await this.flushPersistence();
   }
 
+  public async beginRequest(): Promise<void> {
+    if (!this.pool) return;
+    let release!: () => void;
+    const previous = this.requestTail;
+    this.requestTail = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    try {
+      const client = await this.pool.connect();
+      await client.query('SELECT pg_advisory_lock(7319462026)');
+      const result = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
+      if (!result.rows.length) throw new Error('Neon store state row is missing.');
+      this.data = result.rows[0].payload as DatabaseSchema;
+      this.activeClient = client;
+      this.activeRequestRelease = release;
+    } catch (error) {
+      release();
+      throw error;
+    }
+  }
+
+  public async endRequest(commit: boolean): Promise<void> {
+    const client = this.activeClient;
+    const release = this.activeRequestRelease;
+    if (!client || !release) return;
+    this.activeClient = null;
+    this.activeRequestRelease = null;
+    try {
+      if (commit) {
+        await client.query(
+          'UPDATE tolip_store_state SET payload = $1::jsonb, updated_at = now() WHERE id = 1',
+          [JSON.stringify(this.data)]
+        );
+      }
+    } finally {
+      try { await client.query('SELECT pg_advisory_unlock(7319462026)'); } catch {}
+      client.release();
+      release();
+    }
+  }
+
   public async flushPersistence(): Promise<void> {
     await this.persistQueue;
   }
 
   private persist() {
+    if (this.pool && process.env.NODE_ENV === 'production' && this.activeClient) {
+      // The request-scoped advisory lock commits this mutation once the response is ready.
+      return;
+    }
     if (this.pool) {
       const snapshot = JSON.stringify(this.data);
       this.persistQueue = this.persistQueue.then(async () => {
