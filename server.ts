@@ -21,6 +21,10 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 const isProductionRuntime = process.env.NODE_ENV === 'production';
 const distPath = path.resolve(__dirname, 'dist');
+// Defensive deny rules: private database/seed paths must never be served as assets.
+app.use(['/data', '/.private-data'], (_req: Request, res: Response) => {
+  res.status(404).end();
+});
 if (isProductionRuntime) app.use(express.static(distPath));
 
 // A Neon advisory lock plus a per-instance queue prevents concurrent serverless
