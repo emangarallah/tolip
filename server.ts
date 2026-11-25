@@ -376,65 +376,81 @@ app.post('/api/orders', (req: Request, res: Response) => {
       return;
     }
 
-    // This storefront uses one direct product request per checkout (no shopping cart).
-    if (!Array.isArray(items) || items.length !== 1) {
-      res.status(400).json({ error: 'يرجى اختيار منتج واحد لإتمام الطلب.' });
+    // Accept one direct item or multiple cart items; all prices and stock are verified server-side.
+    if (!Array.isArray(items) || items.length < 1 || items.length > 25) {
+      res.status(400).json({ error: 'يرجى اختيار منتج واحد على الأقل، وبحد أقصى 25 منتجًا مختلفًا.' });
       return;
     }
 
-    const requestedItem = items[0];
-    if (!requestedItem?.productId || !requestedItem?.variantId) {
-      res.status(400).json({ error: 'بيانات المنتج أو الحجم المختار غير مكتملة.' });
-      return;
+    const normalizedItems: Array<{ product: any; variant: any; quantity: number }> = [];
+    const itemIndexes = new Map<string, number>();
+
+    for (const requestedItem of items) {
+      if (!requestedItem?.productId || !requestedItem?.variantId) {
+        res.status(400).json({ error: 'بيانات أحد المنتجات أو الأحجام المختارة غير مكتملة.' });
+        return;
+      }
+
+      const product = db.getProductById(String(requestedItem.productId));
+      if (!product || !product.isActive || !product.inStock) {
+        res.status(400).json({ error: 'أحد المنتجات غير متوفر حاليًا. يرجى تحديث السلة.' });
+        return;
+      }
+
+      const variant = product.variants.find((entry: any) => entry.id === String(requestedItem.variantId));
+      if (!variant || Number(variant.stock) <= 0) {
+        res.status(400).json({ error: 'أحد الأحجام أو الأنواع المختارة غير متوفر.' });
+        return;
+      }
+
+      const quantity = Number(requestedItem.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+        res.status(400).json({ error: 'الكمية المطلوبة غير صحيحة.' });
+        return;
+      }
+
+      const key = `${product.id}_${variant.id}`;
+      const existingIndex = itemIndexes.get(key);
+      if (existingIndex !== undefined) {
+        normalizedItems[existingIndex].quantity += quantity;
+        if (normalizedItems[existingIndex].quantity > Math.min(99, Number(variant.stock))) {
+          res.status(400).json({ error: 'الكمية المطلوبة أكبر من المخزون المتاح.' });
+          return;
+        }
+      } else {
+        if (quantity > Math.min(99, Number(variant.stock))) {
+          res.status(400).json({ error: 'الكمية المطلوبة أكبر من المخزون المتاح.' });
+          return;
+        }
+        itemIndexes.set(key, normalizedItems.length);
+        normalizedItems.push({ product, variant, quantity });
+      }
     }
 
-    // Resolve product name, variant, image and price from the server database.
-    // Never rely on a price or product name sent by the browser.
-    const product = db.getProductById(String(requestedItem.productId));
-    if (!product || !product.isActive || !product.inStock) {
-      res.status(400).json({ error: 'هذا المنتج غير متوفر حاليًا. يرجى اختيار منتج آخر.' });
-      return;
-    }
-
-    const variant = product.variants.find((entry: any) => entry.id === String(requestedItem.variantId));
-    if (!variant || Number(variant.stock) <= 0) {
-      res.status(400).json({ error: 'الحجم أو النوع المختار غير متوفر لهذا المنتج.' });
-      return;
-    }
-
-    const quantity = Number(requestedItem.quantity);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > Math.min(99, Number(variant.stock))) {
-      res.status(400).json({ error: 'الكمية المطلوبة أكبر من المخزون المتاح أو غير صحيحة.' });
-      return;
-    }
-
-    // Calculate the single-product order from trusted database values.
     let itemsTotal: number | null = 0;
     let hasUnpricedItem = false;
+    const formattedItems = normalizedItems.map(({ product, variant, quantity }) => {
+      const price = typeof variant.price === 'number' ? variant.price : null;
+      const itemSubtotal = price !== null ? price * quantity : null;
+      if (itemSubtotal === null) {
+        hasUnpricedItem = true;
+        itemsTotal = null;
+      } else if (itemsTotal !== null) {
+        itemsTotal += itemSubtotal;
+      }
+      return {
+        productId: product.id,
+        productName: product.name,
+        variantId: variant.id,
+        variantName: variant.name,
+        quantity,
+        unitPrice: price,
+        totalPrice: itemSubtotal,
+        image: product.images?.[0],
+      };
+    });
 
-    const price = typeof variant.price === 'number' ? variant.price : null;
-    const itemSubtotal = price !== null ? price * quantity : null;
-    if (itemSubtotal === null) {
-      hasUnpricedItem = true;
-      itemsTotal = null;
-    } else {
-      itemsTotal += itemSubtotal;
-    }
-
-    const formattedItems = [{
-      productId: product.id,
-      productName: product.name,
-      variantId: variant.id,
-      variantName: variant.name,
-      quantity,
-      unitPrice: price,
-      totalPrice: itemSubtotal,
-      image: product.images?.[0],
-    }];
-
-    if (hasUnpricedItem) {
-      itemsTotal = null; // Some items require price consultation
-    }
+    if (hasUnpricedItem) itemsTotal = null;
 
     // Delivery fees are read from store settings on the server, never trusted from the browser.
     const storeSettings = db.getSettings();
@@ -530,6 +546,45 @@ ${itemsListText}
   } catch (err) {
     console.error('Order creation error:', err);
     res.status(500).json({ error: 'فشل في حفظ الطلب' });
+  }
+});
+
+app.post('/api/orders/track', (req: Request, res: Response) => {
+  try {
+    const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber.trim() : '';
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.replace(/\\D/g, '') : '';
+    if (!orderNumber || phone.length < 7) {
+      res.status(400).json({ error: 'يرجى إدخال رقم الطلب ورقم الهاتف الصحيح.' });
+      return;
+    }
+
+    const candidates = db.getOrders({ search: orderNumber });
+    const order = candidates.find((entry: any) => entry.orderNumber.toLowerCase() === orderNumber.toLowerCase());
+    const savedPhone = order?.customerDetails?.phone?.replace(/\\D/g, '') || '';
+    if (!order || savedPhone !== phone) {
+      res.status(404).json({ error: 'لم يتم العثور على طلب مطابق. تحقق من رقم الطلب ورقم الهاتف.' });
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      items: order.items.map((item: any) => ({
+        productName: item.productName,
+        variantName: item.variantName,
+        quantity: item.quantity,
+      })),
+      itemsTotal: order.itemsTotal,
+      deliveryFee: order.deliveryFee,
+      finalTotal: order.finalTotal,
+      deliveryFeeNote: order.deliveryFeeNote,
+    });
+  } catch (err) {
+    console.error('Order tracking error:', err);
+    res.status(500).json({ error: 'تعذر جلب حالة الطلب حاليًا.' });
   }
 });
 
