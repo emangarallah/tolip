@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Heart, ShoppingBag, MessageCircle, Plus, Minus, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Heart, MessageCircle, Plus, Minus, Check, Sparkles, AlertCircle } from 'lucide-react';
 import type { Product, StoreSettings, ProductVariant } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
@@ -11,7 +11,7 @@ interface ProductDetailModalProps {
   language: Language;
   onClose: () => void;
   onToggleFavorite: (product: Product) => void;
-  onAddToCart: (product: Product, variantId: string, quantity: number) => void;
+  onOrder: (product: Product, variantId: string, quantity: number) => void;
   onSelectSimilarProduct: (product: Product) => void;
 }
 
@@ -23,7 +23,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   language,
   onClose,
   onToggleFavorite,
-  onAddToCart,
+  onOrder,
   onSelectSimilarProduct,
 }) => {
   if (!product) return null;
@@ -34,8 +34,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(0);
-  const [addedToast, setAddedToast] = useState(false);
-
   const selectedVariant: ProductVariant | undefined =
     product.variants.find((v) => v.id === selectedVariantId) || product.variants[0];
 
@@ -46,49 +44,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   // Total for selected quantity
   const totalPrice = currentPrice !== null ? currentPrice * quantity : null;
 
-  const handleAddToCart = () => {
-    if (!selectedVariant) return;
-    onAddToCart(product, selectedVariant.id, quantity);
-    setAddedToast(true);
-    setTimeout(() => setAddedToast(false), 2200);
-  };
-
-  // Build the direct WhatsApp order link for this specific selection
   const handleWhatsAppOrder = () => {
-    const variantName = selectedVariant?.name || (language === 'ar' ? 'قياسي' : 'Standard');
-    const unitPriceStr =
-      currentPrice !== null
-        ? `${currentPrice.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
-        : t.contactForPrice;
-    const totalPriceStr =
-      totalPrice !== null
-        ? `${totalPrice.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
-        : t.determinedLater;
-
-    const message =
-      language === 'ar'
-        ? `مرحبًا متجر توليب، أرغب في طلب المنتج التالي:
-
-اسم المنتج: ${product.name}
-الحجم / النوع: ${variantName}
-الكمية: ${quantity}
-سعر الوحدة: ${unitPriceStr}
-الإجمالي: ${totalPriceStr}
-
-أرجو تأكيد الطلب وتفاصيل التوصيل.`
-        : `Hello Tolipe Natural Care, I would like to order the following product:
-
-Product Name: ${product.name}
-Size / Variant: ${variantName}
-Quantity: ${quantity}
-Unit Price: ${unitPriceStr}
-Total: ${totalPriceStr}
-
-Please confirm order availability and delivery details.`;
-
-    const phone = settings.whatsappPhone.replace(/\D/g, '');
-    const targetPhone = phone.startsWith('967') ? phone : `967${phone}`;
-    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    if (!selectedVariant || !product.inStock) return;
+    onOrder(product, selectedVariant.id, quantity);
   };
 
   return (
@@ -312,41 +270,21 @@ Please confirm order availability and delivery details.`;
               )}
             </div>
 
-            {/* Primary Action Buttons */}
+            {/* Customer details are collected before opening WhatsApp. */}
             <div className="pt-4 border-t border-[#F0EBE6] dark:border-[#262C28] space-y-3">
-              {addedToast && (
-                <div className="p-2.5 rounded-xl bg-[#EAF5EC] dark:bg-[#1A3320] border border-[#C5E6CB] dark:border-[#295634] text-[#206935] dark:text-[#42E67D] text-xs font-semibold text-center flex items-center justify-center gap-2">
-                  <Check className="w-4 h-4" />
-                  <span>{t.addedToCartSuccess}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Direct WhatsApp Order */}
-                <button
-                  type="button"
-                  onClick={handleWhatsAppOrder}
-                  className="w-full py-3.5 px-4 rounded-2xl text-sm font-semibold bg-[#25D366] text-white hover:bg-[#20BA57] shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{t.orderNowViaWhatsApp}</span>
-                </button>
-
-                {/* Add to Cart */}
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  disabled={!product.inStock}
-                  className={`w-full py-3.5 px-4 rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    product.inStock
-                      ? 'bg-[#1F2421] text-white hover:bg-[#C74169] dark:bg-[#2D332F] dark:hover:bg-[#C74169] shadow-sm'
-                      : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  }`}
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>{t.addToCart}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleWhatsAppOrder}
+                disabled={!product.inStock || !selectedVariant}
+                className={`w-full py-3.5 px-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  product.inStock
+                    ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-md'
+                    : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                }`}
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>{t.orderNowViaWhatsApp}</span>
+              </button>
 
               <p className="text-[11px] text-center text-[#7E8580] dark:text-[#8D9690]">
                 {t.codDisclaimer}
