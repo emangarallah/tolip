@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -139,7 +140,7 @@ app.get('/api/categories', (req: Request, res: Response) => {
 app.post('/api/categories', requireAdmin, (req: Request, res: Response) => {
   try {
     const { name, description, image, sortOrder, isActive } = req.body;
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: 'اسم القسم مطلوب' });
       return;
     }
@@ -160,6 +161,10 @@ app.post('/api/categories', requireAdmin, (req: Request, res: Response) => {
 
 app.put('/api/categories/:id', requireAdmin, (req: Request, res: Response) => {
   try {
+    if (req.body.name !== undefined && (typeof req.body.name !== 'string' || !req.body.name.trim())) {
+      res.status(400).json({ error: 'اسم القسم مطلوب.' });
+      return;
+    }
     const updated = db.updateCategory(req.params.id, req.body);
     if (!updated) {
       res.status(404).json({ error: 'القسم غير موجود' });
@@ -311,15 +316,19 @@ app.post('/api/orders', (req: Request, res: Response) => {
   try {
     const { customerDetails, items } = req.body;
 
+    const requiredCustomerFields = ['fullName', 'phone', 'city', 'area', 'detailedAddress'];
     if (
       !customerDetails ||
-      !customerDetails.fullName?.trim() ||
-      !customerDetails.phone?.trim() ||
-      !customerDetails.city?.trim() ||
-      !customerDetails.area?.trim() ||
-      !customerDetails.detailedAddress?.trim()
+      requiredCustomerFields.some((field) =>
+        typeof customerDetails[field] !== 'string' || !customerDetails[field].trim()
+      )
     ) {
       res.status(400).json({ error: 'يرجى استكمال الاسم ورقم الهاتف والمدينة والمنطقة والعنوان التفصيلي.' });
+      return;
+    }
+    const normalizedCustomerPhone = customerDetails.phone.replace(/[\\s()-]/g, '');
+    if (!/^\\+?[0-9]{7,15}$/.test(normalizedCustomerPhone)) {
+      res.status(400).json({ error: 'رقم هاتف العميل غير صحيح.' });
       return;
     }
 
@@ -459,8 +468,12 @@ ${itemsListText}
     }
 
     // Build the direct WhatsApp URL
-    const targetPhone = storeSettings.whatsappPhone.replace(/\D/g, '');
+    const targetPhone = String(storeSettings.whatsappPhone || '').replace(/\\D/g, '');
     const fullPhone = targetPhone.startsWith('967') ? targetPhone : `967${targetPhone}`;
+    if (!/^[0-9]{10,15}$/.test(fullPhone)) {
+      res.status(503).json({ error: 'رقم واتساب المتجر غير مضبوط. يرجى التواصل مع صاحبة المتجر.' });
+      return;
+    }
     const encodedMsg = encodeURIComponent(finalWhatsappMessage);
     const whatsappUrl = `https://wa.me/${fullPhone}?text=${encodedMsg}`;
 
