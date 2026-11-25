@@ -241,7 +241,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <select
                     required
                     value={selectedVariantId}
-                    onChange={(e) => setSelectedVariantId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedVariantId(e.target.value);
+                      setQuantity(1);
+                    }}
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] text-xs bg-white dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
                   >
                     {product.variants.map((variant) => (
