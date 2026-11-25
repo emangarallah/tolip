@@ -19,18 +19,40 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Wait for queued Neon writes before returning JSON to the client.
-app.use((req: Request, res: Response, next: NextFunction) => {
+const isProductionRuntime = process.env.NODE_ENV === 'production';
+const distPath = path.resolve(__dirname, 'dist');
+if (isProductionRuntime) app.use(express.static(distPath));
+
+// A Neon advisory lock plus a per-instance queue prevents concurrent serverless
+// invocations from overwriting one another's product/order snapshots.
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.beginRequest();
+  } catch (error) {
+    console.error('Failed to acquire Neon request lock:', error);
+    res.status(503).json({ error: 'تعذر الاتصال بقاعدة بيانات المتجر. حاول مرة أخرى.' });
+    return;
+  }
+
+  let settled = false;
+  const release = async (commit: boolean) => {
+    if (settled) return;
+    settled = true;
+    await db.endRequest(commit);
+  };
   const originalJson = res.json.bind(res);
   (res as any).json = (body: any) => {
-    db.flushPersistence()
+    release(true)
       .then(() => originalJson(body))
       .catch((error: any) => {
-        console.error('Database persistence failed:', error);
-        if (!res.headersSent) originalJson({ error: 'تعذر حفظ الطلب في قاعدة البيانات. حاول مرة أخرى.' });
+        console.error('Neon commit failed:', error);
+        if (!res.headersSent) originalJson({ error: 'تعذر حفظ بيانات المتجر. حاول مرة أخرى.' });
       });
     return res;
   };
+  res.on('finish', () => {
+    if (!settled) release(false).catch((error) => console.error('Neon lock release failed:', error));
+  });
   next();
 });
 
@@ -694,8 +716,6 @@ export function initializeApp(): Promise<void> {
 
 const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction) {
-  const distPath = path.resolve(__dirname, 'dist');
-  app.use(express.static(distPath));
   app.get('*', (req: Request, res: Response) => {
     res.sendFile(path.resolve(distPath, 'index.html'));
   });
