@@ -205,41 +205,83 @@ export default function App() {
     }
   };
 
-  // Filtered products list
+  // Normalize Arabic/English search text so typing with/without diacritics
+  // or extra spaces returns the same matching products.
+  const normalizeProductSearch = (value: unknown) =>
+    String(value ?? '')
+      .normalize('NFKC')
+      .toLocaleLowerCase(language)
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const productSearchTerm = normalizeProductSearch(filterSearchQuery);
+
+  // Filter products using the product's category, text, variants and actual stock.
   const filteredProducts = products.filter((p) => {
     if (showFavoritesOnly && !favorites.includes(p.id)) return false;
     if (selectedCategoryId !== 'all' && p.categoryId !== selectedCategoryId) return false;
-    if (filterInStockOnly && !p.inStock) return false;
+    if (filterInStockOnly && !(p.inStock && (p.variants ?? []).some((variant) => Number(variant.stock) > 0))) return false;
     if (filterBestSellersOnly && !p.isBestSeller) return false;
-    if (filterSearchQuery.trim()) {
-      const q = filterSearchQuery.trim().toLowerCase();
-      const match =
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.features.some((f) => f.toLowerCase().includes(q));
-      if (!match) return false;
+
+    if (productSearchTerm) {
+      const searchableFields = [
+        p.name,
+        p.description,
+        p.categoryName,
+        ...(p.features ?? []),
+        ...(p.variants ?? []).map((variant) => variant.name),
+      ];
+      const matchesSearch = searchableFields.some((field) =>
+        normalizeProductSearch(field).includes(productSearchTerm)
+      );
+      if (!matchesSearch) return false;
     }
+
     return true;
   });
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (productSortBy === 'price-asc') {
-      const minA = Math.min(...a.variants.map((v) => v.price ?? Infinity));
-      const minB = Math.min(...b.variants.map((v) => v.price ?? Infinity));
-      return minA - minB;
-    }
-    if (productSortBy === 'price-desc') {
-      const maxA = Math.max(...a.variants.map((v) => v.price ?? 0));
-      const maxB = Math.max(...b.variants.map((v) => v.price ?? 0));
-      return maxB - maxA;
-    }
-    if (productSortBy === 'name') {
-      return a.name.localeCompare(b.name, language);
-    }
-    // Newest
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Sort products consistently; products without a valid price stay at the end
+  // for either price direction, and invalid dates never break the sort order.
+  const getProductPrices = (product: Product) =>
+    (product.variants ?? [])
+      .map((variant) => variant.price)
+      .filter((price): price is number => typeof price === 'number' && Number.isFinite(price));
+
+  const sortedProducts = filteredProducts
+    .map((product, originalIndex) => ({ product, originalIndex }))
+    .sort((a, b) => {
+      const productA = a.product;
+      const productB = b.product;
+
+      if (productSortBy === 'price-asc' || productSortBy === 'price-desc') {
+        const pricesA = getProductPrices(productA);
+        const pricesB = getProductPrices(productB);
+        const priceA = pricesA.length ? (productSortBy === 'price-asc' ? Math.min(...pricesA) : Math.max(...pricesA)) : null;
+        const priceB = pricesB.length ? (productSortBy === 'price-asc' ? Math.min(...pricesB) : Math.max(...pricesB)) : null;
+
+        if (priceA === null && priceB !== null) return 1;
+        if (priceB === null && priceA !== null) return -1;
+        if (priceA !== null && priceB !== null && priceA !== priceB) {
+          return productSortBy === 'price-asc' ? priceA - priceB : priceB - priceA;
+        }
+      } else if (productSortBy === 'name') {
+        const nameCompare = productA.name.localeCompare(productB.name, language, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (nameCompare !== 0) return nameCompare;
+      } else {
+        const dateA = Date.parse(productA.createdAt || '');
+        const dateB = Date.parse(productB.createdAt || '');
+        const timeA = Number.isFinite(dateA) ? dateA : 0;
+        const timeB = Number.isFinite(dateB) ? dateB : 0;
+        if (timeA !== timeB) return timeB - timeA;
+      }
+
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(({ product }) => product);
 
   // Featured and Best Sellers
   const featuredProducts = products.filter((p) => p.isFeatured && p.isActive);
