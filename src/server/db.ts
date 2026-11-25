@@ -995,6 +995,15 @@ class StoreDatabase {
     return order;
   }
 
+  public updateOrderWhatsAppMessage(id: string, whatsappMessage: string): Order | null {
+    const order = this.data.orders.find((o) => o.id === id || o.orderNumber === id);
+    if (!order) return null;
+    order.whatsappMessage = whatsappMessage;
+    order.updatedAt = new Date().toISOString();
+    this.persist();
+    return order;
+  }
+
   // --- Admin Analytics & Stats ---
   public getAdminStats(): AdminStats {
     const totalProducts = this.data.products.length;
