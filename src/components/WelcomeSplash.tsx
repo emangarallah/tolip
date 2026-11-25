@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TulipOpeningMark } from './TulipOpeningMark.tsx';
-import '../../src/styles/welcome-splash.css';
+import '../styles/welcome-splash.css';
 
 type SplashPhase = 'visible' | 'fading' | 'hidden';
 
