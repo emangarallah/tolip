@@ -538,6 +538,7 @@ export default function App() {
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
                         onOrder={(p) => handleStartOrder(p)}
+                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -739,6 +740,7 @@ export default function App() {
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
                         onOrder={(p) => handleStartOrder(p)}
+                        onAddToCart={handleAddToCart}
                       />
                 ))}
               </div>
