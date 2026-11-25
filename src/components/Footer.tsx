@@ -72,7 +72,7 @@ export const Footer: React.FC<FooterProps> = ({
             {/* Social Links & Theme/Language shortcuts in footer */}
             <div className="flex items-center gap-3 pt-2">
               <a
-                href={settings.facebookUrl || 'https://facebook.com'}
+                href="https://www.facebook.com/share/1FrKX6pP1p/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -81,7 +81,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <Facebook className="w-4 h-4" />
               </a>
               <a
-                href={settings.instagramUrl || 'https://instagram.com'}
+                href="https://www.instagram.com/tolip.s14?utm_source=qr&bqrl=bTV2YmJoZ3dsZmZh"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
