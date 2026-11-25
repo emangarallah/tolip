@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Heart, MessageCircle, Plus, Minus, Check, Sparkles, AlertCircle } from 'lucide-react';
 import type { Product, StoreSettings, ProductVariant } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
@@ -32,6 +32,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(0);
+  useEffect(() => {
+    if (!product) return;
+    setSelectedVariantId(product.variants[0]?.id || '');
+    setQuantity(1);
+    setSelectedImageIdx(0);
+  }, [product?.id]);
   const selectedVariant: ProductVariant | undefined =
     product?.variants.find((v) => v.id === selectedVariantId) || product?.variants[0];
 
