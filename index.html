@@ -3,18 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#FFFCFA" />
+    <meta name="theme-color" content="#FFF7F5" />
     <script>
-      try {
-        const savedTheme = localStorage.getItem('tulip_theme');
-        if (savedTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-          document.documentElement.style.colorScheme = 'dark';
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.colorScheme = 'light';
-        }
-      } catch (_) {}
+      // Tolip uses a warm ivory/blush storefront palette so the transparent brand artwork stays visible.
+      try { localStorage.setItem('tulip_theme', 'light'); } catch (_) {}
+      document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
     </script>
     <title>توليب – Tolipe Natural Care | متجر العناية الطبيعية</title>
     <meta name="description" content="متجر توليب للعناية الطبيعية بالبشرة والجسم والشعر والعطور - منتجات طبيعية فاخرة وطلب مباشر عبر واتساب." />
@@ -26,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#FCFCFA] text-[#1F2421] antialiased selection:bg-[#F7D8E2] selection:text-[#9B2C4E]">
+  <body class="bg-[#FFF9F7] text-[#5B2638] antialiased selection:bg-[#F6C9D8] selection:text-[#7E2D4B]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
