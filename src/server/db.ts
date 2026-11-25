@@ -38,8 +38,19 @@ function verifyPassword(password: string, salt: string, expectedHash: string): b
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expectedHash, 'hex'));
 }
 
+function getAuthSecret(): string {
+  const configured = process.env.AUTH_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    if (!configured || configured.length < 32 || configured === 'change-this-to-a-secure-random-secret-key') {
+      throw new Error('Production requires AUTH_SECRET with at least 32 characters.');
+    }
+    return configured;
+  }
+  return configured || 'local-development-only-tulip-auth-secret';
+}
+
 export function generateToken(payload: { email: string; id: string }): string {
-  const secret = process.env.AUTH_SECRET || 'tulip-natural-care-secret-key-2026';
+  const secret = getAuthSecret();
   const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 3600 * 1000 })).toString('base64url');
   const signature = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${signature}`;
@@ -47,14 +58,16 @@ export function generateToken(payload: { email: string; id: string }): string {
 
 export function verifyToken(token: string): { email: string; id: string } | null {
   try {
-    const [data, signature] = token.split('.');
-    if (!data || !signature) return null;
-    const secret = process.env.AUTH_SECRET || 'tulip-natural-care-secret-key-2026';
+    const [data, signature, extra] = token.split('.');
+    if (!data || !signature || extra) return null;
+    const secret = getAuthSecret();
     const expectedSig = crypto.createHmac('sha256', secret).update(data).digest('base64url');
-    if (signature !== expectedSig) return null;
+    const actual = Buffer.from(signature);
+    const expected = Buffer.from(expectedSig);
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
     const decoded = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
-    if (decoded.exp && decoded.exp < Date.now()) return null;
-    return { email: decoded.email, id: decoded.id };
+    if (!decoded.exp || decoded.exp < Date.now() || !decoded.email || !decoded.id) return null;
+    return { email: String(decoded.email), id: String(decoded.id) };
   } catch {
     return null;
   }
@@ -688,6 +701,20 @@ class StoreDatabase {
 
   constructor() {
     this.data = this.loadDatabase();
+
+    // In production, the tracked seed file must never define the owner's login.
+    // Use deployment secrets as the authoritative initial admin credentials.
+    if (process.env.NODE_ENV === 'production') {
+      const adminEmail = process.env.ADMIN_EMAIL?.trim();
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminEmail || !adminPassword || adminPassword.length < 12) {
+        throw new Error('Production requires ADMIN_EMAIL and ADMIN_PASSWORD (minimum 12 characters).');
+      }
+      const salt = crypto.randomBytes(16).toString('hex');
+      this.data.adminUser.email = adminEmail;
+      this.data.adminUser.salt = salt;
+      this.data.adminUser.passwordHash = hashPassword(adminPassword, salt);
+    }
   }
 
   private loadDatabase(): DatabaseSchema {
