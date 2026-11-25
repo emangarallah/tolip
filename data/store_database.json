@@ -2,10 +2,11 @@
   "version": 1,
   "adminUser": {
     "id": "admin-1",
-    "email": "admin@tulip.ye",
-    "passwordHash": "11e118005af82bedd3bba4ae830f6d4246b8486f27957cec43e6cd903d6bb8183adfe6e3c311dd652486676a9c4179ada61eb5e42efa3b28cdf0ebdfe77aab40",
-    "salt": "a3e4e9f07d68ad1e07d661b99ac0422c",
-    "name": "صاحب متجر توليب"
+    "email": "admin@invalid.local",
+    "passwordHash": "475fa266d6a20c99cc58d1145474571a7da81bca75f5803f9aab292e2de70f022a237a32137bef1bce612379b8ea4f954cdc9ba8bdae7f968849d438e907b8ac",
+    "salt": "7c08b91ce356db2024b4042e03aff54b",
+    "name": "صاحب متجر توليب",
+    "sessionVersion": "oGNagp4VH_dmam9yuVDU89SAa1pLepuMVi5eV8RgBN8"
   },
   "settings": {
     "storeName": "توليب – Tolipe Natural Care",
