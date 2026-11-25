@@ -50,7 +50,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onStoreUpdated,
 }) => {
   // Authentication state
-  const [token, setToken] = useState<string>(() => sessionStorage.getItem('tulip_admin_token') || '');
+  const [token, setToken] = useState<string>(() => {
+    try {
+      // Remove legacy persistent bearer tokens; admin sessions now live per-tab.
+      localStorage.removeItem('tulip_admin_token');
+      return sessionStorage.getItem('tulip_admin_token') || '';
+    } catch {
+      return '';
+    }
+  });
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -160,6 +168,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleLogout = () => {
+    // Revoke the server-side session as well as clearing this browser tab.
+    fetch('/api/admin/logout', { method: 'POST', headers: authHeaders() }).catch(() => undefined);
     sessionStorage.removeItem('tulip_admin_token');
     setToken('');
     setStats(null);
