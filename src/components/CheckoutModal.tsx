@@ -20,8 +20,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   onOrderSuccess,
 }) => {
-  if (!isOpen) return null;
-
   const t = translations[language];
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -87,13 +85,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMsg(language === 'ar' ? 'يرجى إدخال رقم الهاتف.' : 'Please enter your phone number.');
       return;
     }
+    if (phone.replace(/\\D/g, '').length < 7) {
+      setErrorMsg(language === 'ar' ? 'يرجى إدخال رقم هاتف صحيح.' : 'Please enter a valid phone number.');
+      return;
+    }
     const finalCityName = (city === 'أخرى' || city === 'Other') ? customCity.trim() : city;
     if (!finalCityName) {
       setErrorMsg(language === 'ar' ? 'يرجى تحديد المدينة.' : 'Please select your city.');
       return;
     }
+    if (!area.trim()) {
+      setErrorMsg(language === 'ar' ? 'يرجى إدخال المنطقة أو الحي.' : 'Please enter your area or neighborhood.');
+      return;
+    }
     if (!detailedAddress.trim()) {
       setErrorMsg(language === 'ar' ? 'يرجى إدخال العنوان التفصيلي.' : 'Please enter your detailed address.');
+      return;
+    }
+    if (items.length !== 1) {
+      setErrorMsg(language === 'ar' ? 'يرجى اختيار منتج واحد لإتمام الطلب.' : 'Please select one product to continue.');
       return;
     }
 
@@ -109,6 +119,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       googleMapsUrl: googleMapsUrl.trim() || undefined,
     };
 
+    // Open a blank tab during the click gesture so browsers do not block the WhatsApp redirect.
+    const whatsappTab = window.open('about:blank', '_blank');
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/orders', {
@@ -126,13 +138,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error(data.error || 'Failed to record order.');
       }
 
+      if (whatsappTab) {
+        whatsappTab.location.href = data.whatsappUrl;
+      }
       onOrderSuccess(data.order, data.whatsappUrl);
     } catch (err: any) {
+      if (whatsappTab && !whatsappTab.closed) whatsappTab.close();
       setErrorMsg(err.message || 'Error creating order.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
@@ -258,10 +276,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {/* Area / District */}
               <div>
                 <label className="text-xs font-semibold text-[#1F2421] dark:text-white block mb-1">
-                  {t.areaDistrict}
+                  {t.areaDistrict} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  required
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
                   placeholder={t.areaPlaceholder}
