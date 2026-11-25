@@ -370,9 +370,13 @@ ${itemsListText}
       whatsappMessage,
     });
 
-    // Replace placeholder order number with the real unique orderNumber
+    // Replace the placeholder with the actual generated order number and persist
+    // the exact message that is sent to WhatsApp for the admin order record.
     const finalWhatsappMessage = whatsappMessage.replace(orderNumberPlaceholder, savedOrder.orderNumber);
-    db.updateOrderStatus(savedOrder.id, 'awaiting_whatsapp_confirmation');
+    const orderWithMessage = db.updateOrderWhatsAppMessage(savedOrder.id, finalWhatsappMessage);
+    if (!orderWithMessage) {
+      throw new Error('Order was created but its WhatsApp message could not be saved.');
+    }
 
     // Build the direct WhatsApp URL
     const targetPhone = storeSettings.whatsappPhone.replace(/\D/g, '');
@@ -382,7 +386,7 @@ ${itemsListText}
 
     res.status(201).json({
       success: true,
-      order: savedOrder,
+      order: orderWithMessage,
       whatsappUrl,
       officialStoreLink: storeSettings.whatsappOfficialLink,
     });
