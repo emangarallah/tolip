@@ -782,13 +782,10 @@ class StoreDatabase {
     const result = await pool.query('SELECT payload FROM tolip_store_state WHERE id = 1');
     this.pool = pool;
     if (result.rows.length) {
+      // The persisted Neon admin record is authoritative after initial setup.
+      // Do not overwrite its password hash from deployment env on every cold start;
+      // doing so makes database credential updates impossible to use.
       this.data = result.rows[0].payload as DatabaseSchema;
-      const adminEmail = process.env.ADMIN_EMAIL!.trim();
-      const adminPassword = process.env.ADMIN_PASSWORD!;
-      const salt = crypto.createHash('sha256').update(`tolip-admin-salt:${adminEmail.toLowerCase()}`).digest('hex').slice(0, 32);
-      this.data.adminUser.email = adminEmail;
-      this.data.adminUser.salt = salt;
-      this.data.adminUser.passwordHash = hashPassword(adminPassword, salt);
     } else {
       await pool.query(
         'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
