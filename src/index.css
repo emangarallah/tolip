@@ -7,13 +7,20 @@
   }
 
   html {
+    color-scheme: light;
     font-family: var(--font-sans);
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
+    min-width: 320px;
+    min-height: 100svh;
     background-color: #FCFCFA;
     color: #1F2421;
     overflow-x: hidden;
@@ -66,4 +73,19 @@ html.dark ::-webkit-scrollbar-thumb {
 
 html.dark ::-webkit-scrollbar-thumb:hover {
   background: #3E4641;
+}
+
+
+/* Improve tap response and remove the default mobile tap flash on the theme control. */
+.theme-toggle-touch {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+@media (max-width: 767px) {
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
 }
