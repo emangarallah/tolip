@@ -34,6 +34,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Has discount?
   const hasDiscount = minPrice !== null && originalPrice && originalPrice > minPrice;
   const hasAvailableVariant = product.variants.some((variant) => variant.stock > 0);
+  const isAvailable = product.inStock && hasAvailableVariant;
 
   return (
     <div className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
@@ -99,8 +100,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="hover:text-[#1F2421] dark:hover:text-white transition-colors">
               {product.categoryName}
             </span>
-            <span className={product.inStock ? 'text-[#2D5237] dark:text-[#42E67D]' : 'text-[#DC2626] dark:text-[#F87171]'}>
-              {product.inStock ? t.inStock : t.outOfStock}
+            <span className={isAvailable ? 'text-[#2D5237] dark:text-[#42E67D]' : 'text-[#DC2626] dark:text-[#F87171]'}>
+              {isAvailable ? t.inStock : t.outOfStock}
             </span>
           </div>
 
@@ -153,7 +154,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             onClick={() => onOrder(product)}
-            disabled={!product.inStock || !hasAvailableVariant}
+            disabled={!isAvailable}
             className={`w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs font-bold transition-all ${
               product.inStock && hasAvailableVariant
                 ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-sm'
