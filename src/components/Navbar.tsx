@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ShoppingBag,
   Heart,
   Search,
   MessageCircle,
@@ -17,13 +16,11 @@ import { Language, Theme, translations } from '../utils/i18n.ts';
 
 interface NavbarProps {
   settings: StoreSettings;
-  cartCount: number;
   favoritesCount: number;
   activeTab: string;
   language: Language;
   theme: Theme;
   onNavigate: (tab: string, categoryId?: string) => void;
-  onOpenCart: () => void;
   onOpenFavorites: () => void;
   onOpenSearch: () => void;
   onToggleTheme: () => void;
@@ -32,13 +29,11 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   settings,
-  cartCount,
   favoritesCount,
   activeTab,
   language,
   theme,
   onNavigate,
-  onOpenCart,
   onOpenFavorites,
   onOpenSearch,
   onToggleTheme,
@@ -150,22 +145,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="absolute top-1 right-1 w-4 h-4 bg-[#C74169] dark:bg-[#E06287] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {favoritesCount}
                 </span>
-              )}
-            </button>
-
-            {/* Cart Trigger */}
-            <button
-              onClick={onOpenCart}
-              aria-label={t.cart}
-              className="relative p-2 sm:p-2.5 rounded-full text-[#1F2421] dark:text-white bg-[#F7F4F0] dark:bg-[#1D221F] hover:bg-[#ECE6DE] dark:hover:bg-[#282F2B] transition-colors focus:outline-none flex items-center gap-1.5 sm:gap-2"
-            >
-              <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-              {cartCount > 0 ? (
-                <span className="bg-[#C74169] dark:bg-[#E06287] text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {cartCount}
-                </span>
-              ) : (
-                <span className="hidden sm:inline text-xs font-medium text-[#6B7280] dark:text-[#9DA6A0]">{t.cart}</span>
               )}
             </button>
 
