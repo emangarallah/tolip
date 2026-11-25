@@ -910,7 +910,7 @@ class StoreDatabase {
   public updateAdminCredentials(newEmail?: string, newPassword?: string) {
     if (newEmail) {
       const normalizedEmail = newEmail.trim().toLowerCase();
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         throw new Error('البريد الإلكتروني غير صحيح.');
       }
       this.data.adminUser.email = normalizedEmail;
