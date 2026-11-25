@@ -231,40 +231,73 @@ app.post('/api/orders', (req: Request, res: Response) => {
   try {
     const { customerDetails, items, deliveryFee } = req.body;
 
-    if (!customerDetails || !customerDetails.fullName || !customerDetails.phone || !customerDetails.city || !customerDetails.detailedAddress) {
-      res.status(400).json({ error: 'يرجى استكمال جميع الحقول الإلزامية: الاسم، رقم الهاتف، المدينة، والعنوان التفصيلي.' });
+    if (
+      !customerDetails ||
+      !customerDetails.fullName?.trim() ||
+      !customerDetails.phone?.trim() ||
+      !customerDetails.city?.trim() ||
+      !customerDetails.area?.trim() ||
+      !customerDetails.detailedAddress?.trim()
+    ) {
+      res.status(400).json({ error: 'يرجى استكمال الاسم ورقم الهاتف والمدينة والمنطقة والعنوان التفصيلي.' });
       return;
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      res.status(400).json({ error: 'سلة التسوق فارغة.' });
+    // This storefront uses one direct product request per checkout (no shopping cart).
+    if (!Array.isArray(items) || items.length !== 1) {
+      res.status(400).json({ error: 'يرجى اختيار منتج واحد لإتمام الطلب.' });
       return;
     }
 
-    // Calculate items total
+    const requestedItem = items[0];
+    if (!requestedItem?.productId || !requestedItem?.variantId) {
+      res.status(400).json({ error: 'بيانات المنتج أو الحجم المختار غير مكتملة.' });
+      return;
+    }
+
+    // Resolve product name, variant, image and price from the server database.
+    // Never rely on a price or product name sent by the browser.
+    const product = db.getProductById(String(requestedItem.productId));
+    if (!product || !product.isActive || !product.inStock) {
+      res.status(400).json({ error: 'هذا المنتج غير متوفر حاليًا. يرجى اختيار منتج آخر.' });
+      return;
+    }
+
+    const variant = product.variants.find((entry: any) => entry.id === String(requestedItem.variantId));
+    if (!variant) {
+      res.status(400).json({ error: 'الحجم أو النوع المختار غير متوفر لهذا المنتج.' });
+      return;
+    }
+
+    const quantity = Number(requestedItem.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      res.status(400).json({ error: 'يرجى اختيار كمية صحيحة بين 1 و99.' });
+      return;
+    }
+
+    // Calculate the single-product order from trusted database values.
     let itemsTotal: number | null = 0;
     let hasUnpricedItem = false;
 
-    const formattedItems = items.map((item: any) => {
-      const price = typeof item.price === 'number' ? item.price : null;
-      const qty = Number(item.quantity) || 1;
-      const itemSubtotal = price !== null ? price * qty : null;
-      if (itemSubtotal === null) {
-        hasUnpricedItem = true;
-      } else if (itemsTotal !== null) {
-        itemsTotal += itemSubtotal;
-      }
-      return {
-        productId: item.productId,
-        productName: item.productName,
-        variantId: item.variantId,
-        variantName: item.variantName,
-        quantity: qty,
-        unitPrice: price,
-        totalPrice: itemSubtotal,
-        image: item.image,
-      };
-    });
+    const price = typeof variant.price === 'number' ? variant.price : null;
+    const itemSubtotal = price !== null ? price * quantity : null;
+    if (itemSubtotal === null) {
+      hasUnpricedItem = true;
+      itemsTotal = null;
+    } else {
+      itemsTotal += itemSubtotal;
+    }
+
+    const formattedItems = [{
+      productId: product.id,
+      productName: product.name,
+      variantId: variant.id,
+      variantName: variant.name,
+      quantity,
+      unitPrice: price,
+      totalPrice: itemSubtotal,
+      image: product.images?.[0],
+    }];
 
     if (hasUnpricedItem) {
       itemsTotal = null; // Some items require price consultation
