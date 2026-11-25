@@ -7,11 +7,5 @@
       "includeFiles": "dist/**",
       "maxDuration": 30
     }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/$1"
-    }
-  ]
+  }
 }
