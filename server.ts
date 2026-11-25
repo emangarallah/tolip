@@ -229,7 +229,7 @@ app.delete('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
 // ==========================================
 app.post('/api/orders', (req: Request, res: Response) => {
   try {
-    const { customerDetails, items, deliveryFee } = req.body;
+    const { customerDetails, items } = req.body;
 
     if (
       !customerDetails ||
