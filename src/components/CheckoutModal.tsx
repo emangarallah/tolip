@@ -133,7 +133,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMsg(language === 'ar' ? 'المنتج أو الحجم المختار غير متوفر حاليًا.' : 'The selected product or variant is unavailable.');
       return;
     }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > Math.min(selectedVariant.stock, 99)) {
       setErrorMsg(language === 'ar' ? 'يرجى اختيار كمية صحيحة بين 1 و99.' : 'Please choose a quantity between 1 and 99.');
       return;
     }
@@ -271,7 +271,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <span className="text-sm font-bold tabular-nums text-[#1F2421] dark:text-white">{quantity}</span>
                     <button
                       type="button"
-                      onClick={() => setQuantity((current) => Math.min(99, current + 1))}
+                      onClick={() => setQuantity((current) => Math.min(selectedVariant?.stock || 1, 99, current + 1))}
                       aria-label="Increase quantity"
                       className="w-8 h-8 rounded-lg bg-[#F7F4F0] dark:bg-[#282F2B] text-[#1F2421] dark:text-white font-bold"
                     >
