@@ -81,7 +81,7 @@ export const translations = {
     productFeatures: 'مميزات المنتج:',
     orderNowViaWhatsApp: 'اطلب الآن عبر واتساب',
     addedToCartSuccess: 'تمت إضافة المنتج إلى سلة التسوق بنجاح!',
-    codDisclaimer: 'الدفع عند الاستلام بعد الاتفاق مع صاحب المتجر عبر واتساب · توصيل لكافة المحافظات اليمنية',
+    codDisclaimer: 'يتم الاتفاق على طريقة الدفع والتوصيل مباشرة مع صاحبة المتجر عبر واتساب.',
     similarProductsTitle: 'منتجات مشابهة قد تنال إعجابك:',
     consultPriceWhatsApp: 'تواصل معنا عبر واتساب لتحديد السعر وتأكيد الطلب',
     perPiece: 'للقطعة',
@@ -133,7 +133,7 @@ export const translations = {
     determinedLater: 'يحدد لاحقاً',
     determinedAfterAgreement: 'يحدد بعد الاتفاق',
     checkoutTermsHeader: 'شروط تأكيد الطلب والدفع:',
-    checkoutTermsText: '• عند الضغط على الزر، سيتم تسجيل طلبك فوراً في لوحة تحكم المتجر، ثم سيفتح تطبيق واتساب برسالة منسقة جاهزة للإرسال إلى صاحب المتجر.\n• فتح واتساب لا يعني تأكيد الطلب بشكل نهائي؛ يتم التأكيد والاتفاق على موعد التسليم بعد مراجعة صاحب المتجر لرسالتك.\n• الدفع يتم نقداً عند الاستلام بعد معاينة طلبك.',
+    checkoutTermsText: '• عند الضغط على الزر، سيتم تسجيل طلبك فوراً في لوحة تحكم المتجر، ثم سيفتح تطبيق واتساب برسالة منسقة جاهزة للإرسال إلى صاحب المتجر.\n• فتح واتساب لا يعني تأكيد الطلب بشكل نهائي؛ يتم التأكيد والاتفاق على موعد التسليم بعد مراجعة صاحب المتجر لرسالتك.\n• يتم الاتفاق على طريقة الدفع وموعد التوصيل مباشرة مع صاحبة المتجر عبر واتساب.',
     confirmAndSendWhatsApp: 'تأكيد الطلب وإرسال عبر واتساب ({phone})',
     submittingOrder: 'جاري تسجيل الطلب وتجهيز رسالة واتساب...',
 
@@ -149,7 +149,7 @@ export const translations = {
     customerCity: 'المدينة:',
     itemsQuantity: 'عدد الأصناف:',
     paymentMethod: 'طريقة الدفع:',
-    codMethod: 'نقداً عند الاستلام',
+    codMethod: 'يتم الاتفاق عبر واتساب',
     backToStore: 'العودة ومتابعة التسوق في متجر توليب',
 
     // About & Contact Views
@@ -258,7 +258,7 @@ export const translations = {
     productFeatures: 'Product Highlights:',
     orderNowViaWhatsApp: 'Order Now via WhatsApp',
     addedToCartSuccess: 'Added to your shopping bag!',
-    codDisclaimer: 'Cash on delivery upon agreement via WhatsApp · Shipping across all Yemeni governorates',
+    codDisclaimer: 'Payment and delivery are agreed directly with the store owner via WhatsApp.',
     similarProductsTitle: 'Similar Products You May Love:',
     consultPriceWhatsApp: 'Contact us via WhatsApp for pricing and order confirmation',
     perPiece: 'per item',
@@ -310,7 +310,7 @@ export const translations = {
     determinedLater: 'Determined later',
     determinedAfterAgreement: 'Agreed upon via WhatsApp',
     checkoutTermsHeader: 'Order Confirmation & Payment Terms:',
-    checkoutTermsText: '• Clicking below saves your order in our dashboard and opens WhatsApp with a pre-formatted message.\n• Opening WhatsApp initiates the request; confirmation occurs after the store owner reviews your message.\n• Payment is cash on delivery after inspecting your items.',
+    checkoutTermsText: '• Clicking below saves your order in our dashboard and opens WhatsApp with a pre-formatted message.\n• Opening WhatsApp initiates the request; confirmation occurs after the store owner reviews your message.\n• Payment method and delivery timing are agreed directly with the store owner via WhatsApp.',
     confirmAndSendWhatsApp: 'Confirm Order & Send via WhatsApp ({phone})',
     submittingOrder: 'Recording order & preparing WhatsApp message...',
 
@@ -326,7 +326,7 @@ export const translations = {
     customerCity: 'City:',
     itemsQuantity: 'Items:',
     paymentMethod: 'Payment Method:',
-    codMethod: 'Cash on Delivery',
+    codMethod: 'Agreed via WhatsApp',
     backToStore: 'Back to Tolipe Natural Store',
 
     // About & Contact Views
