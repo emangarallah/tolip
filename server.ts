@@ -57,6 +57,29 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
+const loginAttemptBuckets = new Map<string, { count: number; resetAt: number }>();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 8;
+
+function isLoginRateLimited(req: Request): boolean {
+  const key = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  let bucket = loginAttemptBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    bucket = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
+    loginAttemptBuckets.set(key, bucket);
+  }
+  if (bucket.count >= LOGIN_MAX_ATTEMPTS) return true;
+  bucket.count += 1;
+
+  if (loginAttemptBuckets.size > 5000) {
+    for (const [ip, attempt] of loginAttemptBuckets) {
+      if (attempt.resetAt <= now) loginAttemptBuckets.delete(ip);
+    }
+  }
+  return false;
+}
+
 // ==========================================
 // 1. Store Settings API
 // ==========================================
@@ -459,7 +482,17 @@ app.patch('/api/orders/:id/status', requireAdmin, (req: Request, res: Response) 
 // ==========================================
 app.post('/api/admin/login', (req: Request, res: Response) => {
   try {
+    if (isLoginRateLimited(req)) {
+      res.setHeader('Retry-After', '900');
+      res.status(429).json({ error: 'تم تجاوز عدد محاولات تسجيل الدخول. حاول بعد 15 دقيقة.' });
+      return;
+    }
+
     const { email, password } = req.body;
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      res.status(400).json({ error: 'البريد الإلكتروني وكلمة المرور مطلوبان بصيغة صحيحة' });
+      return;
+    }
     if (!email || !password) {
       res.status(400).json({ error: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
       return;
@@ -472,6 +505,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
     }
 
     const admin = db.getAdminInfo();
+    loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
     const token = generateToken({ email: admin.email, id: admin.id });
 
     res.json({
@@ -495,6 +529,10 @@ app.get('/api/admin/me', requireAdmin, (req: Request, res: Response) => {
 
 app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Response) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(503).json({ error: 'في بيئة الإنتاج، يتم تغيير بيانات المسؤول من إعدادات الأسرار في منصة الاستضافة.' });
+      return;
+    }
     const { currentPassword, newEmail, newPassword } = req.body;
     const admin = db.getAdminInfo();
 
@@ -537,6 +575,10 @@ app.get('/api/admin/stats', requireAdmin, (req: Request, res: Response) => {
 // ==========================================
 app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(503).json({ error: 'رفع الصور يحتاج إلى خدمة تخزين دائمة (Object Storage) قبل تفعيل الإنتاج.' });
+      return;
+    }
     const { base64Data, filename } = req.body;
     if (!base64Data) {
       res.status(400).json({ error: 'بيانات الصورة مفقودة' });
