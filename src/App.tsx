@@ -193,6 +193,20 @@ export default function App() {
       ? { ...line, quantity } : line).filter((line) => line.quantity > 0));
   };
 
+  const handleCartVariantChange = (productId: string, oldVariantId: string, newVariantId: string, quantity: number) => {
+    const product = products.find((entry) => entry.id === productId);
+    const variant = product?.variants.find((entry) => entry.id === newVariantId);
+    if (!variant || variant.stock <= 0) return;
+    setCartLines((previous) => {
+      const next = previous.filter((line) => line.productId !== productId || line.variantId !== oldVariantId);
+      const existing = next.find((line) => line.productId === productId && line.variantId === newVariantId);
+      const safeQuantity = Math.min(variant.stock, 99, Math.max(1, quantity));
+      if (existing) return next.map((line) => line.productId === productId && line.variantId === newVariantId
+        ? { ...line, quantity: Math.min(variant.stock, 99, line.quantity + safeQuantity) } : line);
+      return [...next, { productId, variantId: newVariantId, quantity: safeQuantity }];
+    });
+  };
+
   const handleCartRemove = (productId: string, variantId: string) => {
     setCartLines((previous) => previous.filter((line) => line.productId !== productId || line.variantId !== variantId));
   };
@@ -909,6 +923,7 @@ export default function App() {
         language={language}
         onClose={() => setIsCartOpen(false)}
         onUpdate={handleCartUpdate}
+        onVariantChange={handleCartVariantChange}
         onRemove={handleCartRemove}
         onCheckout={handleCartCheckout}
       />
