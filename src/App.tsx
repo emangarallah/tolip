@@ -27,6 +27,7 @@ import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
+import { TulipLogo } from './components/TulipLogo.tsx';
 import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
@@ -263,9 +264,13 @@ export default function App() {
 
   if (isLoading || !settings) {
     return (
-      <div className="min-h-screen bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-white flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-full border-4 border-[#F5E1E8] dark:border-[#3D202B] border-t-[#C74169] dark:border-t-[#E06287] animate-spin" />
-        <p className="text-xs font-bold">{language === 'ar' ? 'جاري تجهيز متجر توليب للعناية الطبيعية...' : 'Loading Tolipe Natural Care...'}</p>
+      <div className="min-h-screen bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-white flex items-center justify-center px-6">
+        <div className="flex flex-col items-center justify-center gap-5 animate-in fade-in duration-500">
+          <TulipLogo size="lg" showText />
+          <div className="h-1 w-24 overflow-hidden rounded-full bg-[#F5E1E8] dark:bg-[#3D202B]">
+            <div className="h-full w-1/2 rounded-full bg-[#C74169] dark:bg-[#E06287] animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
