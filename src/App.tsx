@@ -205,37 +205,72 @@ export default function App() {
     }
   };
 
-  // Normalize Arabic/English search text so typing with/without diacritics
-  // or extra spaces returns the same matching products.
+  // Normalize Arabic/English search consistently across all storefront categories.
   const normalizeProductSearch = (value: unknown) =>
     String(value ?? '')
       .normalize('NFKC')
       .toLocaleLowerCase(language)
       .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
       .replace(/\s+/g, ' ')
       .trim();
 
-  const productSearchTerm = normalizeProductSearch(filterSearchQuery);
+  const productSearchTokens = normalizeProductSearch(filterSearchQuery)
+    .split(' ')
+    .filter(Boolean);
 
-  // Filter products using the product's category, text, variants and actual stock.
+  const matchesProductCategory = (product: Product, categoryId: string) => {
+    if (categoryId === 'all') return true;
+    if (product.categoryId === categoryId) return true;
+
+    // Fallback for older records whose category ID differs but category name is still valid.
+    const targetCategory = categories.find((category) => category.id === categoryId);
+    const productCategoryName =
+      product.categoryName || categories.find((category) => category.id === product.categoryId)?.name;
+    return Boolean(
+      targetCategory &&
+      productCategoryName &&
+      normalizeProductSearch(productCategoryName) === normalizeProductSearch(targetCategory.name)
+    );
+  };
+
+  // A product is orderable only when the admin has enabled it and at least one
+  // variant has positive stock. Keep the "available only" filter consistent with ordering.
+  const productHasAvailableStock = (product: Product) =>
+    product.inStock === true &&
+    (product.variants ?? []).some((variant) => Number.isFinite(Number(variant.stock)) && Number(variant.stock) > 0);
+
+  // Apply category first, then the selected search and toggles; this works the same
+  // for every category tab and for the "all products" view.
   const filteredProducts = products.filter((p) => {
     if (showFavoritesOnly && !favorites.includes(p.id)) return false;
-    if (selectedCategoryId !== 'all' && p.categoryId !== selectedCategoryId) return false;
-    if (filterInStockOnly && !(p.inStock && (p.variants ?? []).some((variant) => Number(variant.stock) > 0))) return false;
+    if (!matchesProductCategory(p, selectedCategoryId)) return false;
+    if (filterInStockOnly && !productHasAvailableStock(p)) return false;
     if (filterBestSellersOnly && !p.isBestSeller) return false;
 
-    if (productSearchTerm) {
-      const searchableFields = [
+    if (productSearchTokens.length) {
+      const categoryName =
+        p.categoryName || categories.find((category) => category.id === p.categoryId)?.name || '';
+      const searchableText = normalizeProductSearch([
         p.name,
+        p.slug,
         p.description,
-        p.categoryName,
+        categoryName,
         ...(p.features ?? []),
-        ...(p.variants ?? []).map((variant) => variant.name),
-      ];
-      const matchesSearch = searchableFields.some((field) =>
-        normalizeProductSearch(field).includes(productSearchTerm)
-      );
-      if (!matchesSearch) return false;
+        ...(p.variants ?? []).flatMap((variant) => [
+          variant.name,
+          variant.sku,
+          variant.price,
+          variant.originalPrice,
+          variant.stock,
+        ]),
+      ].filter((value) => value !== null && value !== undefined).join(' '));
+
+      // Each word may match a different field, so multi-word queries are not
+      // required to appear as one exact contiguous phrase.
+      if (!productSearchTokens.every((token) => searchableText.includes(token))) return false;
     }
 
     return true;
@@ -542,7 +577,7 @@ export default function App() {
                         : 'bg-white dark:bg-[#1A1E1B] text-[#555C57] dark:text-[#D1D8D3] border border-[#E5DFD7] dark:border-[#2D332F] hover:border-[#1F2421]'
                     }`}
                   >
-                    {cat.name} ({products.filter((p) => p.categoryId === cat.id).length})
+                    {cat.name} ({products.filter((p) => matchesProductCategory(p, cat.id)).length})
                   </button>
                 ))}
               </div>
