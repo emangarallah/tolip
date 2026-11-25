@@ -69,7 +69,7 @@ test('admin can create, update and delete a category and product persistently', 
   assert.equal(db.deleteCategory(category.id), true);
   assert.equal(db.getCategoryById(category.id), undefined);
 
-  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.json'), 'utf8'));
+  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.runtime.json'), 'utf8'));
   assert.ok(!persisted.products.some((entry: any) => entry.id === product.id));
   assert.ok(!persisted.categories.some((entry: any) => entry.id === category.id));
 });
