@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, MessageCircle, Eye, ShoppingCart } from 'lucide-react';
+import { Heart, MessageCircle, Eye } from 'lucide-react';
 import type { Product } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
@@ -10,7 +10,6 @@ interface ProductCardProps {
   onToggleFavorite: (product: Product) => void;
   onViewDetails: (product: Product) => void;
   onOrder: (product: Product) => void;
-  onAddToCart: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -20,7 +19,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onToggleFavorite,
   onViewDetails,
   onOrder,
-  onAddToCart,
 }) => {
   const t = translations[language];
 
@@ -153,10 +151,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           {/* Single order action: product details allow the customer to choose a size before delivery details. */}
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => onAddToCart(product)} disabled={!isAvailable} className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-bold border border-[#C74169]/25 bg-[#FFF0F4] dark:bg-[#2A161E] text-[#C74169] dark:text-[#E06287] hover:bg-[#FBE1E9] dark:hover:bg-[#351D27] transition-all disabled:opacity-40">
-              <ShoppingCart className="w-4 h-4" /><span>{language === "ar" ? "أضف للسلة" : "Add to cart"}</span>
-            </button>
+          <div className="grid grid-cols-1 gap-2">
             <button type="button" onClick={() => onOrder(product)} disabled={!isAvailable} className={`flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-bold transition-all ${isAvailable ? "bg-[#25D366] text-white hover:bg-[#20BA57] shadow-sm" : "bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed"}`}>
               <MessageCircle className="w-4 h-4" /><span>{language === "ar" ? "اطلب الآن" : "Order now"}</span>
             </button>
