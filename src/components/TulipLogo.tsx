@@ -23,9 +23,25 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
     return (
       <div className={`flex items-center gap-2.5 ${className}`}>
         <div className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1] shadow-[0_3px_12px_rgba(199,65,105,0.18)]`} aria-hidden="true">
-          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/70 to-transparent opacity-90" />
-          <span className="relative -rotate-12 font-serif text-[29px] italic font-black leading-none text-transparent bg-clip-text bg-gradient-to-br from-[#F08AA9] via-[#C74169] to-[#8F2348] drop-shadow-[0_1px_1px_rgba(255,255,255,0.85)]">T</span>
-          <span className="absolute left-[23%] top-[18%] h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.95)]" />
+          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/55 to-transparent opacity-90" />
+          <svg viewBox="0 0 40 40" className="relative h-[27px] w-[27px] drop-shadow-[0_1px_1px_rgba(255,255,255,0.75)]" aria-hidden="true">
+            <defs>
+              <linearGradient id="tolip-monogram-gradient" x1="10" y1="8" x2="30" y2="33" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#F08AA9" />
+                <stop offset="0.48" stopColor="#C74169" />
+                <stop offset="1" stopColor="#8F2348" />
+              </linearGradient>
+              <linearGradient id="tolip-monogram-shine" x1="12" y1="9" x2="23" y2="27" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#FFFFFF" stopOpacity="0.9" />
+                <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <g transform="rotate(-7 20 20)">
+              <path d="M9.5 10.5C9.5 9.1 10.6 8 12 8H28C29.4 8 30.5 9.1 30.5 10.5V13.2C30.5 14.5 29.6 15.2 28.3 15.2H23.1V29.2C23.1 30.8 22.1 32 20.5 32H18.8C17.2 32 16.2 30.8 16.2 29.2V15.2H11.7C10.4 15.2 9.5 14.5 9.5 13.2V10.5Z" fill="url(#tolip-monogram-gradient)" />
+              <path d="M11.2 10.4C11.2 9.8 11.7 9.3 12.4 9.3H27.7C28.4 9.3 28.9 9.8 28.9 10.4V11.1H11.2V10.4Z" fill="url(#tolip-monogram-shine)" />
+            </g>
+          </svg>
+          <span className="absolute left-[24%] top-[19%] h-1 w-1 rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.95)]" />
         </div>
         {showText && (
           <div className="flex flex-col text-right leading-none select-none">
