@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, MapPin, Phone, User, MessageCircle, AlertCircle, Navigation, Loader2 } from 'lucide-react';
-import type { OrderDraftItem, CustomerDetails, StoreSettings, Order } from '../types/store.ts';
+import type { OrderDraftItem, CustomerDetails, StoreSettings, Order, Product } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
 
 interface CheckoutModalProps {
   isOpen: boolean;
-  items: OrderDraftItem[];
+  product: Product | null;
+  initialVariantId: string;
+  initialQuantity: number;
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
@@ -14,7 +16,9 @@ interface CheckoutModalProps {
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
-  items,
+  product,
+  initialVariantId,
+  initialQuantity,
   settings,
   language,
   onClose,
@@ -35,19 +39,42 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [selectedVariantId, setSelectedVariantId] = useState(initialVariantId);
+  const [quantity, setQuantity] = useState(initialQuantity || 1);
+
+  useEffect(() => {
+    if (!product) return;
+    setSelectedVariantId(initialVariantId || product.variants[0]?.id || '');
+    setQuantity(Math.max(1, Math.floor(initialQuantity || 1)));
+  }, [product?.id, initialVariantId, initialQuantity, isOpen]);
+
+  const selectedVariant =
+    product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
+
+  const items: OrderDraftItem[] =
+    product && selectedVariant
+      ? [{
+          id: `${product.id}_${selectedVariant.id}`,
+          productId: product.id,
+          productName: product.name,
+          variantId: selectedVariant.id,
+          variantName: selectedVariant.name,
+          price: selectedVariant.price ?? null,
+          quantity,
+          image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
+          categoryName: product.categoryName,
+        }]
+      : [];
+
   // Selected city info
   const selectedCityObj = settings.cities.find((c) => c.city === city);
   const deliveryFee = city === 'أخرى' || city === 'Other' ? null : selectedCityObj?.fee ?? null;
 
-  // Calculate items subtotal
-  let itemsTotal: number | null = 0;
-  for (const item of items) {
-    if (item.price === null) {
-      itemsTotal = null;
-      break;
-    }
-    itemsTotal += item.price * item.quantity;
-  }
+  // Calculate the selected product and variant subtotal.
+  const itemsTotal =
+    selectedVariant && selectedVariant.price !== null
+      ? selectedVariant.price * quantity
+      : null;
 
   const finalTotal = itemsTotal !== null && deliveryFee !== null ? itemsTotal + deliveryFee : itemsTotal;
 
@@ -102,8 +129,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMsg(language === 'ar' ? 'يرجى إدخال العنوان التفصيلي.' : 'Please enter your detailed address.');
       return;
     }
-    if (items.length !== 1) {
-      setErrorMsg(language === 'ar' ? 'يرجى اختيار منتج واحد لإتمام الطلب.' : 'Please select one product to continue.');
+    if (!product || !selectedVariant || !product.inStock || selectedVariant.stock <= 0) {
+      setErrorMsg(language === 'ar' ? 'المنتج أو الحجم المختار غير متوفر حاليًا.' : 'The selected product or variant is unavailable.');
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      setErrorMsg(language === 'ar' ? 'يرجى اختيار كمية صحيحة بين 1 و99.' : 'Please choose a quantity between 1 and 99.');
       return;
     }
 
@@ -181,6 +212,77 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="p-3 rounded-xl bg-[#FEE2E2] dark:bg-[#3D141A] border border-[#FCA5A5] dark:border-[#6B202A] text-[#991B1B] dark:text-[#FCA5A5] text-xs font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Selected product, size and quantity */}
+          {product && (
+            <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#1A1E1B] border border-[#EFE9E2] dark:border-[#262C28] space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#C74169] dark:text-[#E06287]">
+                {language === 'ar' ? 'تفاصيل المنتج المطلوب' : 'Selected Product'}
+              </h3>
+              <div className="flex items-center gap-3">
+                <img
+                  src={product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg'}
+                  alt={product.name}
+                  className="w-16 h-16 rounded-xl object-cover bg-white dark:bg-[#202522]"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#1F2421] dark:text-white">{product.name}</p>
+                  <p className="text-[11px] text-[#717772] dark:text-[#A8B0AA]">{product.categoryName}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1F2421] dark:text-white mb-1">
+                    {t.selectSizeOrType}
+                  </label>
+                  <select
+                    required
+                    value={selectedVariantId}
+                    onChange={(e) => setSelectedVariantId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] text-xs bg-white dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
+                  >
+                    {product.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id} disabled={variant.stock <= 0}>
+                        {variant.name} — {variant.price !== null
+                          ? `${variant.price.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
+                          : t.determinedAfterAgreement}
+                        {variant.stock <= 0 ? (language === 'ar' ? ' (غير متوفر)' : ' (Unavailable)') : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1F2421] dark:text-white mb-1">
+                    {t.quantityRequired}
+                  </label>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] bg-white dark:bg-[#1E2320]">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                      aria-label="Decrease quantity"
+                      className="w-8 h-8 rounded-lg bg-[#F7F4F0] dark:bg-[#282F2B] text-[#1F2421] dark:text-white font-bold"
+                    >
+                      −
+                    </button>
+                    <span className="text-sm font-bold tabular-nums text-[#1F2421] dark:text-white">{quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((current) => Math.min(99, current + 1))}
+                      aria-label="Increase quantity"
+                      className="w-8 h-8 rounded-lg bg-[#F7F4F0] dark:bg-[#282F2B] text-[#1F2421] dark:text-white font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {!selectedVariant && (
+                <p className="text-xs text-red-600">{language === 'ar' ? 'لا توجد أحجام متاحة لهذا المنتج.' : 'No variants are available.'}</p>
+              )}
             </div>
           )}
 
