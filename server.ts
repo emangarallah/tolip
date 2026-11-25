@@ -326,7 +326,7 @@ app.post('/api/orders', (req: Request, res: Response) => {
       res.status(400).json({ error: 'يرجى استكمال الاسم ورقم الهاتف والمدينة والمنطقة والعنوان التفصيلي.' });
       return;
     }
-    const normalizedCustomerPhone = customerDetails.phone.replace(/[\\s()-]/g, '');
+    const normalizedCustomerPhone = customerDetails.phone.replace(/[\s()-]/g, '');
     if (!/^\\+?[0-9]{7,15}$/.test(normalizedCustomerPhone)) {
       res.status(400).json({ error: 'رقم هاتف العميل غير صحيح.' });
       return;
