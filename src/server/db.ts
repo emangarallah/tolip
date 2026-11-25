@@ -15,10 +15,11 @@ import type {
 dotenv.config();
 
 // In-app database file location
-// Keep the seed outside Vite's public dist directory. Vercel includes this
-// file only in the API function bundle via vercel.json includeFiles.
+// Keep the committed seed outside Vite's public dist directory and never write
+// live local orders/admin state back into the tracked seed file.
 const DB_DIR = path.resolve(process.cwd(), 'data');
-const DB_FILE = path.join(DB_DIR, 'store_database.json');
+const DB_FILE = path.join(DB_DIR, 'store_database.runtime.json');
+const DB_SEED_FILE = path.join(DB_DIR, 'store_database.json');
 
 interface DatabaseSchema {
   version: number;
@@ -747,6 +748,17 @@ class StoreDatabase {
         const raw = fs.readFileSync(DB_FILE, 'utf8');
         const parsed = JSON.parse(raw);
         if (parsed && parsed.products && parsed.categories) {
+          return parsed;
+        }
+      }
+
+      // First run: initialize from the committed catalog seed. In production,
+      // Neon persists the authoritative state; do not write into Vercel's read-only bundle.
+      if (fs.existsSync(DB_SEED_FILE)) {
+        const raw = fs.readFileSync(DB_SEED_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.products && parsed.categories) {
+          if (process.env.NODE_ENV !== 'production') this.saveDirect(parsed);
           return parsed;
         }
       }
