@@ -38,7 +38,7 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-[#EAE3DC] dark:border-[#262C28]">
           {/* Column 1 & 2: Brand Story & Official Contacts */}
           <div className="lg:col-span-2 space-y-5">
-            <TulipLogo customLogoUrl={settings.logoUrl} size="lg" />
+            <TulipLogo customLogoUrl={settings.logoUrl} size="lg" letterMark />
             <p className="text-xs sm:text-sm text-[#616662] dark:text-[#A8B0AA] leading-relaxed max-w-sm">
               {language === 'ar' ? (settings.storeDescription || t.defaultHeroSubtext) : t.defaultHeroSubtext}
             </p>
