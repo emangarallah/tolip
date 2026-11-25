@@ -332,30 +332,24 @@ export default function App() {
 
   if (isLoading || !settings || !splashMinimumElapsed) {
     return (
-      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-gradient-to-br from-[#FFF9F3] via-[#FCECF1] to-[#F5E7DC] px-5 py-8 text-[#54283B]">
-        {/* Soft brand-color lighting behind the transparent logo */}
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#F2B8CB]/45 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none -left-28 bottom-[-5rem] h-96 w-96 rounded-full bg-[#E9CDB7]/55 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[min(82vw,34rem)] w-[min(82vw,34rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/55" />
+      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFF7F5] px-5 py-8 text-[#5B2638]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F8C9D9]/55 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#FBE8D8]/70 blur-3xl" />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-md flex-col items-center rounded-[2rem] border border-white/80 bg-white/75 px-7 py-10 text-center shadow-[0_24px_80px_rgba(115,48,75,0.13)] backdrop-blur-xl animate-in fade-in duration-700 sm:px-10 sm:py-12">
-          <div className="mb-5 rounded-full border border-[#F2D9E2] bg-[#FFF4F7] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#973B5D] shadow-sm">
-            TOLIPE · NATURAL CARE
-          </div>
+        <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
+          <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
 
-          <TulipOpeningMark className="h-auto w-60 max-w-[72vw] drop-shadow-[0_10px_18px_rgba(130,47,78,0.12)] sm:w-64" />
-
-          <div className="mt-7 max-w-sm space-y-3">
-            <p className="text-xl font-extrabold leading-relaxed text-[#792B49] sm:text-2xl">
+          <div className="mt-7 space-y-2">
+            <p className="text-xl font-bold leading-relaxed text-[#B83F6B]">
               لقد تم اختيار منتجك بكل عناية
             </p>
-            <p className="text-sm font-semibold leading-8 text-[#4D3540] sm:text-base">
+            <p className="text-base font-semibold leading-8 text-[#6A4552]">
               ليضيف لمسة من الجمال والتميز إلى يومك.
             </p>
           </div>
 
-          <div className="mt-8 h-1.5 w-28 overflow-hidden rounded-full bg-[#F2DCE4]" aria-hidden="true">
-            <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-[#B63D69] to-[#E58AA8] animate-pulse" />
+          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#F4D5E0]">
+            <div className="h-full w-2/5 rounded-full bg-[#C94F7B] animate-pulse" />
           </div>
         </div>
       </main>
