@@ -28,6 +28,7 @@ import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
+import { WelcomeSplash } from './components/WelcomeSplash.tsx';
 import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
@@ -60,7 +61,6 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
 
   // Navigation & View States
   const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'about' | 'contact'>('home');
@@ -102,13 +102,6 @@ export default function App() {
       console.error('Unable to persist theme preference:', e);
     }
   }, [theme]);
-
-  // Show the branded opening screen for at least 1.8 seconds on every fresh visit.
-  // If the API takes longer, the opening screen remains visible until the store is ready.
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSplashMinimumElapsed(true), 1800);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   // Language & Direction Sync effect
   useEffect(() => {
@@ -267,8 +260,7 @@ export default function App() {
     ? products.filter((p) => p.categoryId === selectedProduct.categoryId && p.id !== selectedProduct.id).slice(0, 4)
     : [];
 
-  if (isLoading || !settings || !splashMinimumElapsed) {
-    return (
+  return (
       <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFFCFA] px-5 py-8 text-[#1F2421] dark:bg-[#121513] dark:text-[#F1F4F2]">
         <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F9DDE7]/55 blur-3xl dark:bg-[#6A2035]/20" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#E7EFD9]/70 blur-3xl dark:bg-[#31452F]/20" />
@@ -295,6 +287,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-[#F1F4F2] selection:bg-[#F8D7E3] dark:selection:bg-[#6A2035] selection:text-[#832742] dark:selection:text-[#FCE8EF] transition-colors duration-200">
+      <WelcomeSplash />
       {/* 1. Header & Navigation */}
       <Navbar
         settings={settings}
