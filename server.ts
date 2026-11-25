@@ -634,12 +634,17 @@ app.get('/api/admin/me', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/admin/logout', requireAdmin, (req: Request, res: Response) => {
+  try {
+    db.rotateAdminSession();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'تعذر إنهاء جلسة المسؤول' });
+  }
+});
+
 app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Response) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      res.status(503).json({ error: 'في بيئة الإنتاج، يتم تغيير بيانات المسؤول من إعدادات الأسرار في منصة الاستضافة.' });
-      return;
-    }
     const { currentPassword, newEmail, newPassword } = req.body;
     const admin = db.getAdminInfo();
 
