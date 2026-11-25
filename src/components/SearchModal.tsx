@@ -18,8 +18,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   onClose,
   onSelectProduct,
 }) => {
-  if (!isOpen) return null;
-
   const t = translations[language];
   const isRtl = language === 'ar';
   const [query, setQuery] = useState('');
@@ -28,6 +26,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
     const fetchResults = async () => {
       setIsLoading(true);
       try {
@@ -49,7 +48,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
     const timer = setTimeout(fetchResults, 250);
     return () => clearTimeout(timer);
-  }, [query, selectedCat]);
+  }, [query, selectedCat, isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-start justify-center p-3 sm:p-6 pt-16 animate-in fade-in duration-200">
