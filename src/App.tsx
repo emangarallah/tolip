@@ -28,7 +28,7 @@ import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
-import type { Product, Category, StoreSettings, OrderDraftItem, Order } from './types/store.ts';
+import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
@@ -81,7 +81,9 @@ export default function App() {
 
   // Modals & Drawers
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutItems, setCheckoutItems] = useState<OrderDraftItem[]>([]);
+  const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
+  const [checkoutVariantId, setCheckoutVariantId] = useState('');
+  const [checkoutQuantity, setCheckoutQuantity] = useState(1);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
@@ -158,26 +160,16 @@ export default function App() {
   const t = translations[language];
   const isRtl = language === 'ar';
 
-  // Direct single-product order: prepare one item and open the delivery form.
-  const handleStartOrder = (product: Product, variantId: string, quantity = 1) => {
+  // Open the delivery form directly for a single selected product.
+  const handleStartOrder = (product: Product, variantId?: string, quantity = 1) => {
     const selectedVariant =
       product.variants.find((variant) => variant.id === variantId) || product.variants[0];
 
-    if (!selectedVariant || !product.inStock) return;
+    if (!selectedVariant || !product.inStock || selectedVariant.stock <= 0) return;
 
-    const orderItem: OrderDraftItem = {
-      id: `${product.id}_${selectedVariant.id}`,
-      productId: product.id,
-      productName: product.name,
-      variantId: selectedVariant.id,
-      variantName: selectedVariant.name,
-      price: selectedVariant.price ?? null,
-      quantity: Math.max(1, Math.floor(quantity)),
-      image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
-      categoryName: product.categoryName,
-    };
-
-    setCheckoutItems([orderItem]);
+    setCheckoutProduct(product);
+    setCheckoutVariantId(selectedVariant.id);
+    setCheckoutQuantity(Math.max(1, Math.floor(quantity)));
     setSelectedProduct(null);
     setIsCheckoutOpen(true);
   };
@@ -345,11 +337,12 @@ export default function App() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        settings={settings}
                         isFavorite={favorites.includes(product.id)}
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
+                    onOrder={(p) => handleStartOrder(p)}
+                        onOrder={(p) => handleStartOrder(p)}
                       />
                     ))}
                   </div>
@@ -388,8 +381,7 @@ export default function App() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        settings={settings}
-                        isFavorite={favorites.includes(product.id)}
+                            isFavorite={favorites.includes(product.id)}
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
@@ -751,16 +743,22 @@ export default function App() {
       {/* Single-product delivery form */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        items={checkoutItems}
+        product={checkoutProduct}
+        initialVariantId={checkoutVariantId}
+        initialQuantity={checkoutQuantity}
         settings={settings}
         language={language}
         onClose={() => {
           setIsCheckoutOpen(false);
-          setCheckoutItems([]);
+          setCheckoutProduct(null);
+          setCheckoutVariantId('');
+          setCheckoutQuantity(1);
         }}
         onOrderSuccess={(order, whatsappUrl) => {
           setIsCheckoutOpen(false);
-          setCheckoutItems([]);
+          setCheckoutProduct(null);
+          setCheckoutVariantId('');
+          setCheckoutQuantity(1);
           setCompletedOrder({ order, whatsappUrl });
         }}
       />
@@ -777,7 +775,6 @@ export default function App() {
       {/* Product Detail Modal */}
       <ProductDetailModal
         product={selectedProduct}
-        settings={settings}
         similarProducts={similarProducts}
         isFavorite={selectedProduct ? favorites.includes(selectedProduct.id) : false}
         language={language}
