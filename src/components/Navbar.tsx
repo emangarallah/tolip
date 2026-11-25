@@ -131,10 +131,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               {theme === 'dark' ? <Sun className="mx-auto h-5 w-5" /> : <Moon className="mx-auto h-5 w-5" />}
             </button>
 
-            <button onClick={onOpenCart} aria-label={language === 'ar' ? 'سلة المشتريات' : 'Shopping cart'} className="relative flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-[#4A4E4B] dark:text-[#D1D8D3]">
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C74169] px-1 text-[10px] font-bold text-white">{cartCount}</span>}
-            </button>
             <button
               onClick={onOpenSearch}
               aria-label={t.searchButton}
