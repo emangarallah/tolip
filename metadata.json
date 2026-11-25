@@ -1,0 +1,6 @@
+{
+  "name": "توليب – Tulip Natural Care",
+  "description": "متجر توليب للعناية الطبيعية بالبشرة والجسم والشعر والعطور - منتجات طبيعية فاخرة وطلب مباشر عبر واتساب.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
