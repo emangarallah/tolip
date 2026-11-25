@@ -264,14 +264,14 @@ app.post('/api/orders', (req: Request, res: Response) => {
     }
 
     const variant = product.variants.find((entry: any) => entry.id === String(requestedItem.variantId));
-    if (!variant) {
+    if (!variant || Number(variant.stock) <= 0) {
       res.status(400).json({ error: 'الحجم أو النوع المختار غير متوفر لهذا المنتج.' });
       return;
     }
 
     const quantity = Number(requestedItem.quantity);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
-      res.status(400).json({ error: 'يرجى اختيار كمية صحيحة بين 1 و99.' });
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > Math.min(99, Number(variant.stock))) {
+      res.status(400).json({ error: 'الكمية المطلوبة أكبر من المخزون المتاح أو غير صحيحة.' });
       return;
     }
 
@@ -303,11 +303,15 @@ app.post('/api/orders', (req: Request, res: Response) => {
       itemsTotal = null; // Some items require price consultation
     }
 
-    const calculatedDeliveryFee = typeof deliveryFee === 'number' ? deliveryFee : null;
+    // Delivery fees are read from store settings on the server, never trusted from the browser.
+    const storeSettings = db.getSettings();
+    const requestedCity = String(customerDetails.city).trim();
+    const cityOption = storeSettings.cities.find((entry: any) => entry.city === requestedCity);
+    const calculatedDeliveryFee =
+      cityOption && typeof cityOption.fee === 'number' ? cityOption.fee : null;
     const finalTotal = itemsTotal !== null && calculatedDeliveryFee !== null ? itemsTotal + calculatedDeliveryFee : itemsTotal;
 
     // Compose formatted Arabic WhatsApp message
-    const storeSettings = db.getSettings();
     const itemsListText = formattedItems.map((item, idx) => {
       const priceStr = item.unitPrice !== null ? `${item.unitPrice.toLocaleString('ar-YE')} ر.ي` : 'يحدد عبر واتساب';
       const totalStr = item.totalPrice !== null ? `${item.totalPrice.toLocaleString('ar-YE')} ر.ي` : 'يحدد عبر واتساب';
