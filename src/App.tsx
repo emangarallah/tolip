@@ -28,7 +28,7 @@ import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
-import type { Product, Category, StoreSettings, CartItem, Order } from './types/store.ts';
+import type { Product, Category, StoreSettings, OrderDraftItem, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
@@ -81,7 +81,7 @@ export default function App() {
 
   // Modals & Drawers
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
+  const [checkoutItems, setCheckoutItems] = useState<OrderDraftItem[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
@@ -165,7 +165,7 @@ export default function App() {
 
     if (!selectedVariant || !product.inStock) return;
 
-    const orderItem: CartItem = {
+    const orderItem: OrderDraftItem = {
       id: `${product.id}_${selectedVariant.id}`,
       productId: product.id,
       productName: product.name,
