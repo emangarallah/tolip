@@ -604,11 +604,17 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
       return;
     }
 
-    const isValid = db.verifyAdminCredentials(email.trim(), password);
+    let isValid = db.verifyAdminCredentials(email.trim(), password);
+    if (!isValid && db.matchesAdminBootstrapCredentials(email.trim(), password)) {
+      isValid = db.completeAdminBootstrap(email.trim(), password) &&
+        db.verifyAdminCredentials(email.trim(), password);
+    }
     if (!isValid) {
       res.status(401).json({ error: 'بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.' });
       return;
     }
+    // Disable deployment-secret bootstrap once the owner has authenticated successfully.
+    db.markAdminBootstrapCompleted();
 
     const admin = db.getAdminInfo();
     loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
