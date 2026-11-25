@@ -98,6 +98,7 @@ function getAdminPayload(req: Request): { email: string; id: string } | null {
 
   const currentAdmin = db.getAdminInfo();
   if (
+    payload.role !== 'admin' ||
     payload.id !== currentAdmin.id ||
     payload.email.toLowerCase() !== currentAdmin.email.toLowerCase() ||
     payload.sessionVersion !== db.getAdminSessionVersion()
@@ -575,6 +576,12 @@ app.patch('/api/orders/:id/status', requireAdmin, (req: Request, res: Response) 
 // ==========================================
 // 5. Admin Authentication & Dashboard Stats
 // ==========================================
+app.use('/api/admin', (_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  next();
+});
+
 app.post('/api/admin/login', (req: Request, res: Response) => {
   try {
     if (isLoginRateLimited(req)) {
@@ -601,7 +608,8 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
 
     const admin = db.getAdminInfo();
     loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
-    const token = generateToken({ email: admin.email, id: admin.id, sessionVersion: db.getAdminSessionVersion() });
+    const sessionVersion = db.rotateAdminSession();
+    const token = generateToken({ email: admin.email, id: admin.id, sessionVersion, role: 'admin' });
 
     res.json({
       success: true,
@@ -637,13 +645,13 @@ app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Respons
       return;
     }
 
-    if (newPassword && newPassword.length < 6) {
-      res.status(400).json({ error: 'كلمة المرور الجديدة يجب ألا تقل عن 6 خانات.' });
+    if (newPassword && newPassword.length < 12) {
+      res.status(400).json({ error: 'كلمة المرور الجديدة يجب ألا تقل عن 12 حرفًا.' });
       return;
     }
 
     const updated = db.updateAdminCredentials(newEmail, newPassword);
-    const newToken = generateToken({ email: updated.email, id: updated.id, sessionVersion: db.getAdminSessionVersion() });
+    const newToken = generateToken({ email: updated.email, id: updated.id, sessionVersion: db.getAdminSessionVersion(), role: 'admin' });
 
     res.json({
       success: true,
