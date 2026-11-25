@@ -143,16 +143,10 @@ export default function App() {
     fetchStoreData();
   }, []);
 
-  // Keep the storefront in its light brand palette; do not switch to a black dark-mode surface.
+  // Toggle between light and dark; light remains the default for new visitors.
+  // The theme-sync effect above persists the customer's selected preference.
   const handleToggleTheme = () => {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.style.colorScheme = 'light';
-    try {
-      localStorage.setItem('tulip_theme', 'light');
-    } catch (error) {
-      console.error('Unable to persist theme preference:', error);
-    }
-    setTheme('light');
+    setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
   };
 
   const handleToggleLanguage = () => {
