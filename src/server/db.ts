@@ -28,6 +28,7 @@ interface DatabaseSchema {
     passwordHash: string;
     salt: string;
     sessionVersion?: string;
+    bootstrapCompleted?: boolean;
     name: string;
   };
   settings: StoreSettings;
@@ -697,6 +698,7 @@ function createDefaultDatabase(): DatabaseSchema {
       passwordHash: hashPassword(initialPassword, adminSalt),
       salt: adminSalt,
       sessionVersion: crypto.randomUUID(),
+      bootstrapCompleted: false,
       name: 'صاحب متجر توليب',
     },
     settings: defaultSettings,
@@ -886,6 +888,33 @@ class StoreDatabase {
     return verifyPassword(pass, this.data.adminUser.salt, this.data.adminUser.passwordHash);
   }
 
+  // Allow the Vercel bootstrap secret to initialize an older Neon admin row once.
+  // The fallback is permanently disabled after the first successful login or credential update.
+  public matchesAdminBootstrapCredentials(email: string, pass: string): boolean {
+    if (this.data.adminUser.bootstrapCompleted === true) return false;
+    const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const configuredPassword = process.env.ADMIN_PASSWORD;
+    return Boolean(
+      configuredEmail &&
+      configuredPassword &&
+      email.trim().toLowerCase() === configuredEmail &&
+      pass === configuredPassword
+    );
+  }
+
+  public completeAdminBootstrap(email: string, pass: string): boolean {
+    if (!this.matchesAdminBootstrapCredentials(email, pass)) return false;
+    this.updateAdminCredentials(email, pass);
+    return true;
+  }
+
+  public markAdminBootstrapCompleted(): void {
+    if (this.data.adminUser.bootstrapCompleted !== true) {
+      this.data.adminUser.bootstrapCompleted = true;
+      this.persist();
+    }
+  }
+
   public getAdminInfo() {
     return {
       id: this.data.adminUser.id,
@@ -924,6 +953,7 @@ class StoreDatabase {
       this.data.adminUser.passwordHash = hashPassword(newPassword, newSalt);
     }
     this.data.adminUser.sessionVersion = crypto.randomUUID();
+    this.data.adminUser.bootstrapCompleted = true;
     this.persist();
     return this.getAdminInfo();
   }
