@@ -22,7 +22,7 @@ interface CartDrawerProps {
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
-  isOpen, products, lines, language, onClose, onUpdate, onRemove, onCheckout,
+  isOpen, products, lines, language, onClose, onUpdate, onVariantChange, onRemove, onCheckout,
 }) => {
   const t = translations[language];
   if (!isOpen) return null;
