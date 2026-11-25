@@ -68,10 +68,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-label={t.home}
           >
             <span className="md:hidden">
-              <TulipLogo customLogoUrl={settings.logoUrl} size="sm" />
+              <TulipLogo customLogoUrl={settings.logoUrl} size="sm" letterMark />
             </span>
             <span className="hidden md:inline-flex">
-              <TulipLogo customLogoUrl={settings.logoUrl} size="md" />
+              <TulipLogo customLogoUrl={settings.logoUrl} size="md" letterMark />
             </span>
           </button>
 
