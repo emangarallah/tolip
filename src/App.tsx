@@ -180,13 +180,14 @@ export default function App() {
   // Add the first available variant to the cart; customers can change the variant in the cart.
   const handleAddToCart = (product: Product) => {
     const variant = product.variants.find((entry) => entry.stock > 0);
-    if (!product.inStock || !variant) return;
+    if (!variant) return;
     setCartLines((previous) => {
       const existing = previous.find((line) => line.productId === product.id && line.variantId === variant.id);
       if (existing) return previous.map((line) => line.productId === product.id && line.variantId === variant.id
         ? { ...line, quantity: Math.min(variant.stock, 99, line.quantity + 1) } : line);
       return [...previous, { productId: product.id, variantId: variant.id, quantity: 1 }];
     });
+    setIsCartOpen(true);
   };
 
   const handleCartUpdate = (productId: string, variantId: string, quantity: number) => {
