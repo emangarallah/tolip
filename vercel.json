@@ -4,7 +4,10 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "dist/**",
+      "includeFiles": [
+        "dist/**",
+        "data/store_database.json"
+      ],
       "maxDuration": 30
     }
   }
