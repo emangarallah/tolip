@@ -1515,7 +1515,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs text-[#1F2421] dark:text-white"
                           />
                         </div>
-                        <div className="col-span-3">
+                        <div className="col-span-2">
                           <input
                             type="number"
                             value={v.price === null || v.price === undefined ? '' : v.price}
