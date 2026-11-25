@@ -276,15 +276,6 @@ export default function App() {
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
           <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
 
-          <div className="mt-0 space-y-1">
-            <h1 className="font-[Alexandria] text-4xl font-extrabold tracking-tight text-[#D45283] dark:text-[#F08CAF]">
-              توليب
-            </h1>
-            <p className="text-sm font-bold text-[#242424] dark:text-[#F1F4F2]">
-              منتجات عناية بالبشرة والجسم
-            </p>
-          </div>
-
           <div className="mt-7 space-y-2">
             <p className="text-xl font-bold leading-relaxed text-[#D45283] dark:text-[#F08CAF]">
               لقد تم اختيار منتجك بكل عناية
