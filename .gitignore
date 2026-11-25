@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+
+# Local runtime database (keep the committed catalog seed separate)
+data/store_database.runtime.json
+data/store_database.runtime.json.tmp.*
