@@ -327,7 +327,7 @@ app.post('/api/orders', (req: Request, res: Response) => {
       return;
     }
     const normalizedCustomerPhone = customerDetails.phone.replace(/[\s()-]/g, '');
-    if (!/^\\+?[0-9]{7,15}$/.test(normalizedCustomerPhone)) {
+    if (!/^\+?[0-9]{7,15}$/.test(normalizedCustomerPhone)) {
       res.status(400).json({ error: 'رقم هاتف العميل غير صحيح.' });
       return;
     }
@@ -468,7 +468,7 @@ ${itemsListText}
     }
 
     // Build the direct WhatsApp URL
-    const targetPhone = String(storeSettings.whatsappPhone || '').replace(/\\D/g, '');
+    const targetPhone = String(storeSettings.whatsappPhone || '').replace(/\D/g, '');
     const fullPhone = targetPhone.startsWith('967') ? targetPhone : `967${targetPhone}`;
     if (!/^[0-9]{10,15}$/.test(fullPhone)) {
       res.status(503).json({ error: 'رقم واتساب المتجر غير مضبوط. يرجى التواصل مع صاحبة المتجر.' });
