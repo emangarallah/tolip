@@ -803,15 +803,24 @@ class StoreDatabase {
     const previous = this.requestTail;
     this.requestTail = new Promise<void>((resolve) => { release = resolve; });
     await previous;
+    let client: any = null;
+    let locked = false;
     try {
-      const client = await this.pool.connect();
+      client = await this.pool.connect();
       await client.query('SELECT pg_advisory_lock(7319462026)');
+      locked = true;
       const result = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
       if (!result.rows.length) throw new Error('Neon store state row is missing.');
       this.data = result.rows[0].payload as DatabaseSchema;
       this.activeClient = client;
       this.activeRequestRelease = release;
     } catch (error) {
+      if (client) {
+        if (locked) {
+          try { await client.query('SELECT pg_advisory_unlock(7319462026)'); } catch {}
+        }
+        client.release();
+      }
       release();
       throw error;
     }
