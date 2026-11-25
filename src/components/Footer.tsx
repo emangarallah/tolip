@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageCircle, Facebook, Instagram, MapPin, Lock, Heart, ArrowUpRight, Sun, Moon, Globe } from 'lucide-react';
 import { TulipLogo } from './TulipLogo.tsx';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
 import type { Category, StoreSettings } from '../types/store.ts';
 import type { PolicyType } from './PolicyModal.tsx';
 import { Language, Theme, translations } from '../utils/i18n.ts';
@@ -238,6 +239,11 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
             </ul>
           </div>
+        </div>
+
+        {/* App installation at the bottom of the footer */}
+        <div className="flex justify-center pt-8">
+          <PWAInstallButton className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#E9D5DE] bg-[#FFF0F5] px-5 text-sm font-bold text-[#A52E58] transition-colors hover:bg-[#FBE0EA] dark:border-[#50303B] dark:bg-[#2B1720] dark:text-[#F0A8C1] dark:hover:bg-[#3A1D29]" />
         </div>
 
         {/* Footer Bottom Line */}
