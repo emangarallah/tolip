@@ -132,7 +132,7 @@ export const Footer: React.FC<FooterProps> = ({
               {t.storeCategories}
             </h4>
             <ul className="space-y-2 text-xs">
-              {categories.slice(0, 6).map((cat) => (
+              {categories.map((cat) => (
                 <li key={cat.id}>
                   <button
                     onClick={() => onNavigate('products', cat.id)}
