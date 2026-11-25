@@ -94,8 +94,8 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 .tulip-opening-logo {
   transform-origin: 50% 58%;
   animation:
-    tulip-logo-enter 1.25s cubic-bezier(0.2, 0.75, 0.25, 1) both,
-    tulip-logo-glow 3.2s ease-in-out 1.25s infinite;
+    tulip-logo-enter 4.5s cubic-bezier(0.2, 0.75, 0.25, 1) both,
+    tulip-logo-glow 7s ease-in-out 4.5s infinite;
 }
 
 @keyframes tulip-logo-enter {
