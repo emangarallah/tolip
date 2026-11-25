@@ -670,6 +670,13 @@ app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
+  if (isProduction) {
+    throw new Error(
+      'Production startup blocked: the current StoreDatabase reads/writes data/store_database.json. ' +
+      'A persistent Neon/PostgreSQL adapter and durable image storage must be configured before serving customer orders.'
+    );
+  }
+
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
