@@ -74,6 +74,22 @@ test('admin can create, update and delete a category and product persistently', 
   assert.ok(!persisted.categories.some((entry: any) => entry.id === category.id));
 });
 
+test('admin password is scrypt-verified and login session rotation invalidates prior sessions', () => {
+  const previousSession = db.getAdminSessionVersion();
+  const email = 'owner-test@example.com';
+  const password = 'T0lip-test-strong-password-2026!';
+  db.updateAdminCredentials(email, password);
+
+  assert.equal(db.verifyAdminCredentials(email, password), true);
+  assert.equal(db.verifyAdminCredentials(email, 'incorrect-password'), false);
+  const credentialSession = db.getAdminSessionVersion();
+  assert.notEqual(credentialSession, previousSession);
+
+  const nextSession = db.rotateAdminSession();
+  assert.notEqual(nextSession, credentialSession);
+  assert.equal(db.getAdminSessionVersion(), nextSession);
+});
+
 test('order creation stores the final WhatsApp message and status', () => {
   const product = db.getProducts()[0];
   const variant = product.variants.find((entry: any) => entry.stock > 0);
