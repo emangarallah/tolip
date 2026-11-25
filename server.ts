@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { put } from '@vercel/blob';
 import { db, generateToken, verifyToken } from './src/server/db.ts';
 
 dotenv.config();
@@ -17,6 +18,21 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 // Parse JSON and URL-encoded bodies (allowing up to 15MB for custom image uploads)
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Wait for queued Neon writes before returning JSON to the client.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const originalJson = res.json.bind(res);
+  (res as any).json = (body: any) => {
+    db.flushPersistence()
+      .then(() => originalJson(body))
+      .catch((error: any) => {
+        console.error('Database persistence failed:', error);
+        if (!res.headersSent) originalJson({ error: 'تعذر حفظ الطلب في قاعدة البيانات. حاول مرة أخرى.' });
+      });
+    return res;
+  };
+  next();
+});
 
 // Ensure upload directory exists
 const UPLOADS_DIR = path.resolve(__dirname, 'public/uploads');
@@ -630,74 +646,78 @@ app.get('/api/admin/stats', requireAdmin, (req: Request, res: Response) => {
 // ==========================================
 // 6. Image Upload API (Base64 file storage)
 // ==========================================
-app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
+app.post('/api/upload', requireAdmin, async (req: Request, res: Response) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      res.status(503).json({ error: 'رفع الصور يحتاج إلى خدمة تخزين دائمة (Object Storage) قبل تفعيل الإنتاج.' });
-      return;
-    }
-    const { base64Data, filename } = req.body;
-    if (!base64Data) {
+    const { base64Data } = req.body;
+    if (typeof base64Data !== 'string' || !base64Data) {
       res.status(400).json({ error: 'بيانات الصورة مفقودة' });
       return;
     }
-
-    // Match data:image/png;base64,...
-    const matches = base64Data.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    const matches = base64Data.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=]+)$/i);
     if (!matches || matches.length !== 3) {
       res.status(400).json({ error: 'صيغة الصورة غير صحيحة' });
       return;
     }
-
-    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const mime = matches[1].toLowerCase() === 'jpg' ? 'image/jpeg' : `image/${matches[1].toLowerCase()}`;
     const buffer = Buffer.from(matches[2], 'base64');
-    const safeName = `tulip_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-    const filePath = path.join(UPLOADS_DIR, safeName);
-
+    if (buffer.length > 8 * 1024 * 1024) {
+      res.status(413).json({ error: 'حجم الصورة يجب ألا يتجاوز 8 ميجابايت' });
+      return;
+    }
+    const extension = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
+    const safeName = `tolip/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    if (process.env.NODE_ENV === 'production') {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        res.status(503).json({ error: 'تخزين الصور غير مهيأ. تواصل مع مدير المتجر.' });
+        return;
+      }
+      const blob = await put(safeName, buffer, { access: 'public', contentType: mime, addRandomSuffix: true });
+      res.json({ success: true, url: blob.url });
+      return;
+    }
+    const filePath = path.join(UPLOADS_DIR, safeName.replace(/\//g, '-'));
     fs.writeFileSync(filePath, buffer);
-    const publicUrl = `/uploads/${safeName}`;
-
-    res.json({ success: true, url: publicUrl });
+    res.json({ success: true, url: `/uploads/${path.basename(filePath)}` });
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ error: 'فشل في رفع الصورة' });
   }
 });
 
-// ==========================================
 // 7. Vite Integration (SPA & Static Serving)
 // ==========================================
+let initialization: Promise<void> | null = null;
+export function initializeApp(): Promise<void> {
+  if (!initialization) initialization = db.initializePersistentStore();
+  return initialization;
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  const distPath = path.resolve(__dirname, 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.resolve(distPath, 'index.html'));
+  });
+}
+
 async function startServer() {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (isProduction) {
-    throw new Error(
-      'Production startup blocked: the current StoreDatabase reads/writes data/store_database.json. ' +
-      'A persistent Neon/PostgreSQL adapter and durable image storage must be configured before serving customer orders.'
-    );
-  }
-
-  if (!isProduction) {
+  if (isProduction) await initializeApp();
+  else {
     const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
-    });
   }
-
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌸 متجر توليب للعناية الطبيعية شغال على http://localhost:${PORT}`);
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
+
+export default app;
