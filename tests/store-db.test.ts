@@ -127,7 +127,7 @@ test('order creation stores the final WhatsApp message and status', () => {
   const statusUpdated = db.updateOrderStatus(order.id, 'confirmed');
   assert.equal(statusUpdated?.status, 'confirmed');
 
-  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.json'), 'utf8'));
+  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.runtime.json'), 'utf8'));
   const savedOrder = persisted.orders.find((entry: any) => entry.id === order.id);
   assert.equal(savedOrder.whatsappMessage, finalMessage);
   assert.equal(savedOrder.status, 'confirmed');
