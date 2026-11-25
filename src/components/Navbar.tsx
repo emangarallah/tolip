@@ -9,7 +9,6 @@ import {
   Sun,
   Moon,
   Globe,
-  PackageSearch,
 } from 'lucide-react';
 import { TulipLogo } from './TulipLogo.tsx';
 import type { StoreSettings } from '../types/store.ts';
@@ -18,7 +17,6 @@ import { Language, Theme, translations } from '../utils/i18n.ts';
 interface NavbarProps {
   settings: StoreSettings;
   favoritesCount: number;
-  onOpenTracking: () => void;
   activeTab: string;
   language: Language;
   theme: Theme;
@@ -32,7 +30,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   settings,
   favoritesCount,
-  onOpenTracking,
   activeTab,
   language,
   theme,
@@ -134,9 +131,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="h-5 w-5" />
             </button>
 
-            <button onClick={onOpenTracking} aria-label={language === 'ar' ? 'تتبع الطلب' : 'Track order'} title={language === 'ar' ? 'تتبع الطلب' : 'Track order'} className="flex h-11 w-11 items-center justify-center rounded-full text-[#4A4E4B] hover:bg-[#F4EFEA] dark:text-[#D1D8D3] dark:hover:bg-[#1C221E] transition-colors">
-              <PackageSearch className="h-5 w-5" />
-            </button>
             <button
               onClick={onOpenFavorites}
               aria-label={t.favorites}
@@ -220,7 +214,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           ))}
 
-          <button onClick={() => { onOpenTracking(); setMobileMenuOpen(false); }} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E9E1D9] bg-white px-3 text-sm font-semibold text-[#4A4E4B] dark:border-[#303832] dark:bg-[#1B211D] dark:text-[#E2E7E3]"><PackageSearch className="h-4 w-4 text-[#C74169]" />{language === 'ar' ? 'تتبع الطلب' : 'Track order'}</button>
           <div className="flex flex-wrap items-center gap-2 border-t border-[#F0EBE6] pt-3 dark:border-[#222724]">
             <button
               onClick={() => { onOpenFavorites(); setMobileMenuOpen(false); }}
