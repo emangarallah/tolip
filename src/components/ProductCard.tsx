@@ -33,6 +33,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   // Has discount?
   const hasDiscount = minPrice !== null && originalPrice && originalPrice > minPrice;
+  const hasAvailableVariant = product.variants.some((variant) => variant.stock > 0);
 
   return (
     <div className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
@@ -152,9 +153,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             onClick={() => onOrder(product)}
-            disabled={!product.inStock}
+            disabled={!product.inStock || !hasAvailableVariant}
             className={`w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs font-bold transition-all ${
-              product.inStock
+              product.inStock && hasAvailableVariant
                 ? 'bg-[#25D366] text-white hover:bg-[#20BA57] shadow-sm'
                 : 'bg-gray-100 dark:bg-[#222724] text-gray-400 dark:text-gray-600 cursor-not-allowed'
             }`}
