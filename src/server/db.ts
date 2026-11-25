@@ -49,14 +49,14 @@ function getAuthSecret(): string {
   return configured || 'local-development-only-tulip-auth-secret';
 }
 
-export function generateToken(payload: { email: string; id: string }): string {
+export function generateToken(payload: { email: string; id: string; sessionVersion?: string }): string {
   const secret = getAuthSecret();
   const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 3600 * 1000 })).toString('base64url');
   const signature = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${signature}`;
 }
 
-export function verifyToken(token: string): { email: string; id: string } | null {
+export function verifyToken(token: string): { email: string; id: string; sessionVersion?: string } | null {
   try {
     const [data, signature, extra] = token.split('.');
     if (!data || !signature || extra) return null;
@@ -67,7 +67,7 @@ export function verifyToken(token: string): { email: string; id: string } | null
     if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
     const decoded = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
     if (!decoded.exp || decoded.exp < Date.now() || !decoded.email || !decoded.id) return null;
-    return { email: String(decoded.email), id: String(decoded.id) };
+    return { email: String(decoded.email), id: String(decoded.id), sessionVersion: typeof decoded.sessionVersion === 'string' ? decoded.sessionVersion : undefined };
   } catch {
     return null;
   }
@@ -710,7 +710,7 @@ class StoreDatabase {
       if (!adminEmail || !adminPassword || adminPassword.length < 12) {
         throw new Error('Production requires ADMIN_EMAIL and ADMIN_PASSWORD (minimum 12 characters).');
       }
-      const salt = crypto.randomBytes(16).toString('hex');
+      const salt = crypto.createHash('sha256').update(`tolip-admin-salt:${adminEmail.toLowerCase()}`).digest('hex').slice(0, 32);
       this.data.adminUser.email = adminEmail;
       this.data.adminUser.salt = salt;
       this.data.adminUser.passwordHash = hashPassword(adminPassword, salt);
@@ -771,6 +771,10 @@ class StoreDatabase {
       name: this.data.adminUser.name,
       role: 'admin' as const,
     };
+  }
+
+  public getAdminSessionVersion(): string {
+    return this.data.adminUser.passwordHash;
   }
 
   public updateAdminCredentials(newEmail?: string, newPassword?: string) {
