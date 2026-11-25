@@ -21,7 +21,6 @@ import { Hero } from './components/Hero.tsx';
 import { CategoriesSection } from './components/CategoriesSection.tsx';
 import { ProductCard } from './components/ProductCard.tsx';
 import { ProductDetailModal } from './components/ProductDetailModal.tsx';
-import { CartDrawer } from './components/CartDrawer.tsx';
 import { CheckoutModal } from './components/CheckoutModal.tsx';
 import { OrderSuccessModal } from './components/OrderSuccessModal.tsx';
 import { PolicyModal, PolicyType } from './components/PolicyModal.tsx';
@@ -70,16 +69,6 @@ export default function App() {
   const [filterBestSellersOnly, setFilterBestSellersOnly] = useState(false);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
 
-  // Cart State (Persisted in localStorage)
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('tulip_cart');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
   // Favorites State (Persisted in localStorage)
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
@@ -91,8 +80,8 @@ export default function App() {
   });
 
   // Modals & Drawers
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
@@ -124,15 +113,6 @@ export default function App() {
       console.error(e);
     }
   }, [language]);
-
-  // Sync Cart to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('tulip_cart', JSON.stringify(cartItems));
-    } catch (err) {
-      console.error(err);
-    }
-  }, [cartItems]);
 
   // Sync Favorites to localStorage
   useEffect(() => {
@@ -178,62 +158,28 @@ export default function App() {
   const t = translations[language];
   const isRtl = language === 'ar';
 
-  // Cart Actions
-  const handleAddToCart = (product: Product, variantId?: string, quantity = 1) => {
-    const targetVariant = variantId
-      ? product.variants.find((v) => v.id === variantId) || product.variants[0]
-      : product.variants[0];
+  // Direct single-product order: prepare one item and open the delivery form.
+  const handleStartOrder = (product: Product, variantId: string, quantity = 1) => {
+    const selectedVariant =
+      product.variants.find((variant) => variant.id === variantId) || product.variants[0];
 
-    const itemId = `${product.id}_${targetVariant?.id || 'default'}`;
+    if (!selectedVariant || !product.inStock) return;
 
-    setCartItems((prev) => {
-      const existingIdx = prev.findIndex((item) => item.id === itemId);
-      if (existingIdx > -1) {
-        const next = [...prev];
-        next[existingIdx] = {
-          ...next[existingIdx],
-          quantity: next[existingIdx].quantity + quantity,
-        };
-        return next;
-      } else {
-        const newItem: CartItem = {
-          id: itemId,
-          productId: product.id,
-          productName: product.name,
-          variantId: targetVariant?.id || 'default',
-          variantName: targetVariant?.name || (language === 'ar' ? 'قياسي' : 'Standard'),
-          price: targetVariant?.price ?? null,
-          quantity,
-          image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
-          categoryName: product.categoryName,
-        };
-        return [...prev, newItem];
-      }
-    });
+    const orderItem: CartItem = {
+      id: `${product.id}_${selectedVariant.id}`,
+      productId: product.id,
+      productName: product.name,
+      variantId: selectedVariant.id,
+      variantName: selectedVariant.name,
+      price: selectedVariant.price ?? null,
+      quantity: Math.max(1, Math.floor(quantity)),
+      image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
+      categoryName: product.categoryName,
+    };
 
-    setIsCartOpen(true);
-  };
-
-  const handleUpdateCartQuantity = (itemId: string, delta: number) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) => {
-          if (item.id === itemId) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter((item): item is CartItem => item !== null)
-    );
-  };
-
-  const handleRemoveCartItem = (itemId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== itemId));
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
+    setCheckoutItems([orderItem]);
+    setSelectedProduct(null);
+    setIsCheckoutOpen(true);
   };
 
   // Favorites Action
@@ -315,8 +261,6 @@ export default function App() {
     ? products.filter((p) => p.categoryId === selectedProduct.categoryId && p.id !== selectedProduct.id).slice(0, 4)
     : [];
 
-  const cartItemsCount = cartItems.reduce((acc, it) => acc + it.quantity, 0);
-
   if (isLoading || !settings) {
     return (
       <div className="min-h-screen bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-white flex flex-col items-center justify-center space-y-4">
@@ -331,13 +275,11 @@ export default function App() {
       {/* 1. Header & Navigation */}
       <Navbar
         settings={settings}
-        cartCount={cartItemsCount}
         favoritesCount={favorites.length}
         activeTab={activeTab}
         language={language}
         theme={theme}
         onNavigate={handleNavigate}
-        onOpenCart={() => setIsCartOpen(true)}
         onOpenFavorites={() => {
           setActiveTab('products');
           setShowFavoritesOnly(true);
@@ -408,7 +350,6 @@ export default function App() {
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -452,7 +393,6 @@ export default function App() {
                         language={language}
                         onToggleFavorite={handleToggleFavorite}
                         onViewDetails={(p) => setSelectedProduct(p)}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -647,7 +587,6 @@ export default function App() {
                     language={language}
                     onToggleFavorite={handleToggleFavorite}
                     onViewDetails={(p) => setSelectedProduct(p)}
-                    onAddToCart={handleAddToCart}
                   />
                 ))}
               </div>
@@ -809,37 +748,20 @@ export default function App() {
           MODALS & DRAWERS
       ------------------------------------------------------------- */}
 
-      {/* Cart Drawer */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        items={cartItems}
-        settings={settings}
-        language={language}
-        onClose={() => setIsCartOpen(false)}
-        onUpdateQuantity={handleUpdateCartQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={handleClearCart}
-        onProceedToCheckout={() => {
-          setIsCartOpen(false);
-          setIsCheckoutOpen(true);
-        }}
-        onBrowseProducts={() => {
-          handleNavigate('products');
-        }}
-      />
-
-      {/* Checkout Form Modal */}
+      {/* Single-product delivery form */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        items={cartItems}
+        items={checkoutItems}
         settings={settings}
         language={language}
-        onClose={() => setIsCheckoutOpen(false)}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setCheckoutItems([]);
+        }}
         onOrderSuccess={(order, whatsappUrl) => {
           setIsCheckoutOpen(false);
-          setCartItems([]);
+          setCheckoutItems([]);
           setCompletedOrder({ order, whatsappUrl });
-          window.open(whatsappUrl, '_blank');
         }}
       />
 
@@ -861,7 +783,6 @@ export default function App() {
         language={language}
         onClose={() => setSelectedProduct(null)}
         onToggleFavorite={handleToggleFavorite}
-        onAddToCart={handleAddToCart}
         onSelectSimilarProduct={(p) => setSelectedProduct(p)}
       />
 
