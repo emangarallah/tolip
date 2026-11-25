@@ -187,7 +187,7 @@ export default function App() {
         ? { ...line, quantity: Math.min(variant.stock, 99, line.quantity + 1) } : line);
       return [...previous, { productId: product.id, variantId: variant.id, quantity: 1 }];
     });
-    setIsCartOpen(true);
+    // Keep the customer on the catalog so they can add more products.
   };
 
   const handleCartUpdate = (productId: string, variantId: string, quantity: number) => {
