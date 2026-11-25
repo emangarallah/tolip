@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tolip-shell-v1';
+const CACHE_NAME = 'tolip-shell-v2';
 const SHELL_URLS = ['/', '/manifest.webmanifest', '/images/tolip-logo.png'];
 
 self.addEventListener('install', (event) => {
@@ -39,15 +39,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/assets/') || /\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/i.test(url.pathname)) {
+  if (url.pathname.startsWith('/assets/') || /\\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/i.test(url.pathname)) {
+    // Network first: deployed changes appear in the installed app immediately
+    // on the next request, while cached files remain available offline.
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      }))
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
   }
 });
