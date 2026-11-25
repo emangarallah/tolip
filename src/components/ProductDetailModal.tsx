@@ -26,16 +26,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onOrder,
   onSelectSimilarProduct,
 }) => {
-  if (!product) return null;
-
   const t = translations[language];
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
-    product.variants[0]?.id || ''
+    product?.variants[0]?.id || ''
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(0);
   const selectedVariant: ProductVariant | undefined =
-    product.variants.find((v) => v.id === selectedVariantId) || product.variants[0];
+    product?.variants.find((v) => v.id === selectedVariantId) || product?.variants[0];
 
   const currentPrice = selectedVariant?.price ?? null;
   const originalPrice = selectedVariant?.originalPrice ?? null;
@@ -45,9 +43,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const totalPrice = currentPrice !== null ? currentPrice * quantity : null;
 
   const handleWhatsAppOrder = () => {
-    if (!selectedVariant || !product.inStock) return;
+    if (!product || !selectedVariant || !product.inStock) return;
     onOrder(product, selectedVariant.id, quantity);
   };
+
+  if (!product) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
