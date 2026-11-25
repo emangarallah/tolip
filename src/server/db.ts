@@ -752,6 +752,7 @@ class StoreDatabase {
       fs.renameSync(tmpFile, DB_FILE);
     } catch (err) {
       console.error('Failed to write database atomically:', err);
+      throw new Error('تعذر حفظ بيانات المتجر. تحقق من صلاحية الكتابة أو إعداد قاعدة بيانات دائمة.');
     }
   }
 
