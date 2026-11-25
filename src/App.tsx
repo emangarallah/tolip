@@ -27,7 +27,7 @@ import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
-import { TulipLogo } from './components/TulipLogo.tsx';
+import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
 import type { Product, Category, StoreSettings, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
@@ -60,6 +60,7 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
 
   // Navigation & View States
   const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'about' | 'contact'>('home');
@@ -91,19 +92,23 @@ export default function App() {
   const [completedOrder, setCompletedOrder] = useState<{ order: Order; whatsappUrl: string } | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // Theme Sync effect
+  // Keep the document class, browser controls and stored preference in sync.
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.style.colorScheme = theme;
     try {
       localStorage.setItem('tulip_theme', theme);
     } catch (e) {
-      console.error(e);
+      console.error('Unable to persist theme preference:', e);
     }
   }, [theme]);
+
+  // Show the branded opening screen for at least 1.8 seconds on every fresh visit.
+  // If the API takes longer, the opening screen remains visible until the store is ready.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSplashMinimumElapsed(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Language & Direction Sync effect
   useEffect(() => {
@@ -262,16 +267,38 @@ export default function App() {
     ? products.filter((p) => p.categoryId === selectedProduct.categoryId && p.id !== selectedProduct.id).slice(0, 4)
     : [];
 
-  if (isLoading || !settings) {
+  if (isLoading || !settings || !splashMinimumElapsed) {
     return (
-      <div className="min-h-screen bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-white flex items-center justify-center px-6">
-        <div className="flex flex-col items-center justify-center gap-5 animate-in fade-in duration-500">
-          <TulipLogo size="lg" showText />
-          <div className="h-1 w-24 overflow-hidden rounded-full bg-[#F5E1E8] dark:bg-[#3D202B]">
-            <div className="h-full w-1/2 rounded-full bg-[#C74169] dark:bg-[#E06287] animate-pulse" />
+      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#FFFCFA] px-5 py-8 text-[#1F2421] dark:bg-[#121513] dark:text-[#F1F4F2]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#F9DDE7]/55 blur-3xl dark:bg-[#6A2035]/20" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#E7EFD9]/70 blur-3xl dark:bg-[#31452F]/20" />
+
+        <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
+          <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
+
+          <div className="mt-0 space-y-1">
+            <h1 className="font-[Alexandria] text-4xl font-extrabold tracking-tight text-[#D45283] dark:text-[#F08CAF]">
+              توليب
+            </h1>
+            <p className="text-sm font-bold text-[#242424] dark:text-[#F1F4F2]">
+              منتجات عناية بالبشرة والجسم
+            </p>
+          </div>
+
+          <div className="mt-7 space-y-2">
+            <p className="text-xl font-bold leading-relaxed text-[#D45283] dark:text-[#F08CAF]">
+              لقد تم اختيار منتجك بكل عناية
+            </p>
+            <p className="text-base font-semibold leading-8 text-[#262626] dark:text-[#DDE3DE]">
+              ليضيف لمسة من الجمال والتميز إلى يومك.
+            </p>
+          </div>
+
+          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#F5DDE6] dark:bg-[#39232B]">
+            <div className="h-full w-2/5 rounded-full bg-[#D45283] dark:bg-[#F08CAF] animate-pulse" />
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
