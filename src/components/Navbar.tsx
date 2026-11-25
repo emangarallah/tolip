@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { PWAInstallButton } from './PWAInstallButton.tsx';
 import {
   Heart,
   Search,
@@ -100,7 +99,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop controls */}
           <div className="hidden shrink-0 items-center gap-2 md:flex">
-            <PWAInstallButton className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#E9D5DE] bg-[#FFF0F5] px-3.5 text-xs font-bold text-[#A52E58] transition-colors hover:bg-[#FBE0EA] dark:border-[#50303B] dark:bg-[#2B1720] dark:text-[#F0A8C1] dark:hover:bg-[#3A1D29]" />
             <button
               onClick={onToggleLanguage}
               aria-label={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
@@ -217,7 +215,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           ))}
 
           <div className="flex flex-wrap items-center gap-2 border-t border-[#F0EBE6] pt-3 dark:border-[#222724]">
-            <PWAInstallButton className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E9D5DE] bg-[#FFF0F5] px-3 text-sm font-bold text-[#A52E58] dark:border-[#50303B] dark:bg-[#2B1720] dark:text-[#F0A8C1]" />
             <button
               onClick={() => { onOpenFavorites(); setMobileMenuOpen(false); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#E9E1D9] bg-white px-3 text-sm font-semibold text-[#4A4E4B] dark:border-[#303832] dark:bg-[#1B211D] dark:text-[#E2E7E3]"
