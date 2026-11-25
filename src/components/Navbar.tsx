@@ -9,7 +9,6 @@ import {
   Sun,
   Moon,
   Globe,
-  ShoppingCart,
   PackageSearch,
 } from 'lucide-react';
 import { TulipLogo } from './TulipLogo.tsx';
@@ -19,8 +18,6 @@ import { Language, Theme, translations } from '../utils/i18n.ts';
 interface NavbarProps {
   settings: StoreSettings;
   favoritesCount: number;
-  cartCount: number;
-  onOpenCart: () => void;
   onOpenTracking: () => void;
   activeTab: string;
   language: Language;
@@ -35,8 +32,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   settings,
   favoritesCount,
-  cartCount,
-  onOpenCart,
   onOpenTracking,
   activeTab,
   language,
@@ -139,10 +134,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="h-5 w-5" />
             </button>
 
-            <button onClick={onOpenCart} aria-label={language === 'ar' ? 'سلة المشتريات' : 'Shopping cart'} className="relative flex h-11 w-11 items-center justify-center rounded-full text-[#4A4E4B] hover:bg-[#FFF0F4] hover:text-[#C74169] dark:text-[#D1D8D3] dark:hover:bg-[#2A161E] transition-colors">
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C74169] px-1 text-[10px] font-bold text-white">{cartCount}</span>}
-            </button>
             <button onClick={onOpenTracking} aria-label={language === 'ar' ? 'تتبع الطلب' : 'Track order'} title={language === 'ar' ? 'تتبع الطلب' : 'Track order'} className="flex h-11 w-11 items-center justify-center rounded-full text-[#4A4E4B] hover:bg-[#F4EFEA] dark:text-[#D1D8D3] dark:hover:bg-[#1C221E] transition-colors">
               <PackageSearch className="h-5 w-5" />
             </button>
