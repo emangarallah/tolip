@@ -356,6 +356,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleChangeCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setSecurityMsg('');
+    if (newPass && newPass.length < 12) {
+      setSecurityMsg('كلمة المرور الجديدة يجب ألا تقل عن 12 حرفًا.');
+      return;
+    }
     try {
       const res = await fetch('/api/admin/change-password', {
         method: 'POST',
