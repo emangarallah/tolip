@@ -27,6 +27,7 @@ interface DatabaseSchema {
     email: string;
     passwordHash: string;
     salt: string;
+    sessionVersion?: string;
     name: string;
   };
   settings: StoreSettings;
@@ -40,6 +41,7 @@ function hashPassword(password: string, salt: string): string {
 }
 
 function verifyPassword(password: string, salt: string, expectedHash: string): boolean {
+  if (!/^[a-f0-9]{128}$/i.test(expectedHash)) return false;
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expectedHash, 'hex'));
 }
@@ -55,14 +57,15 @@ function getAuthSecret(): string {
   return configured || 'local-development-only-tulip-auth-secret';
 }
 
-export function generateToken(payload: { email: string; id: string; sessionVersion?: string }): string {
+export function generateToken(payload: { email: string; id: string; sessionVersion: string; role: 'admin' }): string {
   const secret = getAuthSecret();
-  const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 3600 * 1000 })).toString('base64url');
+  // Admin bearer sessions expire after 12 hours and are stored in sessionStorage.
+  const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 12 * 60 * 60 * 1000 })).toString('base64url');
   const signature = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${signature}`;
 }
 
-export function verifyToken(token: string): { email: string; id: string; sessionVersion?: string } | null {
+export function verifyToken(token: string): { email: string; id: string; sessionVersion: string; role: 'admin' } | null {
   try {
     const [data, signature, extra] = token.split('.');
     if (!data || !signature || extra) return null;
@@ -72,8 +75,8 @@ export function verifyToken(token: string): { email: string; id: string; session
     const expected = Buffer.from(expectedSig);
     if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
     const decoded = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
-    if (!decoded.exp || decoded.exp < Date.now() || !decoded.email || !decoded.id) return null;
-    return { email: String(decoded.email), id: String(decoded.id), sessionVersion: typeof decoded.sessionVersion === 'string' ? decoded.sessionVersion : undefined };
+    if (!decoded.exp || decoded.exp < Date.now() || !decoded.email || !decoded.id || !decoded.sessionVersion || decoded.role !== 'admin') return null;
+    return { email: String(decoded.email), id: String(decoded.id), sessionVersion: String(decoded.sessionVersion), role: 'admin' };
   } catch {
     return null;
   }
@@ -693,6 +696,7 @@ function createDefaultDatabase(): DatabaseSchema {
       email: adminEmail,
       passwordHash: hashPassword(initialPassword, adminSalt),
       salt: adminSalt,
+      sessionVersion: crypto.randomUUID(),
       name: 'صاحب متجر توليب',
     },
     settings: defaultSettings,
@@ -721,10 +725,13 @@ class StoreDatabase {
       if (!adminEmail || !adminPassword || adminPassword.length < 12) {
         throw new Error('Production requires ADMIN_EMAIL and ADMIN_PASSWORD (minimum 12 characters).');
       }
-      const salt = crypto.createHash('sha256').update(`tolip-admin-salt:${adminEmail.toLowerCase()}`).digest('hex').slice(0, 32);
+      // Use a fresh random salt for the initial deployment-seeded admin password.
+      // Existing Neon admin credentials remain authoritative after store initialization.
+      const salt = crypto.randomBytes(16).toString('hex');
       this.data.adminUser.email = adminEmail;
       this.data.adminUser.salt = salt;
       this.data.adminUser.passwordHash = hashPassword(adminPassword, salt);
+      this.data.adminUser.sessionVersion = crypto.randomUUID();
     }
   }
 
@@ -786,6 +793,10 @@ class StoreDatabase {
       // Do not overwrite its password hash from deployment env on every cold start;
       // doing so makes database credential updates impossible to use.
       this.data = result.rows[0].payload as DatabaseSchema;
+      // Backward-compatible one-time session version migration for existing Neon rows.
+      if (!this.data.adminUser.sessionVersion) {
+        this.data.adminUser.sessionVersion = crypto.randomUUID();
+      }
     } else {
       await pool.query(
         'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
@@ -885,18 +896,34 @@ class StoreDatabase {
   }
 
   public getAdminSessionVersion(): string {
-    return this.data.adminUser.passwordHash;
+    return this.data.adminUser.sessionVersion || this.data.adminUser.passwordHash;
+  }
+
+  // Rotate the single-admin session on every successful login. Any prior browser
+  // token immediately becomes invalid, so only the latest admin session is active.
+  public rotateAdminSession(): string {
+    this.data.adminUser.sessionVersion = crypto.randomUUID();
+    this.persist();
+    return this.data.adminUser.sessionVersion;
   }
 
   public updateAdminCredentials(newEmail?: string, newPassword?: string) {
     if (newEmail) {
-      this.data.adminUser.email = newEmail.trim();
+      const normalizedEmail = newEmail.trim().toLowerCase();
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+        throw new Error('البريد الإلكتروني غير صحيح.');
+      }
+      this.data.adminUser.email = normalizedEmail;
     }
-    if (newPassword && newPassword.length >= 6) {
+    if (newPassword) {
+      if (newPassword.length < 12) {
+        throw new Error('كلمة المرور الجديدة يجب ألا تقل عن 12 حرفًا.');
+      }
       const newSalt = crypto.randomBytes(16).toString('hex');
       this.data.adminUser.salt = newSalt;
       this.data.adminUser.passwordHash = hashPassword(newPassword, newSalt);
     }
+    this.data.adminUser.sessionVersion = crypto.randomUUID();
     this.persist();
     return this.getAdminInfo();
   }
