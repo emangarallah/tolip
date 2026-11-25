@@ -22,8 +22,10 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
     const subSize = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-[11px]' : 'text-[10px]';
     return (
       <div className={`flex items-center gap-2.5 ${className}`}>
-        <div className={`flex ${markSize} shrink-0 items-center justify-center rounded-xl border border-[#F5E1E8] bg-gradient-to-br from-[#FFF0F4] to-[#F2F8F4] shadow-sm`} aria-hidden="true">
-          <span className="font-serif text-2xl font-bold leading-none text-[#C74169]">T</span>
+        <div className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1] shadow-[0_3px_12px_rgba(199,65,105,0.18)]`} aria-hidden="true">
+          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/70 to-transparent opacity-90" />
+          <span className="relative -rotate-12 font-serif text-[29px] italic font-black leading-none text-transparent bg-clip-text bg-gradient-to-br from-[#F08AA9] via-[#C74169] to-[#8F2348] drop-shadow-[0_1px_1px_rgba(255,255,255,0.85)]">T</span>
+          <span className="absolute left-[23%] top-[18%] h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.95)]" />
         </div>
         {showText && (
           <div className="flex flex-col text-right leading-none select-none">
