@@ -98,32 +98,37 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Zone 3: Interactive Controls (Language, Theme, Search, Favorites, Cart, WhatsApp) */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Language Toggle Button */}
-            <button
-              onClick={onToggleLanguage}
-              aria-label="Toggle language"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] border border-[#EBE4DC] dark:border-[#2D332F] transition-all focus:outline-none"
-              title={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
-            >
-              <Globe className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
-              <span className="font-sans text-[11px] uppercase tracking-wider">
-                {language === 'ar' ? 'English' : 'عربي'}
-              </span>
-            </button>
+            {/* Language & Theme Toggle Buttons (Only on Home Page) */}
+            {activeTab === 'home' && (
+              <>
+                {/* Language Toggle Button */}
+                <button
+                  onClick={onToggleLanguage}
+                  aria-label="Toggle language"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] border border-[#EBE4DC] dark:border-[#2D332F] transition-all focus:outline-none"
+                  title={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+                >
+                  <Globe className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
+                  <span className="font-sans text-[11px] uppercase tracking-wider">
+                    {language === 'ar' ? 'English' : 'عربي'}
+                  </span>
+                </button>
 
-            {/* Dark / Light Theme Toggle Button */}
-            <button
-              onClick={onToggleTheme}
-              aria-label={theme === 'dark' ? t.themeLight : t.themeDark}
-              className="p-2 sm:p-2.5 rounded-full text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] transition-colors focus:outline-none border border-transparent dark:border-[#2D332F]"
-              title={theme === 'dark' ? t.themeLight : t.themeDark}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-90 duration-200" />
-              ) : (
-                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-[#555C57] animate-in spin-in-90 duration-200" />
-              )}
-            </button>
+                {/* Dark / Light Theme Toggle Button */}
+                <button
+                  onClick={onToggleTheme}
+                  aria-label={theme === 'dark' ? t.themeLight : t.themeDark}
+                  className="p-2 sm:p-2.5 rounded-full text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] transition-colors focus:outline-none border border-transparent dark:border-[#2D332F]"
+                  title={theme === 'dark' ? t.themeLight : t.themeDark}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-90 duration-200" />
+                  ) : (
+                    <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-[#555C57] animate-in spin-in-90 duration-200" />
+                  )}
+                </button>
+              </>
+            )}
 
             {/* Search Trigger */}
             <button
@@ -206,23 +211,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           ))}
 
           <div className="pt-3 border-t border-[#F0EBE6] dark:border-[#222724] space-y-2">
-            <div className="flex items-center justify-between px-2 py-1 text-xs text-[#6B7280] dark:text-[#9DA6A0]">
-              <span>{language === 'ar' ? 'اللغة والوضع' : 'Language & Theme'}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onToggleLanguage}
-                  className="px-2.5 py-1 rounded-lg bg-[#FAF7F3] dark:bg-[#1E2320] text-[#1F2421] dark:text-white font-medium border border-[#E0D9CF] dark:border-[#2D332F]"
-                >
-                  {language === 'ar' ? 'English' : 'عربي'}
-                </button>
-                <button
-                  onClick={onToggleTheme}
-                  className="p-1.5 rounded-lg bg-[#FAF7F3] dark:bg-[#1E2320] text-[#1F2421] dark:text-white border border-[#E0D9CF] dark:border-[#2D332F]"
-                >
-                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#555C57]" />}
-                </button>
+            {activeTab === 'home' && (
+              <div className="flex items-center justify-between px-2 py-1 text-xs text-[#6B7280] dark:text-[#9DA6A0]">
+                <span>{language === 'ar' ? 'اللغة والوضع' : 'Language & Theme'}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={onToggleLanguage}
+                    className="px-2.5 py-1 rounded-lg bg-[#FAF7F3] dark:bg-[#1E2320] text-[#1F2421] dark:text-white font-medium border border-[#E0D9CF] dark:border-[#2D332F]"
+                  >
+                    {language === 'ar' ? 'English' : 'عربي'}
+                  </button>
+                  <button
+                    onClick={onToggleTheme}
+                    className="p-1.5 rounded-lg bg-[#FAF7F3] dark:bg-[#1E2320] text-[#1F2421] dark:text-white border border-[#E0D9CF] dark:border-[#2D332F]"
+                  >
+                    {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#555C57]" />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <a
               href={settings.whatsappOfficialLink || `https://wa.me/967${settings.whatsappPhone}`}

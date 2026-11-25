@@ -56,7 +56,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 الإجمالي: ${totalStr}
 
 أرجو تأكيد الطلب وتفاصيل التوصيل.`
-        : `Hello Tulip Natural Care, I would like to order the following product:
+        : `Hello Tolipe Natural Care, I would like to order the following product:
 
 Product Name: ${product.name}
 Size / Variant: ${variantName}

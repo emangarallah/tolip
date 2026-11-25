@@ -72,7 +72,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
         };
       case 'about':
         return {
-          title: language === 'ar' ? 'عن متجر توليب – Tulip Natural Care' : 'About Tulip Natural Care',
+          title: language === 'ar' ? 'عن متجر توليب – Tolipe Natural Care' : 'About Tolipe Natural Care',
           icon: <Heart className="w-6 h-6 text-[#C74169] dark:text-[#E06287]" />,
           content: settings.aboutUsText,
           extra: (

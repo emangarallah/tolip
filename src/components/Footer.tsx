@@ -10,6 +10,7 @@ interface FooterProps {
   categories: Category[];
   language: Language;
   theme: Theme;
+  activeTab?: string;
   onNavigate: (tab: string, categoryId?: string) => void;
   onOpenPolicy: (type: PolicyType) => void;
   onOpenAdmin: () => void;
@@ -22,6 +23,7 @@ export const Footer: React.FC<FooterProps> = ({
   categories,
   language,
   theme,
+  activeTab = 'home',
   onNavigate,
   onOpenPolicy,
   onOpenAdmin,
@@ -97,26 +99,30 @@ export const Footer: React.FC<FooterProps> = ({
                 <MessageCircle className="w-4 h-4" />
               </a>
 
-              <span className="h-5 w-px bg-[#D9D2C9] dark:bg-[#2D332F] mx-1" />
+              {activeTab === 'home' && (
+                <>
+                  <span className="h-5 w-px bg-[#D9D2C9] dark:bg-[#2D332F] mx-1" />
 
-              {/* Theme Toggle shortcut in footer */}
-              <button
-                onClick={onToggleTheme}
-                className="p-2 rounded-full bg-white dark:bg-[#1E2320] border border-[#D9D2C9] dark:border-[#2D332F] text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white transition-colors"
-                title={theme === 'dark' ? t.themeLight : t.themeDark}
-              >
-                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#555C57]" />}
-              </button>
+                  {/* Theme Toggle shortcut in footer */}
+                  <button
+                    onClick={onToggleTheme}
+                    className="p-2 rounded-full bg-white dark:bg-[#1E2320] border border-[#D9D2C9] dark:border-[#2D332F] text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white transition-colors"
+                    title={theme === 'dark' ? t.themeLight : t.themeDark}
+                  >
+                    {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#555C57]" />}
+                  </button>
 
-              {/* Language Toggle shortcut in footer */}
-              <button
-                onClick={onToggleLanguage}
-                className="px-2.5 py-1.5 rounded-full bg-white dark:bg-[#1E2320] border border-[#D9D2C9] dark:border-[#2D332F] text-xs font-semibold text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white transition-colors flex items-center gap-1"
-                title="Toggle Language"
-              >
-                <Globe className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
-                <span className="font-sans text-[11px] uppercase">{language === 'ar' ? 'EN' : 'عربي'}</span>
-              </button>
+                  {/* Language Toggle shortcut in footer */}
+                  <button
+                    onClick={onToggleLanguage}
+                    className="px-2.5 py-1.5 rounded-full bg-white dark:bg-[#1E2320] border border-[#D9D2C9] dark:border-[#2D332F] text-xs font-semibold text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white transition-colors flex items-center gap-1"
+                    title="Toggle Language"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
+                    <span className="font-sans text-[11px] uppercase">{language === 'ar' ? 'EN' : 'عربي'}</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 

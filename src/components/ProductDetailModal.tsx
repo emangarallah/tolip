@@ -76,7 +76,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 الإجمالي: ${totalPriceStr}
 
 أرجو تأكيد الطلب وتفاصيل التوصيل.`
-        : `Hello Tulip Natural Care, I would like to order the following product:
+        : `Hello Tolipe Natural Care, I would like to order the following product:
 
 Product Name: ${product.name}
 Size / Variant: ${variantName}

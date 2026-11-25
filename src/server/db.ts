@@ -67,7 +67,7 @@ function createDefaultDatabase(): DatabaseSchema {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@tulip.ye';
 
   const defaultSettings: StoreSettings = {
-    storeName: 'توليب – Tulip Natural Care',
+    storeName: 'توليب – Tolipe Natural Care',
     storeTagline: 'عناية طبيعية فاخرة للبشرة والجسم والشعر',
     storeDescription: 'علامة تجارية يمنية رائدة متخصصة في مستحضرات العناية الطبيعية المبتكرة من خيرات الطبيعة، صُنعت بعناية فائقة لتبرز جمالك الطبيعي بأمان وفعالية.',
     logoUrl: '',

@@ -1,5 +1,5 @@
 /**
- * Types definition for Tulip Natural Care (توليب للعناية الطبيعية)
+ * Types definition for Tolipe Natural Care (توليب للعناية الطبيعية)
  */
 
 export interface ProductVariant {

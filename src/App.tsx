@@ -28,6 +28,7 @@ import { PolicyModal, PolicyType } from './components/PolicyModal.tsx';
 import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import type { Product, Category, StoreSettings, CartItem, Order } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
@@ -320,7 +321,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#FCFCFA] dark:bg-[#121513] text-[#1F2421] dark:text-white flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 rounded-full border-4 border-[#F5E1E8] dark:border-[#3D202B] border-t-[#C74169] dark:border-t-[#E06287] animate-spin" />
-        <p className="text-xs font-bold">{language === 'ar' ? 'جاري تجهيز متجر توليب للعناية الطبيعية...' : 'Loading Tulip Natural Care...'}</p>
+        <p className="text-xs font-bold">{language === 'ar' ? 'جاري تجهيز متجر توليب للعناية الطبيعية...' : 'Loading Tolipe Natural Care...'}</p>
       </div>
     );
   }
@@ -466,7 +467,7 @@ export default function App() {
                   <div className="lg:col-span-6 space-y-6 text-start">
                     <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-1.5 rounded-full border border-[#F5E1E8] dark:border-[#3D202B]">
                       <Leaf className="w-3.5 h-3.5" />
-                      <span>{language === 'ar' ? 'فلسفة توليب للعناية الطبيعية' : 'Tulip Natural Care Philosophy'}</span>
+                      <span>{language === 'ar' ? 'فلسفة توليب للعناية الطبيعية' : 'Tolipe Natural Care Philosophy'}</span>
                     </div>
 
                     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#1F2421] dark:text-white leading-tight">
@@ -678,7 +679,7 @@ export default function App() {
                 {t.about}
               </span>
               <h1 className="text-3xl sm:text-4xl font-black text-[#1F2421] dark:text-white">
-                {language === 'ar' ? 'عن متجر توليب للعناية الطبيعية' : 'About Tulip Natural Care'}
+                {language === 'ar' ? 'عن متجر توليب للعناية الطبيعية' : 'About Tolipe Natural Care'}
               </h1>
               <p className="text-sm text-[#717772] dark:text-[#8D9690]">
                 {t.brandBadge}
@@ -796,6 +797,7 @@ export default function App() {
         categories={categories}
         language={language}
         theme={theme}
+        activeTab={activeTab}
         onNavigate={handleNavigate}
         onOpenPolicy={(pType) => setPolicyType(pType)}
         onOpenAdmin={() => setIsAdminOpen(true)}
@@ -886,6 +888,14 @@ export default function App() {
         onClose={() => setIsAdminOpen(false)}
         onStoreUpdated={fetchStoreData}
       />
+
+      {/* Floating WhatsApp Live Chat Widget */}
+      {settings && (
+        <WhatsAppChatWidget
+          settings={settings}
+          language={language}
+        />
+      )}
     </div>
   );
 }

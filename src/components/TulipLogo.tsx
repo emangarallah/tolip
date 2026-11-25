@@ -31,7 +31,7 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           <div className="flex flex-col text-right">
             <span className="text-lg font-bold tracking-tight text-[#1F2421]">توليب</span>
             <span className="text-[10px] uppercase tracking-widest text-[#D45278] font-medium -mt-1">
-              Tulip Natural Care
+              Tolipe Natural Care
             </span>
           </div>
         )}
@@ -109,7 +109,7 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
             توليب
           </span>
           <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>
-            Tulip Natural Care
+            Tolipe Natural Care
           </span>
         </div>
       )}
