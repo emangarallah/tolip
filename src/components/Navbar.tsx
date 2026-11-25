@@ -113,7 +113,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={onToggleTheme}
                   aria-label={theme === 'dark' ? t.themeLight : t.themeDark}
-                  className="p-2 sm:p-2.5 rounded-full text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] transition-colors focus:outline-none border border-transparent dark:border-[#2D332F]"
+                  aria-pressed={theme === 'dark'}
+                  className="p-2 sm:p-2.5 rounded-full bg-[#FFF4D6] dark:bg-[#2A302B] text-[#A16207] dark:text-amber-300 hover:bg-[#FFE7A3] dark:hover:bg-[#39423B] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] border border-[#F2D28B] dark:border-[#465047] shadow-sm"
                   title={theme === 'dark' ? t.themeLight : t.themeDark}
                 >
                   {theme === 'dark' ? (
@@ -163,7 +164,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Open menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="tolip-mobile-navigation"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               className="md:hidden p-2 rounded-lg text-[#1F2421] dark:text-white hover:bg-[#F4EFEA] dark:hover:bg-[#1C221E] focus:outline-none"
             >
               {mobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
@@ -174,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[#F0EBE6] dark:border-[#222724] bg-[#FCFCFA] dark:bg-[#141715] px-4 pt-4 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top-2">
+        <div id="tolip-mobile-navigation" className="md:hidden border-t border-[#F0EBE6] dark:border-[#222724] bg-[#FCFCFA] dark:bg-[#141715] px-4 pt-4 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top-2 text-[#1F2421] dark:text-[#F1F4F2]">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -202,7 +205,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                   <button
                     onClick={onToggleTheme}
-                    className="p-1.5 rounded-lg bg-[#FAF7F3] dark:bg-[#1E2320] text-[#1F2421] dark:text-white border border-[#E0D9CF] dark:border-[#2D332F]"
+                    aria-pressed={theme === 'dark'}
+                    aria-label={theme === 'dark' ? t.themeLight : t.themeDark}
+                    className="p-2 rounded-xl bg-[#FFF4D6] dark:bg-[#2A302B] text-[#A16207] dark:text-amber-300 border border-[#F2D28B] dark:border-[#465047] shadow-sm focus-visible:ring-2 focus-visible:ring-[#C74169]"
                   >
                     {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#555C57]" />}
                   </button>
