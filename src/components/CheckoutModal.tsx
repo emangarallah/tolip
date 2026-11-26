@@ -56,7 +56,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
 
   const checkoutPrice = selectedVariant?.price !== null && selectedVariant?.price !== undefined && offer
-    ? Math.max(0, offer.type === 'percentage' ? selectedVariant.price * (1 - offer.value / 100) : selectedVariant.price - offer.value)
+    ? Math.round(Math.max(0, offer.type === 'percentage' ? selectedVariant.price * (1 - offer.value / 100) : selectedVariant.price - offer.value))
     : selectedVariant?.price ?? null;
 
   const items: OrderDraftItem[] = product && selectedVariant
