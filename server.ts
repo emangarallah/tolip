@@ -506,8 +506,8 @@ app.post('/api/orders', (req: Request, res: Response) => {
     let hasUnpricedItem = false;
     const formattedItems = normalizedItems.map(({ product, variant, quantity }) => {
       const basePrice = typeof variant.price === 'number' ? variant.price : null;
-      const price = basePrice !== null && appliedOffer ? Math.max(0, appliedOffer.type === 'percentage' ? basePrice * (1 - appliedOffer.value / 100) : basePrice - appliedOffer.value) : basePrice;
-      const itemSubtotal = price !== null ? Math.round(price) * quantity : null;
+      const price = basePrice !== null && appliedOffer ? Math.round(Math.max(0, appliedOffer.type === 'percentage' ? basePrice * (1 - appliedOffer.value / 100) : basePrice - appliedOffer.value)) : basePrice;
+      const itemSubtotal = price !== null ? price * quantity : null;
       if (itemSubtotal === null) {
         hasUnpricedItem = true;
         itemsTotal = null;
