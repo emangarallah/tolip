@@ -132,3 +132,11 @@ test('order creation stores the final WhatsApp message and status', () => {
   assert.equal(savedOrder.whatsappMessage, finalMessage);
   assert.equal(savedOrder.status, 'confirmed');
 });
+
+test('request leases can be safely released when running without Neon locally', async () => {
+  const finishRead = await db.beginRequest(true);
+  await finishRead();
+
+  const finishWrite = await db.beginRequest(false);
+  await finishWrite();
+});

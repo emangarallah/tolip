@@ -60,3 +60,8 @@ src/server/db.ts (StoreDatabase)
 ## Current limitation
 
 This is a modular-monolith foundation, not a complete Clean Architecture implementation. The `StoreDatabase` class still combines persistence operations and several domain operations. It should only be decomposed further in small, tested steps; do not replace the Neon adapter or rewrite the data model as part of routine route refactoring.
+
+
+## Request concurrency and availability
+
+Production API requests use PostgreSQL advisory locks around the shared JSONB store. Read-only requests acquire a shared lock and do not rewrite the stored snapshot, allowing multiple reads to proceed together. Mutating requests acquire an exclusive lock and persist once after the route completes, preserving cross-instance write consistency. Lock acquisition and database statements have bounded timeouts so contention or a slow database returns a controlled service-unavailable response rather than waiting for the Vercel function limit. The `/api/health` endpoint performs a lightweight database check without acquiring the store advisory lock.
