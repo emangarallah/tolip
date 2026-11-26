@@ -101,6 +101,9 @@ router.get('/api/products', async (req: Request, res: Response) => {
       includeInactive: includeInactive === 'true' && Boolean(getAdminPayload(req)),
       sortBy: sortBy as 'price-asc' | 'price-desc' | 'newest' | 'name',
     };
+    const cacheControl = options.includeInactive
+      ? 'no-store'
+      : 'public, max-age=0, s-maxage=10, stale-while-revalidate=20';
 
     if (hasPaginationQuery(req.query as Record<string, unknown>)) {
       const parsed = parsePaginationQuery(req.query as Record<string, unknown>);
@@ -109,11 +112,12 @@ router.get('/api/products', async (req: Request, res: Response) => {
         return;
       }
       const result = await db.getProductsPage(options, parsed.value.page, parsed.value.pageSize);
-      res.setHeader('Cache-Control', options.includeInactive ? 'no-store' : 'public, max-age=15, stale-while-revalidate=30');
+      res.setHeader('Cache-Control', cacheControl);
       res.json(result);
       return;
     }
 
+    res.setHeader('Cache-Control', cacheControl);
     res.json(db.getProducts(options));
   } catch (err) {
     console.error('Products query failed:', err);

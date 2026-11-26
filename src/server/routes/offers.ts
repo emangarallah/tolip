@@ -14,7 +14,12 @@ router.get('/api/offers', (req: Request, res: Response) => {
   try {
     const includeInactive = req.query.includeInactive === 'true' && Boolean(getAdminPayload(req));
     const offers = db.getOffers(includeInactive);
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader(
+      'Cache-Control',
+      includeInactive
+        ? 'no-store'
+        : 'public, max-age=0, s-maxage=10, stale-while-revalidate=20'
+    );
     res.json(offers.filter((offer: any) => includeInactive || offerIsCurrentlyActive(offer)));
   } catch { res.status(500).json({ error: 'تعذر جلب العروض' }); }
 });

@@ -29,7 +29,9 @@ export function getRequiredStoreDataSections(
     if (!paginated) scopes.add('products');
   } else if (path.startsWith('/api/offers')) {
     scopes.add('offers');
-    scopes.add('products');
+    if (normalizedMethod === 'POST' || normalizedMethod === 'PUT') {
+      scopes.add('products');
+    }
   } else if (path.startsWith('/api/orders')) {
     if (normalizedMethod === 'POST' && path === '/api/orders') {
       scopes.add('settings');

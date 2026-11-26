@@ -6,7 +6,26 @@ test('public catalog requests load only their related store data', () => {
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/products')].sort(), ['adminUser', 'categories', 'products'].sort());
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/categories')].sort(), ['adminUser', 'categories', 'products'].sort());
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/settings')].sort(), ['adminUser', 'settings'].sort());
-  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/offers')].sort(), ['adminUser', 'offers', 'products'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/offers')].sort(), ['adminUser', 'offers'].sort());
+});
+
+test('offer reads skip product hydration while offer writes retain product validation data', () => {
+  assert.deepEqual(
+    [...getRequiredStoreDataSections('GET', '/api/offers')].sort(),
+    ['adminUser', 'offers'].sort()
+  );
+  assert.deepEqual(
+    [...getRequiredStoreDataSections('POST', '/api/offers')].sort(),
+    ['adminUser', 'offers', 'products'].sort()
+  );
+  assert.deepEqual(
+    [...getRequiredStoreDataSections('PUT', '/api/offers/offer-1')].sort(),
+    ['adminUser', 'offers', 'products'].sort()
+  );
+  assert.deepEqual(
+    [...getRequiredStoreDataSections('DELETE', '/api/offers/offer-1')].sort(),
+    ['adminUser', 'offers'].sort()
+  );
 });
 
 test('checkout and order tracking load the data required by each operation', () => {
