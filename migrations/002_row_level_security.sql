@@ -163,7 +163,7 @@ CREATE POLICY tolip_offer_products_admin_write ON tolip_offer_products
   WITH CHECK (current_setting('app.actor_role', true) IN ('admin', 'bootstrap'));
 
 -- Guest customers can only see the specific order for which the API has set
--- both matching identifiers; the tracking route returns a reduced DTO.
+-- both matching identifiers, while the tracking route returns a reduced DTO.
 CREATE POLICY tolip_orders_read ON tolip_orders
   FOR SELECT
   USING (
@@ -206,7 +206,7 @@ CREATE POLICY tolip_order_items_admin_write ON tolip_order_items
   USING (current_setting('app.actor_role', true) IN ('admin', 'bootstrap'))
   WITH CHECK (current_setting('app.actor_role', true) IN ('admin', 'bootstrap'));
 
--- Migration metadata is not customer data; allow reads, but reserve writes for
+-- Migration metadata is not customer data. Allow reads, but reserve writes for
 -- trusted bootstrap/admin request contexts.
 CREATE POLICY tolip_migrations_read ON tolip_schema_migrations
   FOR SELECT USING (true);
