@@ -16,3 +16,8 @@ test('non-PostgreSQL connection strings are left unchanged', () => {
   const input = 'https://example.test/database';
   assert.equal(normalizeNeonConnectionString(input), input);
 });
+
+test('keyword-style connection strings are left unchanged', () => {
+  const input = 'host=example.neon.tech dbname=tolip sslmode=require';
+  assert.equal(normalizeNeonConnectionString(input), input);
+});
