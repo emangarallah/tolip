@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { db, generateToken } from '../db.ts';
-import { isLoginRateLimited, requireAdmin } from '../middleware/admin-auth.ts';
+import { clearLoginAttempts, isLoginRateLimited, requireAdmin } from '../middleware/admin-auth.ts';
 
 const router = Router();
 
@@ -44,7 +44,7 @@ router.post('/api/admin/login', (req: Request, res: Response) => {
     db.markAdminBootstrapCompleted();
 
     const admin = db.getAdminInfo();
-    loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
+    clearLoginAttempts(req);
     const sessionVersion = db.rotateAdminSession();
     const token = generateToken({ email: admin.email, id: admin.id, sessionVersion, role: 'admin' });
 
