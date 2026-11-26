@@ -26,6 +26,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
+import { AdminOffers } from './AdminOffers.tsx';
 import type {
   Product,
   Category,
@@ -42,7 +43,7 @@ interface AdminDashboardProps {
   onStoreUpdated: () => void;
 }
 
-type AdminTab = 'overview' | 'products' | 'categories' | 'orders' | 'settings' | 'security';
+type AdminTab = 'overview' | 'products' | 'categories' | 'orders' | 'offers' | 'settings' | 'security';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   isOpen,
@@ -611,6 +612,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
+                onClick={() => setActiveTab('offers')}
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'offers' ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm' : 'text-[#555C57] dark:text-[#A8B0AA] hover:bg-[#EFE9E2] dark:hover:bg-[#1C211E]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>العروض والخصومات</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'settings'
@@ -1117,6 +1128,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* -------------------------------------------------------------
                   TAB 5: STORE SETTINGS
               ------------------------------------------------------------- */}
+              {activeTab === 'offers' && (
+                <AdminOffers token={token} products={products} onUpdated={() => { loadAdminData(); onStoreUpdated(); }} />
+              )}
+
               {activeTab === 'settings' && settings && (
                 <form onSubmit={handleSaveSettings} className="space-y-6">
                   <div className="flex items-center justify-between">
