@@ -1400,7 +1400,7 @@ class StoreDatabase {
   }
 
   public async getOrdersPage(
-    filters: { status?: string; search?: string },
+    filters: { status?: OrderStatus; search?: string },
     page: number,
     pageSize: number
   ): Promise<RelationalPage<Order>> {
