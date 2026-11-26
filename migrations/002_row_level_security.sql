@@ -227,3 +227,7 @@ CREATE POLICY tolip_rate_limits_server_only ON tolip_security_rate_limits
   FOR ALL
   USING (current_setting('app.rate_limit_access', true) = 'true')
   WITH CHECK (current_setting('app.rate_limit_access', true) = 'true');
+
+INSERT INTO tolip_schema_migrations (version, name)
+VALUES (2, 'row-level-security-and-server-side-rate-limits')
+ON CONFLICT (version) DO NOTHING;
