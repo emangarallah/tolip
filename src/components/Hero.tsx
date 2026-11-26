@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import type { StoreSettings } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
@@ -24,7 +25,7 @@ export const Hero: React.FC<HeroProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Text Content Column */}
-          <div className="lg:col-span-6 space-y-6 text-start">
+          <motion.div className="lg:col-span-6 space-y-6 text-start" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.58, ease: "easeOut" }}>
             {/* Subtle editorial kicker */}
             <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider text-[#C74169] dark:text-[#E06287] uppercase bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-1.5 rounded-full border border-[#F5E1E8] dark:border-[#3D202B]">
               <Sparkles className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
@@ -78,16 +79,16 @@ export const Hero: React.FC<HeroProps> = ({
                 <p className="text-[11px] text-[#717772] dark:text-[#8D9690] mt-0.5">{t.fastOrderSub}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Hero Image Column */}
-          <div className="lg:col-span-6 relative">
+          <motion.div className="lg:col-span-6 relative" initial={{ opacity: 0, scale: 0.97, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.72, delay: 0.18, ease: "easeOut" }}>
             <div className="relative mx-auto max-w-lg lg:max-w-none">
               {/* Outer soft ambient halo */}
               <div className="absolute -inset-2 bg-gradient-to-tr from-[#FCE8EF]/70 dark:from-[#431B2B]/40 via-[#EBF3ED]/50 dark:via-[#1B3624]/30 to-transparent rounded-3xl blur-xl" />
 
               {/* Main Image Container */}
-              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl border border-[#EDE4DE] dark:border-[#2D332F] bg-white dark:bg-[#1A1E1B] aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3]">
+              <motion.div whileHover={{ scale: 1.012 }} transition={{ duration: 0.45, ease: "easeOut" }} className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl border border-[#EDE4DE] dark:border-[#2D332F] bg-white dark:bg-[#1A1E1B] aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3]">
                 <img
                   src={settings.heroImage || '/src/assets/images/hero_tulip_botanical_1795590417391.jpg'}
                   alt="Tolipe Natural Care Collection"
@@ -112,9 +113,9 @@ export const Hero: React.FC<HeroProps> = ({
                     </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

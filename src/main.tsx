@@ -1,8 +1,13 @@
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { MotionConfig } from 'motion/react';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  <MotionConfig reducedMotion="user">
+    <App />
+  </MotionConfig>
+);
 
 // Register the PWA worker and actively check for fresh production assets.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

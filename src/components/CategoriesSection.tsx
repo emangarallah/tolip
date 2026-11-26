@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import type { Category } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
@@ -43,8 +44,14 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
           {categories.map((category) => {
             const isSelected = selectedCategoryId === category.id;
             return (
-              <div
+              <motion.div
                 key={category.id}
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.12 }}
+                whileHover={{ y: -5 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.38, ease: "easeOut" }}
                 onClick={() => onSelectCategory(category.id)}
                 className={`group cursor-pointer rounded-2xl overflow-hidden bg-white dark:bg-[#191D1A] border transition-all duration-300 flex flex-col justify-between text-start ${
                   isSelected
@@ -95,7 +102,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

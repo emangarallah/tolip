@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Heart, MessageCircle, Eye } from 'lucide-react';
 import type { Product } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
@@ -37,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isAvailable = hasAvailableVariant;
 
   return (
-    <div className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} whileHover={{ y: -5 }} whileTap={{ scale: 0.99 }} transition={{ duration: 0.38, ease: "easeOut" }} className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
       {/* Top Image Area */}
       <div
         className="relative aspect-[4/3] w-full bg-[#FAF7F2] dark:bg-[#202522] overflow-hidden cursor-pointer"
@@ -158,6 +159,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

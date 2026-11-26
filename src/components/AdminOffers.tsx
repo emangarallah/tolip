@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Tag, Search, Upload } from 'lucide-react';
 import type { Product, StoreOffer, OfferType } from '../types/store.ts';
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog.tsx';
@@ -77,16 +78,16 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
     {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
     <div className="relative"><Search className="absolute right-3 top-3 h-4 w-4 text-gray-400"/><input className={input+' pr-9'} value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحثي عن عرض..."/></div>
     <div className="grid gap-3">
-      {filtered.map(o=><article key={o.id} className="flex flex-col gap-3 rounded-2xl border border-[#EFE9E2] bg-white p-4 sm:flex-row sm:items-center">
+      {filtered.map((o, index)=><motion.article key={o.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(index * 0.045, 0.24), ease: "easeOut" }} whileHover={{ y: -3 }} className="flex flex-col gap-3 rounded-2xl border border-[#EFE9E2] bg-white p-4 sm:flex-row sm:items-center">
         {o.image ? <img src={o.image} alt="" className="h-16 w-16 rounded-xl object-cover"/> : <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-pink-50 text-pink-600"><Tag/></div>}
         <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h4 className="font-bold">{o.title}</h4><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px]">{status(o)}</span></div><p className="mt-1 text-xs text-gray-500">{o.productIds.length} منتجات · {o.type==='percentage'? `خصم ${o.value}%`:o.type==='fixed'? `خصم ${o.value} ر.ي`:o.type==='bundle'? `حزمة بسعر ${o.bundlePrice} ر.ي`:`اشترِ ${o.buyQuantity} واحصلي على ${o.getQuantity}`}</p><p className="mt-1 text-[11px] text-gray-400">{o.endsAt ? `ينتهي ${new Date(o.endsAt).toLocaleString('ar-YE')}` : 'بدون تاريخ انتهاء'}</p></div>
         <div className="flex gap-2"><button onClick={()=>startEdit(o)} className="rounded-lg border p-2 text-gray-600" aria-label="تعديل"><Edit className="h-4 w-4"/></button><button onClick={()=>remove(o)} className="rounded-lg border p-2 text-red-600" aria-label="حذف"><Trash2 className="h-4 w-4"/></button></div>
-      </article>)}
+      </motion.article>)}
       {!filtered.length && <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-gray-500">لا توجد عروض بعد. أضيفي أول عرض للمتجر.</div>}
     </div>
         </>
     )}
-    {editing && <div className="rounded-3xl border border-[#EFE9E2] bg-white p-4 shadow-sm animate-in fade-in duration-200 dark:border-[#2D3830] dark:bg-[#1A1F1C]"><form onSubmit={save} className="mx-auto w-full max-w-3xl space-y-4 rounded-3xl bg-white p-1 sm:p-2 dark:bg-[#1A1F1C]">
+    {editing && <motion.div initial={{ opacity: 0, y: 16, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: "easeOut" }} className="rounded-3xl border border-[#EFE9E2] bg-white p-4 shadow-sm dark:border-[#2D3830] dark:bg-[#1A1F1C]"><form onSubmit={save} className="mx-auto w-full max-w-3xl space-y-4 rounded-3xl bg-white p-1 sm:p-2 dark:bg-[#1A1F1C]">
       <div className="flex items-center justify-between"><h3 className="text-lg font-bold">{editing.id?'تعديل العرض':'إضافة عرض جديد'}</h3><button type="button" onClick={()=>setEditing(null)} className="rounded-full p-2"><X className="h-5 w-5"/></button></div>
       {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -102,7 +103,7 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">بداية العرض<input type="datetime-local" className={input+' mt-1'} value={String(editing.startsAt||'')} onChange={e=>setEditing({...editing,startsAt:e.target.value||null})}/><span className="mt-1 block font-normal text-gray-500">اتركيه فارغًا ليبدأ العرض فورًا.</span></label><label className="text-xs font-bold">نهاية العرض<input type="datetime-local" className={input+' mt-1'} value={String(editing.endsAt||'')} onChange={e=>setEditing({...editing,endsAt:e.target.value||null})}/><span className="mt-1 block font-normal text-gray-500">اتركيه فارغًا إذا لم يكن للعرض تاريخ انتهاء.</span></label></div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.isActive!==false} onChange={e=>setEditing({...editing,isActive:e.target.checked})}/> تفعيل العرض</label>
       <div className="flex justify-end gap-2 border-t pt-3"><button type="button" onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2 text-sm">إلغاء</button><button disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-[#C74169] px-5 py-2 text-sm font-bold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{busy?'جارٍ الحفظ...':'حفظ العرض'}</button></div>
-    </form></div>}
+    </form></motion.div>}
     <ConfirmDeleteDialog
       isOpen={Boolean(pendingDelete)}
       title="تأكيد حذف العرض"

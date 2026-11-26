@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Heart,
   Search,
@@ -89,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   {item.label}
-                  {isActive && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#C74169] dark:bg-[#E06287]" />}
+                  {isActive && <motion.span layoutId="tolip-nav-active" className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#C74169] dark:bg-[#E06287]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
                 </button>
               );
             })}
@@ -182,8 +183,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Mobile drawer */}
+      <AnimatePresence initial={false}>
       {mobileMenuOpen && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: -8, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -8, height: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
           id="tolip-mobile-navigation"
           className="animate-in slide-in-from-top-2 space-y-2 border-t border-[#F0EBE6] bg-[#FCFCFA] px-3 pb-5 pt-3 text-[#1F2421] shadow-xl dark:border-[#222724] dark:bg-[#141715] dark:text-[#F1F4F2] sm:px-5 md:hidden"
         >
@@ -221,8 +227,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <MessageCircle className="h-5 w-5" />
             <span>{t.storeWhatsApp} ({settings.whatsappPhone})</span>
           </a>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </header>
   );
 };

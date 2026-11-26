@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Sparkles,
   Heart,
@@ -389,7 +390,15 @@ export default function App() {
       />
 
       {/* Main Content Sections */}
-      <main className="flex-1">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.main
+          key={activeTab}
+          className="flex-1"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+        >
         {/* -------------------------------------------------------------
             VIEW 1: HOME PAGE
         ------------------------------------------------------------- */}
@@ -840,7 +849,8 @@ export default function App() {
             </div>
           </div>
         )}
-      </main>
+      </motion.main>
+      </AnimatePresence>
 
       {/* Footer */}
       <Footer
