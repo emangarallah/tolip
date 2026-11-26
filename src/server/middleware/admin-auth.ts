@@ -41,26 +41,56 @@ const loginAttemptBuckets = new Map<string, { count: number; resetAt: number }>(
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 8;
 
-export function isLoginRateLimited(req: Request): boolean {
-  const key = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  let bucket = loginAttemptBuckets.get(key);
-  if (!bucket || bucket.resetAt <= now) {
-    bucket = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
-    loginAttemptBuckets.set(key, bucket);
-  }
-  if (bucket.count >= LOGIN_MAX_ATTEMPTS) return true;
-  bucket.count += 1;
-
-  if (loginAttemptBuckets.size > 5000) {
-    for (const [ip, attempt] of loginAttemptBuckets) {
-      if (attempt.resetAt <= now) loginAttemptBuckets.delete(ip);
-    }
-  }
-  return false;
+function getLoginRateLimitIdentity(req: Request) {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const email = typeof req.body?.email === 'string'
+    ? req.body.email.trim().toLowerCase().slice(0, 254)
+    : '';
+  return { ip, email };
 }
 
+export async function isLoginRateLimited(req: Request): Promise<boolean> {
+  const { ip, email } = getLoginRateLimitIdentity(req);
 
-export function clearLoginAttempts(req: Request): void {
-  loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
+  // Production uses an atomic, shared Neon counter so all Vercel instances
+  // enforce the same window. A database error fails closed via the route handler.
+  const ipLimit = await db.consumePersistentRateLimit(`admin-login:ip:${ip}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
+  if (ipLimit) {
+    const accountLimit = email
+      ? await db.consumePersistentRateLimit(`admin-login:account:${email}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS)
+      : null;
+    return !ipLimit.allowed || Boolean(accountLimit && !accountLimit.allowed);
+  }
+
+  // Local development fallback; never used in production after Neon initializes.
+  const now = Date.now();
+  const keys = [`ip:${ip}`, ...(email ? [`account:${email}`] : [])];
+  let blocked = false;
+  for (const key of keys) {
+    let bucket = loginAttemptBuckets.get(key);
+    if (!bucket || bucket.resetAt <= now) {
+      bucket = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
+      loginAttemptBuckets.set(key, bucket);
+    }
+    if (bucket.count >= LOGIN_MAX_ATTEMPTS) {
+      blocked = true;
+    } else {
+      bucket.count += 1;
+    }
+  }
+
+  if (loginAttemptBuckets.size > 5000) {
+    for (const [key, attempt] of loginAttemptBuckets) {
+      if (attempt.resetAt <= now) loginAttemptBuckets.delete(key);
+    }
+  }
+  return blocked;
+}
+
+export async function clearLoginAttempts(req: Request): Promise<void> {
+  const { ip, email } = getLoginRateLimitIdentity(req);
+  await db.clearPersistentRateLimit(`admin-login:ip:${ip}`);
+  if (email) await db.clearPersistentRateLimit(`admin-login:account:${email}`);
+  loginAttemptBuckets.delete(`ip:${ip}`);
+  if (email) loginAttemptBuckets.delete(`account:${email}`);
 }
