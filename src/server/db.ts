@@ -10,6 +10,7 @@ import type {
   StoreSettings,
   AdminStats,
   OrderStatus,
+  StoreOffer,
 } from '../types/store.ts';
 
 dotenv.config();
@@ -36,6 +37,7 @@ interface DatabaseSchema {
   categories: Category[];
   products: Product[];
   orders: Order[];
+  offers?: StoreOffer[];
 }
 
 function hashPassword(password: string, salt: string): string {
@@ -706,6 +708,7 @@ function createDefaultDatabase(): DatabaseSchema {
     categories: defaultCategories,
     products: defaultProducts,
     orders: [],
+    offers: [],
   };
 }
 
@@ -719,6 +722,7 @@ class StoreDatabase {
 
   constructor() {
     this.data = this.loadDatabase();
+    if (!Array.isArray(this.data.offers)) this.data.offers = [];
 
     // In production, the tracked seed file must never define the owner's login.
     // Use deployment secrets as the authoritative initial admin credentials.
@@ -834,6 +838,7 @@ class StoreDatabase {
       // Do not overwrite its password hash from deployment env on every cold start;
       // doing so makes database credential updates impossible to use.
       this.data = result.rows[0].payload as DatabaseSchema;
+      if (!Array.isArray(this.data.offers)) this.data.offers = [];
       // Backward-compatible one-time session version migration for existing Neon rows.
       if (!this.data.adminUser.sessionVersion) {
         this.data.adminUser.sessionVersion = crypto.randomUUID();
@@ -1183,6 +1188,43 @@ class StoreDatabase {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return false;
     this.data.products.splice(idx, 1);
+    this.persist();
+    return true;
+  }
+
+  // --- Promotions / Offers Methods ---
+  public getOffers(includeInactive = false): StoreOffer[] {
+    const offers = this.data.offers || [];
+    return offers.filter((offer) => includeInactive || offer.isActive).map((offer) => ({ ...offer, productIds: [...offer.productIds] }));
+  }
+
+  public getOfferById(id: string): StoreOffer | undefined {
+    return (this.data.offers || []).find((offer) => offer.id === id);
+  }
+
+  public createOffer(input: Omit<StoreOffer, 'id' | 'createdAt' | 'updatedAt'>): StoreOffer {
+    const now = new Date().toISOString();
+    const offer: StoreOffer = { ...input, id: `offer-${crypto.randomUUID()}`, productIds: [...input.productIds], createdAt: now, updatedAt: now };
+    if (!this.data.offers) this.data.offers = [];
+    this.data.offers.unshift(offer);
+    this.persist();
+    return offer;
+  }
+
+  public updateOffer(id: string, partial: Partial<StoreOffer>): StoreOffer | null {
+    const offer = (this.data.offers || []).find((item) => item.id === id);
+    if (!offer) return null;
+    Object.assign(offer, partial, { id: offer.id, createdAt: offer.createdAt, updatedAt: new Date().toISOString() });
+    if (partial.productIds) offer.productIds = [...partial.productIds];
+    this.persist();
+    return offer;
+  }
+
+  public deleteOffer(id: string): boolean {
+    if (!this.data.offers) this.data.offers = [];
+    const index = this.data.offers.findIndex((offer) => offer.id === id);
+    if (index < 0) return false;
+    this.data.offers.splice(index, 1);
     this.persist();
     return true;
   }
