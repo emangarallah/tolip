@@ -29,16 +29,44 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
         transition={{ duration: 0.45, ease: 'easeOut' }}
       >
         <motion.div
-          whileHover={{ scale: 1.06, rotate: -4 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 16 }}
-          className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1] shadow-[0_3px_12px_rgba(199,65,105,0.18)]`}
+          animate={{
+            y: [0, -1.5, 0],
+            rotateZ: [0, 1.2, 0, -1.2, 0],
+            boxShadow: [
+              '0 3px 12px rgba(199,65,105,0.16)',
+              '0 5px 20px rgba(199,65,105,0.30)',
+              '0 3px 12px rgba(199,65,105,0.16)',
+            ],
+          }}
+          whileHover={{ scale: 1.09, rotate: -5 }}
+          transition={{
+            y: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
+            rotateZ: { duration: 9, repeat: Infinity, ease: 'easeInOut' },
+            boxShadow: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
+            scale: { type: 'spring', stiffness: 240, damping: 17 },
+          }}
+          className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1]`}
           aria-hidden="true"
         >
-          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/70 to-transparent opacity-90" />
+          <motion.span
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-1 rounded-2xl bg-[#E98EAD]/30 blur-md"
+            animate={{ opacity: [0.08, 0.34, 0.08], scale: [0.88, 1.12, 0.88] }}
+            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+          />
+          <motion.span
+            className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/70 to-transparent"
+            animate={{ opacity: [0.35, 0.9, 0.35], x: ['-10%', '10%', '-10%'] }}
+            transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+          />
           <motion.span
             initial={{ opacity: 0, scale: 0.65, rotate: -18 }}
-            animate={{ opacity: 1, scale: 1, rotate: -12 }}
-            transition={{ type: 'spring', stiffness: 220, damping: 15, delay: 0.08 }}
+            animate={{ opacity: 1, scale: [1, 1.055, 1], rotate: [-12, -10.5, -12] }}
+            transition={{
+              opacity: { duration: 0.35, delay: 0.08 },
+              scale: { duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+              rotate: { duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            }}
             className="relative font-serif text-[29px] italic font-black leading-none text-transparent bg-clip-text bg-gradient-to-br from-[#F08AA9] via-[#C74169] to-[#8F2348] drop-shadow-[0_1px_1px_rgba(255,255,255,0.85)]"
           >
             T
@@ -75,9 +103,14 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           alt="شعار توليب للعناية الطبيعية"
           className={`${imgHeight} w-auto object-contain`}
           initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.04 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          animate={{ opacity: 1, scale: [1, 1.025, 1], y: [0, -2, 0], rotate: [0, 0.8, 0, -0.8, 0] }}
+          whileHover={{ scale: 1.05 }}
+          transition={{
+            opacity: { duration: 0.5, ease: 'easeOut' },
+            scale: { duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            y: { duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            rotate: { duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+          }}
           onError={(event) => {
             (event.target as HTMLElement).style.display = 'none';
           }}
@@ -104,8 +137,13 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
       transition={{ duration: 0.45, ease: 'easeOut' }}
     >
       <motion.div
-        whileHover={{ scale: 1.06, rotate: -3 }}
-        transition={{ type: 'spring', stiffness: 240, damping: 16 }}
+        animate={{ y: [0, -1, 0], rotateZ: [0, 1.1, 0, -1.1, 0] }}
+        whileHover={{ scale: 1.07, rotate: -4 }}
+        transition={{
+          y: { duration: 6.5, repeat: Infinity, ease: 'easeInOut' },
+          rotateZ: { duration: 8.5, repeat: Infinity, ease: 'easeInOut' },
+          scale: { type: 'spring', stiffness: 240, damping: 16 },
+        }}
         className={`relative ${iconSize} shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#FFF0F4] to-[#F2F8F4] p-1.5 shadow-sm border border-[#F5E1E8]`}
       >
         <motion.svg viewBox="0 0 100 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
