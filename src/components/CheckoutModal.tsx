@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, MapPin, Phone, User, MessageCircle, AlertCircle, Navigation, Loader2 } from 'lucide-react';
 import type { OrderDraftItem, CustomerDetails, StoreSettings, Order, Product, StoreOffer } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
+import { getDeliveryOptionForGovernorate, YEMEN_GOVERNORATES } from '../utils/yemen-governorates.ts';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const t = translations[language];
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState(settings.cities[0]?.city || 'صنعاء');
+  const [city, setCity] = useState('أمانة العاصمة');
   const [customCity, setCustomCity] = useState('');
   const [area, setArea] = useState('');
   const [detailedAddress, setDetailedAddress] = useState('');
@@ -74,7 +75,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     : [];
 
   // Selected city info
-  const selectedCityObj = settings.cities.find((c) => c.city === city);
+  const selectedCityObj = getDeliveryOptionForGovernorate(settings.cities, city);
   const deliveryFee = city === 'أخرى' || city === 'Other' ? null : selectedCityObj?.fee ?? null;
 
   // Calculate the subtotal for the selected product.
@@ -359,9 +360,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   onChange={(e) => setCity(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-[#1F2421] dark:text-white transition-all bg-[#FCFCFA] dark:bg-[#1E2320]"
                 >
-                  {settings.cities.map((c) => (
-                    <option key={c.city} value={c.city}>
-                      {c.city} {c.fee !== null ? `(${c.fee.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort})` : `(${t.determinedLater})`}
+                  {YEMEN_GOVERNORATES.map((governorate) => (
+                    <option key={governorate} value={governorate}>
+                      {governorate}
                     </option>
                   ))}
                   <option value="أخرى">{t.otherCity}</option>
