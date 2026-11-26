@@ -143,3 +143,22 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     animation: none;
   }
 }
+
+/* Seamless, low-distraction homepage offers ticker. */
+.offers-ticker-track {
+  animation: offers-ticker-scroll 28s linear infinite;
+  will-change: transform;
+}
+.offers-ticker-track:hover {
+  animation-play-state: paused;
+}
+@keyframes offers-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .offers-ticker-track {
+    animation: none;
+    transform: none;
+  }
+}
