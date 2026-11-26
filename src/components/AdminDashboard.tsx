@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   LayoutDashboard,
@@ -45,6 +45,24 @@ interface AdminDashboardProps {
 
 type AdminTab = 'overview' | 'products' | 'categories' | 'orders' | 'offers' | 'settings' | 'security';
 
+interface PageMetadata {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+const emptyPageMetadata: PageMetadata = {
+  page: 1,
+  pageSize: 12,
+  total: 0,
+  totalPages: 0,
+  hasNextPage: false,
+  hasPreviousPage: false,
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   isOpen,
   onClose,
@@ -84,6 +102,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [ordersSearch, setOrdersSearch] = useState<string>('');
   const [productsSearch, setProductsSearch] = useState<string>('');
   const [productsCatFilter, setProductsCatFilter] = useState<string>('all');
+  const [productsPageInfo, setProductsPageInfo] = useState<PageMetadata>(emptyPageMetadata);
+  const [ordersPageInfo, setOrdersPageInfo] = useState<PageMetadata>({ ...emptyPageMetadata, pageSize: 10 });
+  const [productsPage, setProductsPage] = useState(1);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const productsRequestId = useRef(0);
+  const ordersRequestId = useRef(0);
   const [toastMessage, setToastMessage] = useState<string>('');
 
   // Security credentials change form
@@ -103,31 +129,115 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     Authorization: `Bearer ${token}`,
   });
 
-  // Load all admin data
+  const handleUnauthorized = () => {
+    sessionStorage.removeItem('tulip_admin_token');
+    setToken('');
+  };
+
+  const loadProductsPage = async (
+    page = productsPage,
+    search = productsSearch,
+    categoryId = productsCatFilter
+  ) => {
+    if (!token) return;
+    const requestId = ++productsRequestId.current;
+    setProductsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: '12',
+        includeInactive: 'true',
+      });
+      if (search.trim()) params.set('search', search.trim());
+      if (categoryId !== 'all') params.set('categoryId', categoryId);
+
+      const res = await fetch(`/api/products?${params.toString()}`, { headers: authHeaders() });
+      if (res.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      if (!res.ok) throw new Error('فشل تحميل صفحة المنتجات');
+      const data = await res.json();
+      if (requestId !== productsRequestId.current) return;
+      setProducts(Array.isArray(data.items) ? data.items : []);
+      setProductsPageInfo({
+        page: data.page,
+        pageSize: data.pageSize,
+        total: data.total,
+        totalPages: data.totalPages,
+        hasNextPage: data.hasNextPage,
+        hasPreviousPage: data.hasPreviousPage,
+      });
+      setProductsPage(data.page);
+    } catch (err) {
+      console.error('Error fetching products page:', err);
+    } finally {
+      if (requestId === productsRequestId.current) setProductsLoading(false);
+    }
+  };
+
+  const loadOrdersPage = async (
+    page = ordersPage,
+    status = ordersFilterStatus,
+    search = ordersSearch
+  ) => {
+    if (!token) return;
+    const requestId = ++ordersRequestId.current;
+    setOrdersLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: '10' });
+      if (status !== 'all') params.set('status', status);
+      if (search.trim()) params.set('search', search.trim());
+
+      const res = await fetch(`/api/orders?${params.toString()}`, { headers: authHeaders() });
+      if (res.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      if (!res.ok) throw new Error('فشل تحميل صفحة الطلبات');
+      const data = await res.json();
+      if (requestId !== ordersRequestId.current) return;
+      setOrders(Array.isArray(data.items) ? data.items : []);
+      setOrdersPageInfo({
+        page: data.page,
+        pageSize: data.pageSize,
+        total: data.total,
+        totalPages: data.totalPages,
+        hasNextPage: data.hasNextPage,
+        hasPreviousPage: data.hasPreviousPage,
+      });
+      setOrdersPage(data.page);
+    } catch (err) {
+      console.error('Error fetching orders page:', err);
+    } finally {
+      if (requestId === ordersRequestId.current) setOrdersLoading(false);
+    }
+  };
+
+  // Load summary data plus the current products and orders pages.
   const loadAdminData = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [statsRes, prodsRes, catsRes, ordersRes, settingsRes] = await Promise.all([
+      const [statsRes, catsRes, settingsRes] = await Promise.all([
         fetch('/api/admin/stats', { headers: authHeaders() }),
-        fetch('/api/products?includeInactive=true', { headers: authHeaders() }),
         fetch('/api/categories?includeInactive=true', { headers: authHeaders() }),
-        fetch('/api/orders', { headers: authHeaders() }),
         fetch('/api/settings'),
       ]);
 
       if (statsRes.status === 401) {
-        // Token expired or invalid
-        sessionStorage.removeItem('tulip_admin_token');
-        setToken('');
+        handleUnauthorized();
         return;
       }
 
       if (statsRes.ok) setStats(await statsRes.json());
-      if (prodsRes.ok) setProducts(await prodsRes.json());
       if (catsRes.ok) setCategories(await catsRes.json());
-      if (ordersRes.ok) setOrders(await ordersRes.json());
       if (settingsRes.ok) setSettings(await settingsRes.json());
+
+      await Promise.all([
+        loadProductsPage(productsPage, productsSearch, productsCatFilter),
+        loadOrdersPage(ordersPage, ordersFilterStatus, ordersSearch),
+      ]);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
@@ -140,6 +250,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       loadAdminData();
     }
   }, [token, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !token || activeTab !== 'products') return;
+    const timer = window.setTimeout(() => {
+      loadProductsPage(productsPage, productsSearch, productsCatFilter);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, token, activeTab, productsPage, productsSearch, productsCatFilter]);
+
+  useEffect(() => {
+    if (!isOpen || !token || activeTab !== 'orders') return;
+    const timer = window.setTimeout(() => {
+      loadOrdersPage(ordersPage, ordersFilterStatus, ordersSearch);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, token, activeTab, ordersPage, ordersFilterStatus, ordersSearch]);
+
+  useEffect(() => {
+    if (!isOpen || !token || activeTab !== 'offers') return;
+    fetch('/api/products?includeInactive=true', { headers: authHeaders() })
+      .then(async (res) => {
+        if (res.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        if (res.ok) setProducts(await res.json());
+      })
+      .catch((err) => console.error('Error loading products for offers:', err));
+  }, [isOpen, token, activeTab]);
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -826,7 +965,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <input
                         type="text"
                         value={productsSearch}
-                        onChange={(e) => setProductsSearch(e.target.value)}
+                        onChange={(e) => { setProductsSearch(e.target.value); setProductsPage(1); }}
                         placeholder="ابحثي عن منتج بالاسم أو الوصف..."
                         className="w-full pr-9 pl-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white"
                       />
@@ -835,7 +974,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     <select
                       value={productsCatFilter}
-                      onChange={(e) => setProductsCatFilter(e.target.value)}
+                      onChange={(e) => { setProductsCatFilter(e.target.value); setProductsPage(1); }}
                       className="px-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white"
                     >
                       <option value="all">جميع الأقسام</option>
@@ -849,13 +988,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Products Table / Cards */}
                   <div className="space-y-2">
-                    {products
-                      .filter((p) => {
-                        const matchesCat = productsCatFilter === 'all' || p.categoryId === productsCatFilter;
-                        const matchesSearch = !productsSearch.trim() || p.name.includes(productsSearch.trim());
-                        return matchesCat && matchesSearch;
-                      })
-                      .map((prod) => (
+                    {products.map((prod) => (
                         <div
                           key={prod.id}
                           className="p-3.5 rounded-2xl bg-white border border-[#EFE9E2] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#D9CFC5] transition-all"
@@ -929,6 +1062,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </div>
                         </div>
                       ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#EFE9E2]">
+                    <span className="text-[11px] text-[#717772]">
+                      {productsLoading ? 'جارٍ تحميل المنتجات...' : `عرض ${products.length} من ${productsPageInfo.total} منتج · صفحة ${productsPageInfo.page} من ${Math.max(1, productsPageInfo.totalPages)}`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!productsPageInfo.hasPreviousPage || productsLoading}
+                        onClick={() => setProductsPage((current) => Math.max(1, current - 1))}
+                        className="px-3 py-2 rounded-lg border border-[#D9D2C9] text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        السابق
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!productsPageInfo.hasNextPage || productsLoading}
+                        onClick={() => setProductsPage((current) => current + 1)}
+                        className="px-3 py-2 rounded-lg border border-[#D9D2C9] text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        التالي
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1012,7 +1169,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="flex items-center gap-2">
                       <select
                         value={ordersFilterStatus}
-                        onChange={(e) => setOrdersFilterStatus(e.target.value)}
+                        onChange={(e) => { setOrdersFilterStatus(e.target.value); setOrdersPage(1); }}
                         className="px-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white"
                       >
                         <option value="all">جميع الحالات</option>
@@ -1030,7 +1187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <input
                       type="text"
                       value={ordersSearch}
-                      onChange={(e) => setOrdersSearch(e.target.value)}
+                      onChange={(e) => { setOrdersSearch(e.target.value); setOrdersPage(1); }}
                       placeholder="ابحثي برقم الطلب، اسم العميل، رقم الهاتف، أو المدينة..."
                       className="w-full pr-9 pl-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white"
                     />
@@ -1039,19 +1196,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Orders Table */}
                   <div className="space-y-3">
-                    {orders
-                      .filter((o) => {
-                        const matchesStatus = ordersFilterStatus === 'all' || o.status === ordersFilterStatus;
-                        const q = ordersSearch.trim().toLowerCase();
-                        const matchesSearch =
-                          !q ||
-                          o.orderNumber.toLowerCase().includes(q) ||
-                          o.customerDetails.fullName.toLowerCase().includes(q) ||
-                          o.customerDetails.phone.includes(q) ||
-                          o.customerDetails.city.toLowerCase().includes(q);
-                        return matchesStatus && matchesSearch;
-                      })
-                      .map((ord) => (
+                    {orders.map((ord) => (
                         <div
                           key={ord.id}
                           className="p-4 rounded-2xl bg-white border border-[#EFE9E2] space-y-3"
@@ -1121,6 +1266,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </div>
                         </div>
                       ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#EFE9E2]">
+                    <span className="text-[11px] text-[#717772]">
+                      {ordersLoading ? 'جارٍ تحميل الطلبات...' : `عرض ${orders.length} من ${ordersPageInfo.total} طلب · صفحة ${ordersPageInfo.page} من ${Math.max(1, ordersPageInfo.totalPages)}`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!ordersPageInfo.hasPreviousPage || ordersLoading}
+                        onClick={() => setOrdersPage((current) => Math.max(1, current - 1))}
+                        className="px-3 py-2 rounded-lg border border-[#D9D2C9] text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        السابق
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!ordersPageInfo.hasNextPage || ordersLoading}
+                        onClick={() => setOrdersPage((current) => current + 1)}
+                        className="px-3 py-2 rounded-lg border border-[#D9D2C9] text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        التالي
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
