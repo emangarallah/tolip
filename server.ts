@@ -496,11 +496,18 @@ app.post('/api/orders', (req: Request, res: Response) => {
       }
     }
 
+    const requestedOfferId = typeof req.body.offerId === 'string' ? req.body.offerId : '';
+    const appliedOffer = requestedOfferId ? db.getOfferById(requestedOfferId) : undefined;
+    if (requestedOfferId && (!appliedOffer || !offerIsCurrentlyActive(appliedOffer))) { res.status(400).json({ error: 'العرض غير متاح أو انتهت صلاحيته.' }); return; }
+    if (appliedOffer && !['percentage', 'fixed'].includes(appliedOffer.type)) { res.status(400).json({ error: 'هذا العرض يحتاج تأكيدًا عبر واتساب ولا يمكن تطبيقه على طلب منتج منفرد.' }); return; }
+    if (appliedOffer && normalizedItems.some((item) => !appliedOffer.productIds.includes(item.product.id))) { res.status(400).json({ error: 'العرض لا يشمل المنتج المحدد.' }); return; }
+
     let itemsTotal: number | null = 0;
     let hasUnpricedItem = false;
     const formattedItems = normalizedItems.map(({ product, variant, quantity }) => {
-      const price = typeof variant.price === 'number' ? variant.price : null;
-      const itemSubtotal = price !== null ? price * quantity : null;
+      const basePrice = typeof variant.price === 'number' ? variant.price : null;
+      const price = basePrice !== null && appliedOffer ? Math.max(0, appliedOffer.type === 'percentage' ? basePrice * (1 - appliedOffer.value / 100) : basePrice - appliedOffer.value) : basePrice;
+      const itemSubtotal = price !== null ? Math.round(price) * quantity : null;
       if (itemSubtotal === null) {
         hasUnpricedItem = true;
         itemsTotal = null;
