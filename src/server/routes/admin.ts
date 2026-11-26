@@ -40,6 +40,9 @@ router.post('/api/admin/login', async (req: Request, res: Response) => {
       res.status(401).json({ error: 'بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.' });
       return;
     }
+    // Elevate this trusted transaction only after the password was verified.
+    await db.authorizeAuthenticatedAdmin();
+
     // Disable deployment-secret bootstrap once the owner has authenticated successfully.
     db.markAdminBootstrapCompleted();
 
