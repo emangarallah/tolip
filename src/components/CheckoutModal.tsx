@@ -9,6 +9,7 @@ interface CheckoutModalProps {
   initialVariantId: string;
   initialQuantity: number;
   offerId?: string;
+  offer?: StoreOffer;
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
@@ -21,6 +22,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   initialVariantId,
   initialQuantity,
   offerId,
+  offer,
   settings,
   language,
   onClose,
@@ -53,6 +55,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const selectedVariant =
     product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
 
+  const checkoutPrice = selectedVariant?.price !== null && selectedVariant?.price !== undefined && offer
+    ? Math.max(0, offer.type === 'percentage' ? selectedVariant.price * (1 - offer.value / 100) : selectedVariant.price - offer.value)
+    : selectedVariant?.price ?? null;
+
   const items: OrderDraftItem[] = product && selectedVariant
     ? [{
         id: `${product.id}_${selectedVariant.id}`,
@@ -60,7 +66,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         productName: product.name,
         variantId: selectedVariant.id,
         variantName: selectedVariant.name,
-        price: selectedVariant.price ?? null,
+        price: checkoutPrice,
         quantity,
         image: product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg',
         categoryName: product.categoryName,
