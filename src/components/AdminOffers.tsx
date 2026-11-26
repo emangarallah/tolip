@@ -54,8 +54,13 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'تعذر حذف العرض');
       }
+      // The API responds only after the Neon transaction has committed.
+      // Remove the confirmed record locally instead of issuing a second read
+      // that could time out and leave a deleted offer visible in the admin UI.
+      const deletedId = pendingDelete.id;
+      setOffers(current => current.filter(offer => offer.id !== deletedId));
       setPendingDelete(null);
-      await load();
+      setDeleteError('');
       onUpdated();
     } catch (e: any) {
       setDeleteError(e.message || 'تعذر حذف العرض. حاولي مرة أخرى.');

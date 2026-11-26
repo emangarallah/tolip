@@ -58,9 +58,17 @@ router.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
   res.json(updated);
 });
 
-router.delete('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
-  if (!db.deleteOffer(req.params.id)) { res.status(404).json({ error: 'العرض غير موجود.' }); return; }
-  res.json({ success: true });
+router.delete('/api/offers/:id', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    if (!await db.deleteOffer(req.params.id)) {
+      res.status(404).json({ error: 'العرض غير موجود.' });
+      return;
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete offer:', error);
+    res.status(500).json({ error: 'تعذر حذف العرض. يرجى المحاولة مرة أخرى.' });
+  }
 });
 
 export default router;
