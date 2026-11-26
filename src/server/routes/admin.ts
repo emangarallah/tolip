@@ -81,17 +81,38 @@ router.post('/api/admin/logout', requireAdmin, (req: Request, res: Response) => 
 
 router.post('/api/admin/change-password', requireAdmin, (req: Request, res: Response) => {
   try {
-    const { currentPassword, newEmail, newPassword } = req.body;
+    const { currentPassword, newEmail, newPassword } = req.body || {};
+    const allowedFields = new Set(['currentPassword', 'newEmail', 'newPassword']);
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body) ||
+        Object.keys(req.body).some((key) => !allowedFields.has(key))) {
+      res.status(400).json({ error: 'بيانات تحديث الحساب غير صحيحة.' });
+      return;
+    }
+    if (typeof currentPassword !== 'string' || !currentPassword || currentPassword.length > 256) {
+      res.status(400).json({ error: 'كلمة المرور الحالية مطلوبة.' });
+      return;
+    }
+    if (newEmail !== undefined &&
+        (typeof newEmail !== 'string' || newEmail.length > 254 ||
+         !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(newEmail.trim()))) {
+      res.status(400).json({ error: 'البريد الإلكتروني الجديد غير صحيح.' });
+      return;
+    }
+    if (newPassword !== undefined &&
+        (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128)) {
+      res.status(400).json({ error: 'كلمة المرور الجديدة يجب أن تكون بين 12 و128 حرفًا.' });
+      return;
+    }
+    if (newEmail === undefined && newPassword === undefined) {
+      res.status(400).json({ error: 'أدخلي بريدًا إلكترونيًا جديدًا أو كلمة مرور جديدة.' });
+      return;
+    }
+
     const admin = db.getAdminInfo();
 
     // Verify current password first
     if (!db.verifyAdminCredentials(admin.email, currentPassword)) {
       res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة.' });
-      return;
-    }
-
-    if (newPassword && newPassword.length < 12) {
-      res.status(400).json({ error: 'كلمة المرور الجديدة يجب ألا تقل عن 12 حرفًا.' });
       return;
     }
 
