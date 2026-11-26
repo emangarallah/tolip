@@ -9,7 +9,7 @@ export const OffersSection: React.FC<Props> = ({products,settings,onOrder,langua
  const visible=offers.filter(o=>o.isActive && (!o.startsAt||Date.parse(o.startsAt)<=Date.now()) && (!o.endsAt||Date.parse(o.endsAt)>=Date.now()));
  if(!visible.length)return null;
  const currency=language==='ar'?'ر.ي':'YER';
- const calc=(p:Product,o:StoreOffer)=>{const v=p.variants.find(x=>typeof x.price==='number');if(!v||v.price===null)return null;const price=v.price;return o.type==='percentage'?Math.max(0,price*(1-o.value/100)):o.type==='fixed'?Math.max(0,price-o.value):o.type==='bundle'&&o.bundlePrice!=null?o.bundlePrice:null;};
+ const calc=(p:Product,o:StoreOffer)=>{const v=p.variants.find(x=>typeof x.price==='number');if(!v||v.price===null)return null;const price=v.price;return o.type==='percentage'?Math.round(Math.max(0,price*(1-o.value/100))):o.type==='fixed'?Math.round(Math.max(0,price-o.value)):o.type==='bundle'&&o.bundlePrice!=null?o.bundlePrice:null;};
  const phone=(settings.whatsappPhone||'').replace(/\D/g,'');
  const wa=(o:StoreOffer)=>`https://wa.me/${phone.startsWith('967')?phone:'967'+phone}?text=${encodeURIComponent('مرحبًا متجر توليب، أريد الاستفسار وطلب العرض: '+o.title+'\n'+o.description+'\nالمنتجات: '+o.productIds.map(id=>products.find(p=>p.id===id)?.name||id).join('، ')+'\nيرجى تأكيد السعر والتوفر والدفع عند الاستلام.')}`;
  return <section className="border-y border-[#F0EBE6] bg-[#FFF4F7] py-12 sm:py-16 dark:border-[#2B2025] dark:bg-[#1B1518]" dir={language==='ar'?'rtl':'ltr'}>
