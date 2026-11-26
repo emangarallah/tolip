@@ -8,9 +8,7 @@ import { UPLOADS_DIR } from '../storage/uploads.ts';
 
 const router = Router();
 
-// ==========================================
-// 6. Image Upload API (Base64 file storage)
-// ==========================================
+// Upload API endpoint.
 router.post('/api/upload', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { base64Data } = req.body;
@@ -48,41 +46,5 @@ router.post('/api/upload', requireAdmin, async (req: Request, res: Response) => 
     res.status(500).json({ error: 'فشل في رفع الصورة' });
   }
 });
-
-// 7. Vite Integration (SPA & Static Serving)
-// ==========================================
-let initialization: Promise<void> | null = null;
-export function initializeApp(): Promise<void> {
-  if (!initialization) initialization = db.initializePersistentStore();
-  return initialization;
-}
-
-const isProduction = process.env.NODE_ENV === 'production';
-if (isProduction) {
-  router.get('*', (req: Request, res: Response) => {
-    res.sendFile(path.resolve(distPath, 'index.html'));
-  });
-}
-
-async function startServer() {
-  if (isProduction) await initializeApp();
-  else {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
-    router.use(vite.middlewares);
-  }
-  router.listen(PORT, '0.0.0.0', () => {
-    console.log(`🌸 متجر توليب للعناية الطبيعية شغال على http://localhost:${PORT}`);
-  });
-}
-
-if (!process.env.VERCEL) {
-  startServer().catch((err) => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-  });
-}
-
-export default app;
 
 export default router;
