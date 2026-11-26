@@ -10,7 +10,7 @@ import ordersRouter from './src/server/routes/orders.ts';
 import adminRouter from './src/server/routes/admin.ts';
 import uploadRouter from './src/server/routes/upload.ts';
 import { UPLOADS_DIR } from './src/server/storage/uploads.ts';
-import { db } from './src/server/db.ts';
+import { db, verifyToken } from './src/server/db.ts';
 import { isReadOnlyStoreRequest } from './src/server/request-mode.ts';
 import { getRequiredStoreDataSections } from './src/server/request-scope.ts';
 import { applySecurityHeaders, createRateLimit, validateOrderPayload } from './src/server/middleware/security.ts';
@@ -31,8 +31,17 @@ app.use(applySecurityHeaders);
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Per-instance emergency throttles. Use Vercel Firewall or a shared Neon-backed
-// limiter for a strict distributed limit across serverless instances.
+// Baseline per-instance API throttle. Sensitive endpoints also have narrower
+// limits; login additionally uses the shared Neon-backed limiter.
+app.use('/api/', createRateLimit({
+  keyPrefix: 'api-global',
+  windowMs: 60 * 1000,
+  max: 180,
+  message: 'تم تجاوز عدد طلبات API. يرجى المحاولة بعد دقيقة.',
+}));
+
+// Per-instance emergency throttles for public checkout and order tracking.
+// Vercel Firewall remains the edge-level control for distributed abuse.
 app.post('/api/orders', createRateLimit({
   keyPrefix: 'create-order', windowMs: 10 * 60 * 1000, max: 12,
   message: 'تم تجاوز عدد الطلبات من هذا الاتصال. يرجى المحاولة بعد قليل.',
@@ -74,7 +83,34 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   let requestContext;
 
   try {
-    requestContext = await db.beginRequest(readOnly, getRequiredStoreDataSections(req.method, req.path, req.query as Record<string, unknown>));
+    let adminCandidate = null;
+    const authorization = req.headers.authorization || '';
+    if (authorization.startsWith('Bearer ')) {
+      try {
+        adminCandidate = verifyToken(authorization.slice('Bearer '.length).trim());
+      } catch {
+        adminCandidate = null;
+      }
+    }
+
+    const loginEmail = req.method === 'POST' && req.path === '/api/admin/login' &&
+      typeof req.body?.email === 'string' && req.body.email.length <= 254
+      ? req.body.email
+      : undefined;
+    const trackingOrderNumber = req.method === 'POST' && req.path === '/api/orders/track' &&
+      typeof req.body?.orderNumber === 'string' && req.body.orderNumber.length <= 64
+      ? req.body.orderNumber
+      : undefined;
+    const trackingPhone = req.method === 'POST' && req.path === '/api/orders/track' &&
+      typeof req.body?.phone === 'string' && req.body.phone.length <= 32
+      ? req.body.phone
+      : undefined;
+
+    requestContext = await db.beginRequest(
+      readOnly,
+      getRequiredStoreDataSections(req.method, req.path, req.query as Record<string, unknown>),
+      { adminCandidate, loginEmail, trackingOrderNumber, trackingPhone }
+    );
   } catch (error) {
     console.error('Failed to initialize Neon store request:', error);
     res.setHeader('Retry-After', '2');
@@ -130,6 +166,29 @@ app.use(productsRouter);
 app.use(ordersRouter);
 app.use(adminRouter);
 app.use(uploadRouter);
+
+// Do not fall through to the SPA for unknown API paths, and never let Express
+// serialize stack traces or low-level error details to clients.
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ error: 'مسار API غير موجود.' });
+});
+app.use((error: any, _req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+  console.error('Unhandled server error:', error);
+  const status = Number(error?.status);
+  if (status === 413) {
+    res.status(413).json({ error: 'حجم البيانات المرسلة أكبر من الحد المسموح.' });
+    return;
+  }
+  if (status === 400) {
+    res.status(400).json({ error: 'صيغة الطلب غير صحيحة.' });
+    return;
+  }
+  res.status(500).json({ error: 'حدث خطأ داخلي. يرجى المحاولة لاحقًا.' });
+});
 
 // 7. Vite Integration (SPA & Static Serving)
 // ==========================================
