@@ -877,12 +877,14 @@ export default function App() {
           setCheckoutProduct(null);
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
+          setCheckoutOfferId(undefined);
         }}
         onOrderSuccess={(order, whatsappUrl) => {
           setIsCheckoutOpen(false);
           setCheckoutProduct(null);
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
+          setCheckoutOfferId(undefined);
           setCompletedOrder({ order, whatsappUrl });
         }}
       />
