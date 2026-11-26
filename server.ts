@@ -576,7 +576,7 @@ ${addressSection}
 تفاصيل الطلب:
 ${itemsListText}
 
-إجمالي المنتجات: ${itemsTotalStr}
+${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appliedOffer.type === 'percentage' ? appliedOffer.value + '%' : appliedOffer.value.toLocaleString('ar-YE') + ' ر.ي') + ')\n' : ''}إجمالي المنتجات: ${itemsTotalStr}
 رسوم التوصيل: ${deliveryFeeStr}
 الإجمالي النهائي: ${finalTotalStr}
 
