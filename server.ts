@@ -34,8 +34,8 @@ app.use(['/data', '/.private-data'], (_req: Request, res: Response) => {
 });
 if (isProductionRuntime) app.use(express.static(distPath));
 
-// A shared advisory lock lets safe reads run concurrently. Mutations keep an
-// exclusive lock so the single JSONB store cannot lose concurrent updates.
+// Transaction-scoped shared locks permit concurrent reads. Mutations use an
+// exclusive lock and update only the affected normalized relational records.
 app.get('/api/health', async (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
