@@ -158,10 +158,6 @@ export default function App() {
     setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
   };
 
-  const handleToggleLanguage = () => {
-    setLanguage((prev) => (prev === 'ar' ? 'en' : 'ar'));
-  };
-
   const t = translations[language];
   const isRtl = language === 'ar';
 
