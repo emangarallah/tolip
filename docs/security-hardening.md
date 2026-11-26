@@ -7,7 +7,7 @@ This document records implemented application controls and the remaining deploym
 - Runtime credentials belong in server-side Vercel environment variables only. Never use a `VITE_` prefix for a private key, database URL, bearer secret, admin password, or Blob token.
 - `.env*` is ignored except the blank `.env.example`. Backup files, database dumps, local runtime databases, and private-key formats are also ignored.
 - Production static output is `dist/`; the database seed and SQL migrations are included only in the API function bundle. Express explicitly returns 404 for `/data` and `/.private-data`.
-- The checked-in seed file contains only a salted scrypt hash and placeholder bootstrap identity, not a plaintext password or customer orders. It is not the production database.
+- The checked-in seed file now contains an inert placeholder identity and non-credential hash/salt fields; it has no plaintext password or customer orders. It is not the production database. Local development should configure its own bootstrap credentials through an untracked .env file.
 - The deployment environment contains the keys `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `APP_URL`, `NODE_ENV`, and `BLOB_READ_WRITE_TOKEN`. The four credential/token values must be configured as Vercel Sensitive variables with Secret visibility. Do not print or commit their values.
 
 ## 2. Password storage
