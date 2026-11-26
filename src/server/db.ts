@@ -2,7 +2,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Pool } from 'pg';
+import { loadRelationalStore, persistRelationalChanges } from './relational-store.ts';
 import type {
   Category,
   Product,
@@ -22,7 +24,7 @@ const DB_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'store_database.runtime.json');
 const DB_SEED_FILE = path.join(DB_DIR, 'store_database.json');
 
-interface DatabaseSchema {
+export interface DatabaseSchema {
   version: number;
   adminUser: {
     id: string;
@@ -39,6 +41,20 @@ interface DatabaseSchema {
   orders: Order[];
   offers?: StoreOffer[];
 }
+
+export type StoreDataSection = 'adminUser' | 'settings' | 'categories' | 'products' | 'offers' | 'orders';
+export type DirtyRecords = Map<StoreDataSection, Set<string>>;
+
+export interface StoreRequestContext {
+  client: any | null;
+  data: DatabaseSchema;
+  readOnly: boolean;
+  dirtyRecords: DirtyRecords;
+}
+
+const ALL_STORE_SECTIONS = new Set<StoreDataSection>([
+  'adminUser', 'settings', 'categories', 'products', 'offers', 'orders',
+]);
 
 function hashPassword(password: string, salt: string): string {
   return crypto.scryptSync(password, salt, 64).toString('hex');
@@ -713,13 +729,19 @@ function createDefaultDatabase(): DatabaseSchema {
 }
 
 class StoreDatabase {
-  private data: DatabaseSchema;
+  private baseData!: DatabaseSchema;
   private pool: Pool | null = null;
-  private persistQueue: Promise<void> = Promise.resolve();
-  // Serialize writers within this Node.js instance while allowing concurrent readers.
-  // PostgreSQL advisory locks coordinate requests across all serverless instances.
-  private writeRequestTail: Promise<void> = Promise.resolve();
-  private activeWriteRequestClient: any = null;
+  private requestStorage = new AsyncLocalStorage<StoreRequestContext>();
+
+  private get data(): DatabaseSchema {
+    return this.requestStorage.getStore()?.data ?? this.baseData;
+  }
+
+  private set data(value: DatabaseSchema) {
+    const context = this.requestStorage.getStore();
+    if (context) context.data = value;
+    else this.baseData = value;
+  }
 
   constructor() {
     this.data = this.loadDatabase();
@@ -823,124 +845,143 @@ class StoreDatabase {
     if (!connectionString) throw new Error('Production requires DATABASE_URL for Neon PostgreSQL.');
     if (this.pool) return;
 
-    const pool = new Pool({ connectionString, max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 5000 });
-    await pool.query('SELECT 1');
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS tolip_store_state (
-        id smallint PRIMARY KEY CHECK (id = 1),
-        payload jsonb NOT NULL,
-        updated_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-    const result = await pool.query('SELECT payload FROM tolip_store_state WHERE id = 1');
-    this.pool = pool;
-    if (result.rows.length) {
-      // The persisted Neon admin record is authoritative after initial setup.
-      // Do not overwrite its password hash from deployment env on every cold start;
-      // doing so makes database credential updates impossible to use.
-      this.data = result.rows[0].payload as DatabaseSchema;
-      if (!Array.isArray(this.data.offers)) this.data.offers = [];
-      // Backward-compatible one-time session version migration for existing Neon rows.
-      if (!this.data.adminUser.sessionVersion) {
-        this.data.adminUser.sessionVersion = crypto.randomUUID();
-      }
-    } else {
-      await pool.query(
-        'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
-        [JSON.stringify(this.data)]
+    const pool = new Pool({
+      connectionString,
+      max: 5,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
+    });
+    const client = await pool.connect();
+    let transactionStarted = false;
+
+    try {
+      await client.query('BEGIN');
+      transactionStarted = true;
+      await client.query("SET LOCAL lock_timeout = '10s'");
+      await client.query("SET LOCAL statement_timeout = '20s'");
+      // A transaction-scoped lock is compatible with Neon/PgBouncer transaction pooling.
+      await client.query('SELECT pg_advisory_xact_lock(7319462027)');
+
+      await client.query(
+        'CREATE TABLE IF NOT EXISTS tolip_store_state (id smallint PRIMARY KEY CHECK (id = 1), payload jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())'
       );
+
+      const legacyResult = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
+      if (!legacyResult.rows.length) {
+        await client.query(
+          'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
+          [JSON.stringify(this.baseData)]
+        );
+      }
+
+      const migrationTable = await client.query("SELECT to_regclass('public.tolip_schema_migrations') IS NOT NULL AS exists");
+      let migrationApplied = false;
+      if (migrationTable.rows[0]?.exists) {
+        const versionResult = await client.query('SELECT 1 FROM tolip_schema_migrations WHERE version = 1');
+        migrationApplied = versionResult.rows.length > 0;
+      }
+
+      if (!migrationApplied) {
+        const migrationPath = path.resolve(process.cwd(), 'migrations/001_normalized_store.sql');
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        for (const statement of migrationSql.split(';').map((part) => part.trim()).filter(Boolean)) {
+          await client.query(statement);
+        }
+      }
+
+      const previousCategories = JSON.stringify(this.baseData.categories);
+      this.baseData = await loadRelationalStore(client, this.baseData, ALL_STORE_SECTIONS);
+      this.ensurePerfumesCategory();
+
+      if (JSON.stringify(this.baseData.categories) !== previousCategories) {
+        const dirty: DirtyRecords = new Map([
+          ['categories', new Set(this.baseData.categories.map((category) => category.id))],
+        ]);
+        await persistRelationalChanges(client, this.baseData, dirty);
+      }
+
+      await client.query('COMMIT');
+      transactionStarted = false;
+      this.pool = pool;
+    } catch (error) {
+      if (transactionStarted) {
+        try { await client.query('ROLLBACK'); } catch {}
+      }
+      await pool.end().catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
-    this.ensurePerfumesCategory();
-    await this.persist();
-    await this.flushPersistence();
   }
 
-  public async beginRequest(readOnly = false): Promise<() => Promise<void>> {
-    if (!this.pool) return async () => {};
-
-    // A local queue prevents concurrent writers in the same serverless instance
-    // from sharing the request-scoped write state. Readers do not enter this queue.
-    let releaseWriteQueue: (() => void) | null = null;
-    if (!readOnly) {
-      let release!: () => void;
-      const previous = this.writeRequestTail;
-      this.writeRequestTail = new Promise<void>((resolve) => { release = resolve; });
-      releaseWriteQueue = release;
-      await previous;
+  public async beginRequest(
+    readOnly = false,
+    scopes: ReadonlySet<StoreDataSection> = ALL_STORE_SECTIONS
+  ): Promise<StoreRequestContext> {
+    if (!this.pool) {
+      return {
+        client: null,
+        data: this.baseData,
+        readOnly,
+        dirtyRecords: new Map(),
+      };
     }
 
     let client: any = null;
-    let locked = false;
-    const lockFunction = readOnly ? 'pg_advisory_lock_shared' : 'pg_advisory_lock';
-    const unlockFunction = readOnly ? 'pg_advisory_unlock_shared' : 'pg_advisory_unlock';
-
+    let transactionStarted = false;
     try {
       client = await this.pool.connect();
-      // Fail quickly enough to return a controlled 503 before the Vercel function timeout.
-      await client.query("SET lock_timeout = '8s'");
-      await client.query("SET statement_timeout = '12s'");
-      await client.query(`SELECT ${lockFunction}(7319462026)`);
-      locked = true;
+      await client.query(readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
+      transactionStarted = true;
+      await client.query("SET LOCAL lock_timeout = '8s'");
+      await client.query("SET LOCAL statement_timeout = '12s'");
+      await client.query(
+        readOnly
+          ? 'SELECT pg_advisory_xact_lock_shared(7319462026)'
+          : 'SELECT pg_advisory_xact_lock(7319462026)'
+      );
 
-      const result = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
-      if (!result.rows.length) throw new Error('Neon store state row is missing.');
-      this.data = result.rows[0].payload as DatabaseSchema;
-      if (!Array.isArray(this.data.offers)) this.data.offers = [];
-
-      if (!readOnly) this.activeWriteRequestClient = client;
+      const data = await loadRelationalStore(client, this.baseData, scopes);
+      return {
+        client,
+        data,
+        readOnly,
+        dirtyRecords: new Map(),
+      };
     } catch (error) {
-      let destroyClient = false;
       if (client) {
-        if (locked) {
-          try { await client.query(`SELECT ${unlockFunction}(7319462026)`); }
-          catch { destroyClient = true; }
+        if (transactionStarted) {
+          try { await client.query('ROLLBACK'); } catch {}
         }
-        try {
-          await client.query('RESET statement_timeout');
-          await client.query('RESET lock_timeout');
-        } catch {
-          destroyClient = true;
-        }
-        client.release(destroyClient);
+        client.release();
       }
-      releaseWriteQueue?.();
       throw error;
     }
+  }
 
-    let settled = false;
-    return async () => {
-      if (settled) return;
-      settled = true;
-      let destroyClient = false;
+  public runInRequest<T>(context: StoreRequestContext, callback: () => T): T {
+    return this.requestStorage.run(context, callback);
+  }
 
-      try {
-        // Read-only requests never rewrite the full JSONB store snapshot.
-        // Writers persist once, after all route mutations have completed.
-        if (!readOnly) {
-          await client.query(
-            'UPDATE tolip_store_state SET payload = $1::jsonb, updated_at = now() WHERE id = 1',
-            [JSON.stringify(this.data)]
-          );
-        }
-      } finally {
-        if (!readOnly && this.activeWriteRequestClient === client) {
-          this.activeWriteRequestClient = null;
-        }
-
-        try { await client.query(`SELECT ${unlockFunction}(7319462026)`); }
-        catch { destroyClient = true; }
-
-        try {
-          await client.query('RESET statement_timeout');
-          await client.query('RESET lock_timeout');
-        } catch {
-          destroyClient = true;
-        }
-
-        client.release(destroyClient);
-        releaseWriteQueue?.();
+  public async endRequest(context: StoreRequestContext): Promise<void> {
+    if (!context.client) {
+      if (!context.readOnly && context.dirtyRecords.size > 0) {
+        this.saveDirect(context.data);
       }
-    };
+      return;
+    }
+
+    try {
+      if (!context.readOnly && context.dirtyRecords.size > 0) {
+        await persistRelationalChanges(context.client, context.data, context.dirtyRecords);
+      }
+      await context.client.query('COMMIT');
+    } catch (error) {
+      try { await context.client.query('ROLLBACK'); } catch {}
+      throw error;
+    } finally {
+      context.client.release();
+    }
   }
 
   public async checkHealth(): Promise<void> {
@@ -951,29 +992,22 @@ class StoreDatabase {
       return;
     }
 
-    const result = await this.pool.query('SELECT 1 FROM tolip_store_state WHERE id = 1');
-    if (!result.rows.length) throw new Error('Neon store state row is missing.');
+    const result = await this.pool.query('SELECT 1 FROM tolip_schema_migrations WHERE version = 1');
+    if (!result.rows.length) throw new Error('Normalized store schema is not initialized.');
   }
 
-  public async flushPersistence(): Promise<void> {
-    await this.persistQueue;
-  }
+  private persist(section?: StoreDataSection, id?: string): void {
+    const context = this.requestStorage.getStore();
+    if (context) {
+      if (context.readOnly) throw new Error('A read-only store request attempted to mutate data.');
+      if (section && id) {
+        const keys = context.dirtyRecords.get(section) || new Set<string>();
+        keys.add(id);
+        context.dirtyRecords.set(section, keys);
+      }
+      return;
+    }
 
-  private persist() {
-    if (this.pool && process.env.NODE_ENV === 'production' && this.activeWriteRequestClient) {
-      // The request-scoped advisory lock commits this mutation once the response is ready.
-      return;
-    }
-    if (this.pool) {
-      const snapshot = JSON.stringify(this.data);
-      this.persistQueue = this.persistQueue.then(async () => {
-        await this.pool!.query(
-          'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now()',
-          [snapshot]
-        );
-      });
-      return;
-    }
     this.saveDirect(this.data);
   }
 
@@ -1008,7 +1042,7 @@ class StoreDatabase {
   public markAdminBootstrapCompleted(): void {
     if (this.data.adminUser.bootstrapCompleted !== true) {
       this.data.adminUser.bootstrapCompleted = true;
-      this.persist();
+      this.persist('adminUser', this.data.adminUser.id);
     }
   }
 
@@ -1029,7 +1063,7 @@ class StoreDatabase {
   // token immediately becomes invalid, so only the latest admin session is active.
   public rotateAdminSession(): string {
     this.data.adminUser.sessionVersion = crypto.randomUUID();
-    this.persist();
+    this.persist('adminUser', this.data.adminUser.id);
     return this.data.adminUser.sessionVersion;
   }
 
@@ -1051,7 +1085,7 @@ class StoreDatabase {
     }
     this.data.adminUser.sessionVersion = crypto.randomUUID();
     this.data.adminUser.bootstrapCompleted = true;
-    this.persist();
+    this.persist('adminUser', this.data.adminUser.id);
     return this.getAdminInfo();
   }
 
@@ -1065,7 +1099,7 @@ class StoreDatabase {
       ...this.data.settings,
       ...partial,
     };
-    this.persist();
+    this.persist('settings', '1');
     return this.data.settings;
   }
 
@@ -1092,7 +1126,7 @@ class StoreDatabase {
       createdAt: new Date().toISOString(),
     };
     this.data.categories.push(newCategory);
-    this.persist();
+    this.persist('categories', id);
     return newCategory;
   }
 
@@ -1106,7 +1140,7 @@ class StoreDatabase {
       id: current.id,
       createdAt: current.createdAt,
     };
-    this.persist();
+    this.persist('categories', id);
     return this.data.categories[idx];
   }
 
@@ -1114,13 +1148,15 @@ class StoreDatabase {
     const idx = this.data.categories.findIndex((c) => c.id === id);
     if (idx === -1) return false;
     this.data.categories.splice(idx, 1);
-    // Unassign products or hide them
-    this.data.products.forEach((p) => {
-      if (p.categoryId === id) {
-        p.isActive = false;
+    // Hide products from a removed category and clear their relational reference.
+    this.data.products.forEach((product) => {
+      if (product.categoryId === id) {
+        product.isActive = false;
+        product.categoryId = '';
+        this.persist('products', product.id);
       }
     });
-    this.persist();
+    this.persist('categories', id);
     return true;
   }
 
@@ -1217,7 +1253,7 @@ class StoreDatabase {
       updatedAt: now,
     };
     this.data.products.unshift(newProduct);
-    this.persist();
+    this.persist('products', id);
     return newProduct;
   }
 
@@ -1232,7 +1268,7 @@ class StoreDatabase {
       createdAt: current.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    this.persist();
+    this.persist('products', id);
     return this.data.products[idx];
   }
 
@@ -1240,7 +1276,14 @@ class StoreDatabase {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return false;
     this.data.products.splice(idx, 1);
-    this.persist();
+    this.persist('products', id);
+    // Keep offer-product links valid when a product is removed.
+    for (const offer of this.data.offers || []) {
+      if (offer.productIds.includes(id)) {
+        offer.productIds = offer.productIds.filter((productId) => productId !== id);
+        this.persist('offers', offer.id);
+      }
+    }
     return true;
   }
 
@@ -1259,7 +1302,7 @@ class StoreDatabase {
     const offer: StoreOffer = { ...input, id: `offer-${crypto.randomUUID()}`, productIds: [...input.productIds], createdAt: now, updatedAt: now };
     if (!this.data.offers) this.data.offers = [];
     this.data.offers.unshift(offer);
-    this.persist();
+    this.persist('offers', offer.id);
     return offer;
   }
 
@@ -1268,7 +1311,7 @@ class StoreDatabase {
     if (!offer) return null;
     Object.assign(offer, partial, { id: offer.id, createdAt: offer.createdAt, updatedAt: new Date().toISOString() });
     if (partial.productIds) offer.productIds = [...partial.productIds];
-    this.persist();
+    this.persist('offers', id);
     return offer;
   }
 
@@ -1277,7 +1320,7 @@ class StoreDatabase {
     const index = this.data.offers.findIndex((offer) => offer.id === id);
     if (index < 0) return false;
     this.data.offers.splice(index, 1);
-    this.persist();
+    this.persist('offers', id);
     return true;
   }
 
@@ -1296,7 +1339,7 @@ class StoreDatabase {
     };
 
     this.data.orders.unshift(newOrder);
-    this.persist();
+    this.persist('orders', id);
     return newOrder;
   }
 
@@ -1330,7 +1373,7 @@ class StoreDatabase {
     if (!order) return null;
     order.status = status;
     order.updatedAt = new Date().toISOString();
-    this.persist();
+    this.persist('orders', order.id);
     return order;
   }
 
