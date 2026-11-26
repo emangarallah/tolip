@@ -11,6 +11,7 @@ import adminRouter from './src/server/routes/admin.ts';
 import uploadRouter from './src/server/routes/upload.ts';
 import { UPLOADS_DIR } from './src/server/storage/uploads.ts';
 import { db } from './src/server/db.ts';
+import { isReadOnlyStoreRequest } from './src/server/request-mode.ts';
 
 dotenv.config();
 
@@ -32,39 +33,73 @@ app.use(['/data', '/.private-data'], (_req: Request, res: Response) => {
 });
 if (isProductionRuntime) app.use(express.static(distPath));
 
-// A Neon advisory lock plus a per-instance queue prevents concurrent serverless
-// invocations from overwriting one another's product/order snapshots.
-app.use(async (req: Request, res: Response, next: NextFunction) => {
+// A shared advisory lock lets safe reads run concurrently. Mutations keep an
+// exclusive lock so the single JSONB store cannot lose concurrent updates.
+app.get('/api/health', async (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store');
   try {
-    await db.beginRequest();
+    await db.checkHealth();
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('Store health check failed:', error);
+    res.status(503).json({ status: 'unavailable' });
+  }
+});
+
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.path.startsWith('/api/')) {
+    next();
+    return;
+  }
+
+  const readOnly = isReadOnlyStoreRequest(req.method, req.path);
+  let endRequest: (() => Promise<void>) | null = null;
+
+  try {
+    endRequest = await db.beginRequest(readOnly);
   } catch (error) {
     console.error('Failed to acquire Neon request lock:', error);
-    res.status(503).json({ error: 'تعذر الاتصال بقاعدة بيانات المتجر. حاول مرة أخرى.' });
+    res.setHeader('Retry-After', '2');
+    res.status(503).json({ error: 'المتجر مشغول مؤقتًا. يرجى إعادة المحاولة بعد قليل.' });
     return;
   }
 
   let settled = false;
-  const release = async (commit: boolean) => {
+  const release = async () => {
     if (settled) return;
     settled = true;
-    await db.endRequest(commit);
+    await endRequest?.();
   };
+
   const originalJson = res.json.bind(res);
   (res as any).json = (body: any) => {
-    release(true)
+    if (settled) return originalJson(body);
+
+    release()
       .then(() => originalJson(body))
       .catch((error: any) => {
-        console.error('Neon commit failed:', error);
-        if (!res.headersSent) originalJson({ error: 'تعذر حفظ بيانات المتجر. حاول مرة أخرى.' });
+        console.error('Neon request finalization failed:', error);
+        if (!res.headersSent) {
+          res.statusCode = 503;
+          res.setHeader('Retry-After', '2');
+          originalJson({
+            error: readOnly
+              ? 'تعذر إكمال الطلب حاليًا. يرجى إعادة المحاولة.'
+              : 'تعذر حفظ بيانات المتجر. يرجى إعادة المحاولة.',
+          });
+        }
       });
     return res;
   };
-  res.on('finish', () => {
-    if (!settled) release(false).catch((error) => console.error('Neon lock release failed:', error));
-  });
-  next();
-});
 
+  const releaseOnResponseEnd = () => {
+    if (!settled) {
+      release().catch((error) => console.error('Neon lock release failed:', error));
+    }
+  };
+  res.once('finish', releaseOnResponseEnd);
+  res.once('close', releaseOnResponseEnd);
+});
 if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Store Settings API are handled by a dedicated route module.
