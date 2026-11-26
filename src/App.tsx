@@ -390,7 +390,6 @@ export default function App() {
         }}
         onOpenSearch={() => setIsSearchOpen(true)}
         onToggleTheme={handleToggleTheme}
-        onToggleLanguage={handleToggleLanguage}
       />
 
       {/* Main Content Sections */}
@@ -858,7 +857,6 @@ export default function App() {
         onOpenPolicy={(pType) => setPolicyType(pType)}
         onOpenAdmin={() => setIsAdminOpen(true)}
         onToggleTheme={handleToggleTheme}
-        onToggleLanguage={handleToggleLanguage}
       />
 
       {/* -------------------------------------------------------------
