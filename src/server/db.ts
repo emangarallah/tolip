@@ -931,7 +931,7 @@ class StoreDatabase {
     let transactionStarted = false;
     try {
       client = await this.pool.connect();
-      await client.query(readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
+      await client.query('BEGIN');
       transactionStarted = true;
       await client.query("SET LOCAL lock_timeout = '8s'");
       await client.query("SET LOCAL statement_timeout = '12s'");
@@ -1382,7 +1382,7 @@ class StoreDatabase {
     if (!order) return null;
     order.whatsappMessage = whatsappMessage;
     order.updatedAt = new Date().toISOString();
-    this.persist();
+    this.persist('orders', order.id);
     return order;
   }
 
