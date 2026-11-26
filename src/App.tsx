@@ -27,6 +27,7 @@ import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { OffersSection } from './components/OffersSection.tsx';
+import { OffersTicker } from './components/OffersTicker.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
 import { TrackingModal } from './components/TrackingModal.tsx';
@@ -409,6 +410,9 @@ export default function App() {
                 sec?.scrollIntoView({ behavior: 'smooth' });
               }}
             />
+
+            {/* Scrolling announcement for currently active offers */}
+            <OffersTicker language={language} onClick={() => handleNavigate('offers')} />
 
             {/* Categories Section Preview */}
             <div id="categories-preview">
