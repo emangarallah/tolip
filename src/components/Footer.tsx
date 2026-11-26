@@ -178,6 +178,14 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
+                  onClick={() => onNavigate('offers')}
+                  className="text-[#616662] dark:text-[#A8B0AA] hover:text-[#C74169] dark:hover:text-[#E06287] transition-colors"
+                >
+                  {language === 'ar' ? 'العروض' : 'Offers'}
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => onOpenPolicy('about')}
                   className="text-[#616662] dark:text-[#A8B0AA] hover:text-[#C74169] dark:hover:text-[#E06287] transition-colors"
                 >
