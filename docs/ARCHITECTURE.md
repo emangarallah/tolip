@@ -65,3 +65,14 @@ This is a modular-monolith foundation, not a complete Clean Architecture impleme
 ## Request concurrency and availability
 
 Production API requests use PostgreSQL advisory locks around the shared JSONB store. Read-only requests acquire a shared lock and do not rewrite the stored snapshot, allowing multiple reads to proceed together. Mutating requests acquire an exclusive lock and persist once after the route completes, preserving cross-instance write consistency. Lock acquisition and database statements have bounded timeouts so contention or a slow database returns a controlled service-unavailable response rather than waiting for the Vercel function limit. The `/api/health` endpoint performs a lightweight database check without acquiring the store advisory lock.
+
+
+## Normalized PostgreSQL store
+
+Production data is stored in separate relational tables: admin users, store settings, categories, products, product variants, offers, offer-product links, orders, and order items. JSONB is retained only for flexible product attributes, store settings, and customer details; it is no longer the single source of truth for the whole store.
+
+The first production startup applies `migrations/001_normalized_store.sql` inside a transaction and copies the legacy `tolip_store_state` snapshot into the normalized tables. The legacy row is retained unchanged as a recovery snapshot. Requests load only the data sections needed by the route. Each mutation writes only the affected record(s) and related variants/links/items in the same transaction.
+
+API reads use transaction-scoped shared advisory locks; writes use transaction-scoped exclusive locks. These locks are released automatically on commit/rollback and remain compatible with transaction-mode connection pooling. Request state is isolated with AsyncLocalStorage so concurrent reads cannot overwrite one another's in-memory data. Lock and statement timeouts are bounded to return a controlled 503 before the Vercel execution limit.
+
+The original JSONB snapshot is deliberately not dual-written after cutover. The migration is additive and retains the legacy snapshot, but after new relational writes begin, a rollback must use a forward-compatible code release or restore/reconcile the legacy snapshot; deploying an older application build that reads only `tolip_store_state` would not see subsequent writes.

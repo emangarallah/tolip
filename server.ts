@@ -12,6 +12,7 @@ import uploadRouter from './src/server/routes/upload.ts';
 import { UPLOADS_DIR } from './src/server/storage/uploads.ts';
 import { db } from './src/server/db.ts';
 import { isReadOnlyStoreRequest } from './src/server/request-mode.ts';
+import { getRequiredStoreDataSections } from './src/server/request-scope.ts';
 
 dotenv.config();
 
@@ -33,8 +34,8 @@ app.use(['/data', '/.private-data'], (_req: Request, res: Response) => {
 });
 if (isProductionRuntime) app.use(express.static(distPath));
 
-// A shared advisory lock lets safe reads run concurrently. Mutations keep an
-// exclusive lock so the single JSONB store cannot lose concurrent updates.
+// Transaction-scoped shared locks permit concurrent reads. Mutations use an
+// exclusive lock and update only the affected normalized relational records.
 app.get('/api/health', async (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
@@ -53,12 +54,12 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 
   const readOnly = isReadOnlyStoreRequest(req.method, req.path);
-  let endRequest: (() => Promise<void>) | null = null;
+  let requestContext;
 
   try {
-    endRequest = await db.beginRequest(readOnly);
+    requestContext = await db.beginRequest(readOnly, getRequiredStoreDataSections(req.method, req.path));
   } catch (error) {
-    console.error('Failed to acquire Neon request lock:', error);
+    console.error('Failed to initialize Neon store request:', error);
     res.setHeader('Retry-After', '2');
     res.status(503).json({ error: 'المتجر مشغول مؤقتًا. يرجى إعادة المحاولة بعد قليل.' });
     return;
@@ -68,7 +69,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   const release = async () => {
     if (settled) return;
     settled = true;
-    await endRequest?.();
+    await db.endRequest(requestContext);
   };
 
   const originalJson = res.json.bind(res);
@@ -94,12 +95,12 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
   const releaseOnResponseEnd = () => {
     if (!settled) {
-      release().catch((error) => console.error('Neon lock release failed:', error));
+      release().catch((error) => console.error('Neon transaction release failed:', error));
     }
   };
   res.once('finish', releaseOnResponseEnd);
   res.once('close', releaseOnResponseEnd);
-  next();
+  db.runInRequest(requestContext, () => next());
 });
 if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UPLOADS_DIR));
 

@@ -133,10 +133,27 @@ test('order creation stores the final WhatsApp message and status', () => {
   assert.equal(savedOrder.status, 'confirmed');
 });
 
-test('request leases can be safely released when running without Neon locally', async () => {
-  const finishRead = await db.beginRequest(true);
-  await finishRead();
+test('request contexts isolate request state and persist local writes', async () => {
+  const readContext = await db.beginRequest(true);
+  assert.equal(readContext.readOnly, true);
+  assert.equal(readContext.client, null);
 
-  const finishWrite = await db.beginRequest(false);
-  await finishWrite();
+  const writeContext = await db.beginRequest(false);
+  let createdId = '';
+  db.runInRequest(writeContext, () => {
+    const category = db.createCategory({
+      name: 'Request Context Test',
+      slug: 'request-context-test-' + Date.now(),
+      description: '',
+      image: '',
+      sortOrder: 100,
+      isActive: true,
+    });
+    createdId = category.id;
+    assert.ok(db.getCategoryById(category.id));
+  });
+  await db.endRequest(writeContext);
+
+  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.runtime.json'), 'utf8'));
+  assert.ok(persisted.categories.some((entry: any) => entry.id === createdId));
 });

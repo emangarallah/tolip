@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "{dist/**,data/store_database.json}",
+      "includeFiles": "{dist/**,data/store_database.json,migrations/**/*.sql}",
       "maxDuration": 30
     }
   }
