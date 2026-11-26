@@ -30,7 +30,7 @@ import { OffersSection } from './components/OffersSection.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
 import { TrackingModal } from './components/TrackingModal.tsx';
-import type { Product, Category, StoreSettings, Order } from './types/store.ts';
+import type { Product, Category, StoreSettings, Order, StoreOffer } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
