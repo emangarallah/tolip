@@ -44,11 +44,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         className="relative aspect-[4/3] w-full bg-[#FAF7F2] dark:bg-[#202522] overflow-hidden cursor-pointer"
         onClick={() => onViewDetails(product)}
       >
-        <img
+        <motion.img
           src={product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg'}
           alt={product.name}
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          whileTap={{ scale: 1.045 }}
+          transition={{ duration: 0.48, ease: 'easeOut' }}
           onError={(e) => {
             (e.target as HTMLElement).style.display = 'none';
           }}

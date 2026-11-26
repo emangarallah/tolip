@@ -4,6 +4,7 @@ import { requireAdmin } from '../middleware/admin-auth.ts';
 import { offerIsCurrentlyActive } from '../services/offers.ts';
 import { hasPaginationQuery, parsePaginationQuery } from '../pagination.ts';
 import type { OrderStatus } from '../../types/store.ts';
+import { getDeliveryOptionForGovernorate } from '../../utils/yemen-governorates.ts';
 
 const router = Router();
 
@@ -133,7 +134,7 @@ router.post('/api/orders', (req: Request, res: Response) => {
     // Delivery fees are read from store settings on the server, never trusted from the browser.
     const storeSettings = db.getSettings();
     const requestedCity = String(customerDetails.city).trim();
-    const cityOption = storeSettings.cities.find((entry: any) => entry.city === requestedCity);
+    const cityOption = getDeliveryOptionForGovernorate(storeSettings.cities, requestedCity);
     const calculatedDeliveryFee =
       cityOption && typeof cityOption.fee === 'number' ? cityOption.fee : null;
     const finalTotal = itemsTotal !== null && calculatedDeliveryFee !== null ? itemsTotal + calculatedDeliveryFee : itemsTotal;
