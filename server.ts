@@ -70,7 +70,7 @@ if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UP
 
 // Product variant validation is kept in a focused server-side module.
 
-// Validate the bearer token// Validate the bearer token against the current admin record, not only its signature.
+// Validate the bearer token against the current admin record, not only its signature.
 function getAdminPayload(req: Request): { email: string; id: string } | null {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
