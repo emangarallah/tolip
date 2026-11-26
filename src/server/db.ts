@@ -716,9 +716,10 @@ class StoreDatabase {
   private data: DatabaseSchema;
   private pool: Pool | null = null;
   private persistQueue: Promise<void> = Promise.resolve();
-  private requestTail: Promise<void> = Promise.resolve();
-  private activeClient: any = null;
-  private activeRequestRelease: (() => void) | null = null;
+  // Serialize writers within this Node.js instance while allowing concurrent readers.
+  // PostgreSQL advisory locks coordinate requests across all serverless instances.
+  private writeRequestTail: Promise<void> = Promise.resolve();
+  private activeWriteRequestClient: any = null;
 
   constructor() {
     this.data = this.loadDatabase();
@@ -822,7 +823,7 @@ class StoreDatabase {
     if (!connectionString) throw new Error('Production requires DATABASE_URL for Neon PostgreSQL.');
     if (this.pool) return;
 
-    const pool = new Pool({ connectionString, max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000 });
+    const pool = new Pool({ connectionString, max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 5000 });
     await pool.query('SELECT 1');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS tolip_store_state (
@@ -854,53 +855,104 @@ class StoreDatabase {
     await this.flushPersistence();
   }
 
-  public async beginRequest(): Promise<void> {
-    if (!this.pool) return;
-    let release!: () => void;
-    const previous = this.requestTail;
-    this.requestTail = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
+  public async beginRequest(readOnly = false): Promise<() => Promise<void>> {
+    if (!this.pool) return async () => {};
+
+    // A local queue prevents concurrent writers in the same serverless instance
+    // from sharing the request-scoped write state. Readers do not enter this queue.
+    let releaseWriteQueue: (() => void) | null = null;
+    if (!readOnly) {
+      let release!: () => void;
+      const previous = this.writeRequestTail;
+      this.writeRequestTail = new Promise<void>((resolve) => { release = resolve; });
+      releaseWriteQueue = release;
+      await previous;
+    }
+
     let client: any = null;
     let locked = false;
+    const lockFunction = readOnly ? 'pg_advisory_lock_shared' : 'pg_advisory_lock';
+    const unlockFunction = readOnly ? 'pg_advisory_unlock_shared' : 'pg_advisory_unlock';
+
     try {
       client = await this.pool.connect();
-      await client.query('SELECT pg_advisory_lock(7319462026)');
+      // Fail quickly enough to return a controlled 503 before the Vercel function timeout.
+      await client.query("SET lock_timeout = '8s'");
+      await client.query("SET statement_timeout = '12s'");
+      await client.query(`SELECT ${lockFunction}(7319462026)`);
       locked = true;
+
       const result = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
       if (!result.rows.length) throw new Error('Neon store state row is missing.');
       this.data = result.rows[0].payload as DatabaseSchema;
-      this.activeClient = client;
-      this.activeRequestRelease = release;
+      if (!Array.isArray(this.data.offers)) this.data.offers = [];
+
+      if (!readOnly) this.activeWriteRequestClient = client;
     } catch (error) {
+      let destroyClient = false;
       if (client) {
         if (locked) {
-          try { await client.query('SELECT pg_advisory_unlock(7319462026)'); } catch {}
+          try { await client.query(`SELECT ${unlockFunction}(7319462026)`); }
+          catch { destroyClient = true; }
         }
-        client.release();
+        try {
+          await client.query('RESET statement_timeout');
+          await client.query('RESET lock_timeout');
+        } catch {
+          destroyClient = true;
+        }
+        client.release(destroyClient);
       }
-      release();
+      releaseWriteQueue?.();
       throw error;
     }
+
+    let settled = false;
+    return async () => {
+      if (settled) return;
+      settled = true;
+      let destroyClient = false;
+
+      try {
+        // Read-only requests never rewrite the full JSONB store snapshot.
+        // Writers persist once, after all route mutations have completed.
+        if (!readOnly) {
+          await client.query(
+            'UPDATE tolip_store_state SET payload = $1::jsonb, updated_at = now() WHERE id = 1',
+            [JSON.stringify(this.data)]
+          );
+        }
+      } finally {
+        if (!readOnly && this.activeWriteRequestClient === client) {
+          this.activeWriteRequestClient = null;
+        }
+
+        try { await client.query(`SELECT ${unlockFunction}(7319462026)`); }
+        catch { destroyClient = true; }
+
+        try {
+          await client.query('RESET statement_timeout');
+          await client.query('RESET lock_timeout');
+        } catch {
+          destroyClient = true;
+        }
+
+        client.release(destroyClient);
+        releaseWriteQueue?.();
+      }
+    };
   }
 
-  public async endRequest(commit: boolean): Promise<void> {
-    const client = this.activeClient;
-    const release = this.activeRequestRelease;
-    if (!client || !release) return;
-    this.activeClient = null;
-    this.activeRequestRelease = null;
-    try {
-      if (commit) {
-        await client.query(
-          'UPDATE tolip_store_state SET payload = $1::jsonb, updated_at = now() WHERE id = 1',
-          [JSON.stringify(this.data)]
-        );
+  public async checkHealth(): Promise<void> {
+    if (!this.pool) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Neon connection pool is not initialized.');
       }
-    } finally {
-      try { await client.query('SELECT pg_advisory_unlock(7319462026)'); } catch {}
-      client.release();
-      release();
+      return;
     }
+
+    const result = await this.pool.query('SELECT 1 FROM tolip_store_state WHERE id = 1');
+    if (!result.rows.length) throw new Error('Neon store state row is missing.');
   }
 
   public async flushPersistence(): Promise<void> {
@@ -908,7 +960,7 @@ class StoreDatabase {
   }
 
   private persist() {
-    if (this.pool && process.env.NODE_ENV === 'production' && this.activeClient) {
+    if (this.pool && process.env.NODE_ENV === 'production' && this.activeWriteRequestClient) {
       // The request-scoped advisory lock commits this mutation once the response is ready.
       return;
     }
