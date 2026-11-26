@@ -12,11 +12,12 @@ const router = Router();
 
 router.get('/api/offers', (req: Request, res: Response) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true' && Boolean(getAdminPayload(req));
+    const requestsInactive = req.query.includeInactive === 'true';
+    const includeInactive = requestsInactive && Boolean(getAdminPayload(req));
     const offers = db.getOffers(includeInactive);
     res.setHeader(
       'Cache-Control',
-      includeInactive
+      requestsInactive
         ? 'no-store'
         : 'public, max-age=0, s-maxage=10, stale-while-revalidate=20'
     );

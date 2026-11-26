@@ -92,16 +92,17 @@ function parseProductWritePayload(body: any, partial: boolean): { value?: Record
 router.get('/api/products', async (req: Request, res: Response) => {
   try {
     const { categoryId, search, isFeatured, isBestSeller, inStockOnly, includeInactive, sortBy } = req.query;
+    const requestsInactive = includeInactive === 'true';
     const options = {
       categoryId: categoryId as string,
       search: search as string,
       isFeatured: isFeatured === 'true',
       isBestSeller: isBestSeller === 'true',
       inStockOnly: inStockOnly === 'true',
-      includeInactive: includeInactive === 'true' && Boolean(getAdminPayload(req)),
+      includeInactive: requestsInactive && Boolean(getAdminPayload(req)),
       sortBy: sortBy as 'price-asc' | 'price-desc' | 'newest' | 'name',
     };
-    const cacheControl = options.includeInactive
+    const cacheControl = requestsInactive
       ? 'no-store'
       : 'public, max-age=0, s-maxage=10, stale-while-revalidate=20';
 
