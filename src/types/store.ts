@@ -2,6 +2,26 @@
  * Types definition for Tolipe Natural Care (توليب للعناية الطبيعية)
  */
 
+export type OfferType = 'percentage' | 'fixed' | 'bundle' | 'buy_get';
+
+export interface StoreOffer {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  type: OfferType;
+  productIds: string[];
+  value: number;
+  bundlePrice?: number | null;
+  buyQuantity?: number;
+  getQuantity?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProductVariant {
   id: string;
   name: string; // e.g., "حجم كبير", "حجم وسط", "حجم صغير", "النوع الأول"
