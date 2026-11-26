@@ -18,7 +18,12 @@ import type {
 dotenv.config();
 
 export function normalizeNeonConnectionString(connectionString: string): string {
-  const parsed = new URL(connectionString);
+  let parsed: URL;
+  try {
+    parsed = new URL(connectionString);
+  } catch {
+    return connectionString;
+  }
   if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
     return connectionString;
   }
@@ -894,9 +899,17 @@ class StoreDatabase {
       let perfumeCategoryExists = false;
       if (initialMigrationApplied) {
         const categoryResult = await client.query(
-          "SELECT 1 FROM tolip_categories WHERE id = 'cat-perfumes' LIMIT 1"
+          "SELECT name, slug, description, image, is_active FROM tolip_categories WHERE id = 'cat-perfumes' LIMIT 1"
         );
-        perfumeCategoryExists = categoryResult.rows.length > 0;
+        const category = categoryResult.rows[0];
+        perfumeCategoryExists = Boolean(
+          category &&
+          category.name === 'العطور والروائح والبخور' &&
+          category.slug === 'perfumes-and-bakhour' &&
+          category.description &&
+          category.image &&
+          category.is_active
+        );
       }
 
       const initializationLock = initialMigrationApplied && perfumeCategoryExists
