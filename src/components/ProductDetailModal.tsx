@@ -59,14 +59,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         className="relative w-full max-w-4xl bg-white dark:bg-[#161917] rounded-3xl shadow-2xl border border-[#EFE9E2] dark:border-[#262C28] overflow-hidden my-auto text-start"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-4 start-4 z-20 p-2.5 rounded-full bg-white/90 dark:bg-[#1C211E]/90 hover:bg-white dark:hover:bg-[#252B27] text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white shadow-md transition-all focus:outline-none"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Modal Header: keep the close control above the content, away from the product image. */}
+        <div className="flex items-center justify-end px-4 sm:px-6 py-3 bg-white dark:bg-[#161917] border-b border-[#F0EBE6] dark:border-[#262C28]">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-2.5 rounded-full bg-[#F7F4F0] dark:bg-[#1C211E] hover:bg-[#EFE9E2] dark:hover:bg-[#252B27] text-[#4A4E4B] dark:text-[#D1D8D3] hover:text-[#1F2421] dark:hover:text-white shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169]"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 max-h-[85vh] overflow-y-auto">
           {/* Gallery Column (Desktop 6 cols) */}
