@@ -5,7 +5,7 @@ import type { StoreSettings } from '../types/store.ts';
 interface Props { products: Product[]; settings: StoreSettings; onOrder: (product: Product, offer: StoreOffer) => void; language: 'ar'|'en'; }
 export const OffersSection: React.FC<Props> = ({products,settings,onOrder,language}) => {
  const [offers,setOffers]=useState<StoreOffer[]>([]);
- useEffect(()=>{fetch('/api/offers',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(d=>setOffers(Array.isArray(d)?d:[])).catch(()=>setOffers([]));},[]);
+ useEffect(()=>{fetch('/api/offers',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(d=>setOffers(Array.isArray(d)?d:[])).catch(()=>setOffers([]));},[products]);
  const visible=offers.filter(o=>o.isActive && (!o.startsAt||Date.parse(o.startsAt)<=Date.now()) && (!o.endsAt||Date.parse(o.endsAt)>=Date.now()));
  if(!visible.length)return null;
  const currency=language==='ar'?'ر.ي':'YER';
