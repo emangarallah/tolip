@@ -370,7 +370,6 @@ export default function App() {
       <Navbar
         settings={settings}
         favoritesCount={favorites.filter((id) => products.some((product) => product.id === id)).length}
-        onOpenTracking={() => setIsTrackingOpen(true)}
         activeTab={activeTab}
         language={language}
         theme={theme}
