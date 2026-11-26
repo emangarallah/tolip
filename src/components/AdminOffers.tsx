@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, Tag, Search, CalendarClock } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Tag, Search, Upload } from 'lucide-react';
 import type { Product, StoreOffer, OfferType } from '../types/store.ts';
 
 interface Props { token: string; products: Product[]; onUpdated: () => void; }
@@ -41,6 +41,7 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
     if (!res.ok) { const d=await res.json().catch(()=>({})); setError(d.error || 'تعذر حذف العرض'); return; }
     await load(); onUpdated();
   };
+  const uploadImage = (file:File) => { const reader=new FileReader(); reader.onload=async()=>{ try { const res=await fetch('/api/upload',{method:'POST',headers,body:JSON.stringify({base64Data:reader.result,filename:file.name})}); const data=await res.json(); if(!res.ok) throw new Error(data.error||'فشل رفع الصورة'); setEditing(prev=>prev?({...prev,image:data.url}):prev); } catch(e:any){setError(e.message||'فشل رفع الصورة');} }; reader.readAsDataURL(file); };
   const toggleProduct = (id:string, checked:boolean) => setEditing(prev => prev ? ({...prev, productIds:checked ? [...new Set([...(prev.productIds||[]),id])] : (prev.productIds||[]).filter(x=>x!==id)}) : prev);
   const status = (o:StoreOffer) => !o.isActive ? 'متوقف' : o.startsAt && Date.parse(o.startsAt)>Date.now() ? 'مجدول' : o.endsAt && Date.parse(o.endsAt)<Date.now() ? 'منتهٍ' : 'نشط';
   const filtered = offers.filter(o => o.title.toLowerCase().includes(search.toLowerCase()));
@@ -65,7 +66,7 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-bold">اسم العرض *<input required className={input+' mt-1'} value={editing.title||''} onChange={e=>setEditing({...editing,title:e.target.value})}/></label>
-        <label className="text-xs font-bold">صورة العرض (رابط)<input className={input+' mt-1'} value={editing.image||''} onChange={e=>setEditing({...editing,image:e.target.value})}/></label>
+        <label className="text-xs font-bold">صورة العرض<div className="mt-1 flex gap-2"><input className={input+' mt-1'} value={editing.image||''} onChange={e=>setEditing({...editing,image:e.target.value})} placeholder="رابط الصورة"/><label className="flex shrink-0 cursor-pointer items-center gap-1 rounded-xl border px-3 py-2"><Upload className="h-4 w-4"/><span>رفع</span><input type="file" accept="image/*" className="hidden" onChange={e=>{const file=e.target.files?.[0];if(file)uploadImage(file);}}/></label></div></label>
       </div>
       <label className="block text-xs font-bold">الوصف<textarea className={input+' mt-1'} rows={2} value={editing.description||''} onChange={e=>setEditing({...editing,description:e.target.value})}/></label>
       <label className="block text-xs font-bold">نوع العرض<select className={input+' mt-1'} value={editing.type||'percentage'} onChange={e=>setEditing({...editing,type:e.target.value as OfferType})}><option value="percentage">خصم بنسبة مئوية</option><option value="fixed">خصم مبلغ ثابت</option><option value="bundle">مجموعة منتجات بسعر خاص</option><option value="buy_get">اشترِ واحصل على</option></select></label>
