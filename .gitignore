@@ -4,10 +4,27 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# Local secrets and environment files
 .env*
 !.env.example
 
-
-# Local runtime database (keep the committed catalog seed separate)
-data/store_database.runtime.json
-data/store_database.runtime.json.tmp.*
+# Runtime databases, exports, backups, and private key material
+data/*.runtime.json
+data/*.runtime.json.*
+*.bak
+*.backup
+*.old
+*.orig
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.sql.gz
+**/backups/
+**/backup/
