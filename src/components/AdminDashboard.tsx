@@ -925,7 +925,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               </span>
                               <button
                                 onClick={() => setViewingOrder(ord)}
-                                className="px-3 py-1 rounded-lg border border-[#D9D2C9] hover:bg-[#FAF8F5]"
+                                className="px-3 py-1 rounded-lg border border-[#D9D2C9] text-[#1F2421] hover:bg-[#FAF8F5] dark:border-[#59655D] dark:bg-[#252C28] dark:text-white dark:hover:bg-[#303A33] transition-colors"
                               >
                                 عرض
                               </button>
