@@ -3,6 +3,7 @@ import { db } from '../db.ts';
 import { requireAdmin } from '../middleware/admin-auth.ts';
 import { offerIsCurrentlyActive } from '../services/offers.ts';
 import { hasPaginationQuery, parsePaginationQuery } from '../pagination.ts';
+import type { OrderStatus } from '../../types/store.ts';
 
 const router = Router();
 
@@ -252,7 +253,7 @@ router.get('/api/orders', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status, search } = req.query;
     const filters = {
-      status: status as string,
+      status: status === 'all' ? undefined : status as OrderStatus,
       search: search as string,
     };
 
