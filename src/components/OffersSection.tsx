@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tag, ArrowLeft, Clock, MessageCircle } from 'lucide-react';
+import { Tag, Clock, MessageCircle } from 'lucide-react';
 import type { Product, StoreOffer } from '../types/store.ts';
 import type { StoreSettings } from '../types/store.ts';
 interface Props { products: Product[]; settings: StoreSettings; onOrder: (product: Product, offerId: string) => void; language: 'ar'|'en'; }
