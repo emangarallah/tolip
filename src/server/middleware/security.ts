@@ -20,22 +20,13 @@ export function consumeRateLimit(key: string, max: number, windowMs: number, now
     bucket = { count: 0, resetAt: now + windowMs };
     buckets.set(key, bucket);
   }
-
   if (bucket.count >= max) {
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
-    };
+    return { allowed: false, remaining: 0, retryAfterSeconds: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)) };
   }
-
   bucket.count += 1;
   if (buckets.size > 10000) {
-    for (const [bucketKey, value] of buckets) {
-      if (value.resetAt <= now) buckets.delete(bucketKey);
-    }
+    for (const [bucketKey, value] of buckets) if (value.resetAt <= now) buckets.delete(bucketKey);
   }
-
   return {
     allowed: true,
     remaining: Math.max(0, max - bucket.count),
@@ -56,6 +47,39 @@ export function createRateLimit(options: RateLimitOptions) {
     }
     next();
   };
+}
+
+export function validateOrderPayload(req: Request, res: Response, next: NextFunction): void {
+  const customer = req.body?.customerDetails;
+  if (!customer || typeof customer !== 'object' || Array.isArray(customer)) {
+    res.status(400).json({ error: 'بيانات العميل غير صحيحة.' });
+    return;
+  }
+  const limits: Record<string, number> = {
+    fullName: 120, phone: 32, city: 80, area: 120, detailedAddress: 500,
+    nearestLandmark: 200, notes: 1000, preferredContactTime: 100, googleMapsUrl: 2048,
+  };
+  for (const [field, maxLength] of Object.entries(limits)) {
+    const value = customer[field];
+    if (value !== undefined && value !== null && (typeof value !== 'string' || value.length > maxLength)) {
+      res.status(400).json({ error: 'أحد حقول بيانات العميل أطول من الحد المسموح أو غير صحيح.' });
+      return;
+    }
+  }
+  if (customer.googleMapsUrl) {
+    try {
+      const parsed = new URL(customer.googleMapsUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('unsupported protocol');
+    } catch {
+      res.status(400).json({ error: 'رابط الموقع يجب أن يكون رابط HTTP أو HTTPS صحيحًا.' });
+      return;
+    }
+  }
+  if (Array.isArray(req.body.items) && req.body.items.length > 25) {
+    res.status(400).json({ error: 'يمكن إرسال 25 منتجًا كحد أقصى في الطلب الواحد.' });
+    return;
+  }
+  next();
 }
 
 export function applySecurityHeaders(_req: Request, res: Response, next: NextFunction): void {
