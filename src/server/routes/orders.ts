@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { db } from '../db.ts';
 import { requireAdmin } from '../middleware/admin-auth.ts';
 import { offerIsCurrentlyActive } from '../services/offers.ts';
+import { hasPaginationQuery, parsePaginationQuery } from '../pagination.ts';
 
 const router = Router();
 
@@ -247,19 +248,32 @@ router.post('/api/orders/track', (req: Request, res: Response) => {
   }
 });
 
-router.get('/api/orders', requireAdmin, (req: Request, res: Response) => {
+router.get('/api/orders', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status, search } = req.query;
-    const orders = db.getOrders({
-      status: status as any,
+    const filters = {
+      status: status as string,
       search: search as string,
-    });
-    res.json(orders);
+    };
+
+    if (hasPaginationQuery(req.query as Record<string, unknown>)) {
+      const parsed = parsePaginationQuery(req.query as Record<string, unknown>);
+      if (!parsed.ok) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      const result = await db.getOrdersPage(filters, parsed.value.page, parsed.value.pageSize);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(result);
+      return;
+    }
+
+    res.json(db.getOrders(filters));
   } catch (err) {
+    console.error('Orders query failed:', err);
     res.status(500).json({ error: 'فشل في جلب الطلبات' });
   }
 });
-
 router.get('/api/orders/:id', requireAdmin, (req: Request, res: Response) => {
   try {
     const order = db.getOrderById(req.params.id);
