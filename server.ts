@@ -99,6 +99,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   };
   res.once('finish', releaseOnResponseEnd);
   res.once('close', releaseOnResponseEnd);
+  next();
 });
 if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UPLOADS_DIR));
 
