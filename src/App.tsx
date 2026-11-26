@@ -420,7 +420,6 @@ export default function App() {
               />
             </div>
 
-            <OffersSection products={products} settings={settings} language={language} onOrder={(product, offer) => handleStartOrder(product, undefined, 1, offer)} />
 
             {/* Featured Products Showcase */}
             {featuredProducts.length > 0 && (
