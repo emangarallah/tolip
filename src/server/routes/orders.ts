@@ -231,7 +231,7 @@ router.post('/api/orders/track', (req: Request, res: Response) => {
   try {
     const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber.trim() : '';
     const phone = typeof req.body?.phone === 'string' ? req.body.phone.replace(/[^0-9]/g, '') : '';
-    if (!orderNumber || phone.length < 7) {
+    if (!orderNumber || orderNumber.length > 64 || !/^[0-9]{7,15}$/.test(phone)) {
       res.status(400).json({ error: 'يرجى إدخال رقم الطلب ورقم الهاتف الصحيح.' });
       return;
     }
@@ -269,9 +269,22 @@ router.post('/api/orders/track', (req: Request, res: Response) => {
 router.get('/api/orders', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status, search } = req.query;
+    const allowedStatuses: OrderStatus[] = [
+      'new', 'awaiting_whatsapp_confirmation', 'confirmed',
+      'processing', 'out_for_delivery', 'delivered', 'cancelled',
+    ];
+    if (status !== undefined && status !== 'all' &&
+        (typeof status !== 'string' || !allowedStatuses.includes(status as OrderStatus))) {
+      res.status(400).json({ error: 'مرشح حالة الطلب غير صحيح.' });
+      return;
+    }
+    if (search !== undefined && (typeof search !== 'string' || search.length > 120)) {
+      res.status(400).json({ error: 'عبارة البحث طويلة أو غير صحيحة.' });
+      return;
+    }
     const filters = {
-      status: status === 'all' ? undefined : status as OrderStatus,
-      search: search as string,
+      status: status === 'all' ? undefined : status as OrderStatus | undefined,
+      search: search as string | undefined,
     };
 
     if (hasPaginationQuery(req.query as Record<string, unknown>)) {
