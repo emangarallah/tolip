@@ -17,6 +17,50 @@ import type {
 
 dotenv.config();
 
+/**
+ * Normalize PostgreSQL URLs without weakening TLS verification.
+ * This keeps the current pg-connection-string behavior explicit across
+ * future major versions of node-postgres.
+ */
+export function normalizeNeonConnectionString(connectionString: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(connectionString);
+  } catch {
+    return connectionString;
+  }
+
+  if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
+    return connectionString;
+  }
+
+  parsed.searchParams.set('sslmode', 'verify-full');
+  return parsed.toString();
+}
+
+export interface NeonInitializationReadiness {
+  schemaReady: boolean;
+  migrationsReady: boolean;
+  rowLevelSecurityReady: boolean;
+  perfumeCategoryReady: boolean;
+}
+
+/**
+ * Healthy, already-migrated instances perform read-only initialization and
+ * may share the startup lock. Any incomplete state retains exclusive access
+ * so startup repair cannot race with another function instance.
+ */
+export function getNeonInitializationLockQuery(readiness: NeonInitializationReadiness): string {
+  const canInitializeConcurrently = readiness.schemaReady &&
+    readiness.migrationsReady &&
+    readiness.rowLevelSecurityReady &&
+    readiness.perfumeCategoryReady;
+
+  return canInitializeConcurrently
+    ? 'SELECT pg_advisory_xact_lock_shared(7319462027)'
+    : 'SELECT pg_advisory_xact_lock(7319462027)';
+}
+
 // In-app database file location
 // Keep the committed seed outside Vite's public dist directory and never write
 // live local orders/admin state back into the tracked seed file.
@@ -853,7 +897,7 @@ class StoreDatabase {
     if (this.pool) return;
 
     const pool = new Pool({
-      connectionString,
+      connectionString: normalizeNeonConnectionString(connectionString),
       max: 5,
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 5000,
@@ -868,49 +912,87 @@ class StoreDatabase {
       await client.query("SET LOCAL statement_timeout = '20s'");
       // Startup is the only trusted bootstrap context. Normal API requests never receive it.
       await client.query("SELECT set_config('app.actor_role', 'bootstrap', true)");
-      // A transaction-scoped lock is compatible with Neon/PgBouncer transaction pooling.
-      await client.query('SELECT pg_advisory_xact_lock(7319462027)');
 
-      // Production schema changes are applied as reviewed migrations, never by a
-      // request-serving Lambda using its restricted runtime database role.
+      // Check readiness before selecting the lock mode. In a healthy migrated
+      // store these checks and the subsequent hydration are read-only, so cold
+      // Vercel instances can initialize concurrently instead of queueing behind
+      // one exclusive Neon advisory lock.
       const schemaResult = await client.query(
         "SELECT to_regclass('public.tolip_store_state') IS NOT NULL AS legacy_exists, " +
         "to_regclass('public.tolip_schema_migrations') IS NOT NULL AS migrations_exist, " +
         "to_regclass('public.tolip_security_rate_limits') IS NOT NULL AS security_exists"
       );
-      if (!schemaResult.rows[0]?.legacy_exists || !schemaResult.rows[0]?.migrations_exist || !schemaResult.rows[0]?.security_exists) {
-        throw new Error('Required Tolip database migrations are not installed.');
+      const schemaReady = Boolean(
+        schemaResult.rows[0]?.legacy_exists &&
+        schemaResult.rows[0]?.migrations_exist &&
+        schemaResult.rows[0]?.security_exists
+      );
+
+      let migrationsReady = false;
+      let rowLevelSecurityReady = false;
+      let perfumeCategoryReady = false;
+
+      if (schemaReady) {
+        const migrationResult = await client.query(
+          'SELECT version FROM tolip_schema_migrations WHERE version IN (1, 2) ORDER BY version'
+        );
+        const installedVersions = new Set(migrationResult.rows.map((row: any) => Number(row.version)));
+        migrationsReady = installedVersions.has(1) && installedVersions.has(2);
+
+        const rlsResult = await client.query(
+          "SELECT count(*)::int AS enabled FROM pg_class c " +
+          "JOIN pg_namespace n ON n.oid = c.relnamespace " +
+          "WHERE n.nspname = 'public' AND c.relkind = 'r' " +
+          "AND c.relname = ANY($1::text[]) AND c.relrowsecurity AND c.relforcerowsecurity",
+          [[
+            'tolip_admin_users', 'tolip_store_settings', 'tolip_categories', 'tolip_products',
+            'tolip_product_variants', 'tolip_offers', 'tolip_offer_products', 'tolip_orders',
+            'tolip_order_items', 'tolip_schema_migrations', 'tolip_store_state',
+            'tolip_security_rate_limits',
+          ]]
+        );
+        rowLevelSecurityReady = Number(rlsResult.rows[0]?.enabled) === 12;
+
+        if (migrationsReady && rowLevelSecurityReady) {
+          const categoryResult = await client.query(
+            "SELECT name, slug, description, image, is_active FROM tolip_categories WHERE id = 'cat-perfumes' LIMIT 1"
+          );
+          const category = categoryResult.rows[0];
+          perfumeCategoryReady = Boolean(
+            category &&
+            category.name === 'العطور والروائح والبخور' &&
+            category.slug === 'perfumes-and-bakhour' &&
+            category.description &&
+            category.image &&
+            category.is_active
+          );
+        }
       }
 
-      const migrationResult = await client.query(
-        'SELECT version FROM tolip_schema_migrations WHERE version IN (1, 2) ORDER BY version'
-      );
-      const installedVersions = new Set(migrationResult.rows.map((row: any) => Number(row.version)));
-      if (!installedVersions.has(1) || !installedVersions.has(2)) {
+      // Incomplete schema or a category requiring repair keeps the exclusive
+      // lock. A fully healthy store uses a shared lock for read-only startup.
+      await client.query(getNeonInitializationLockQuery({
+        schemaReady,
+        migrationsReady,
+        rowLevelSecurityReady,
+        perfumeCategoryReady,
+      }));
+
+      if (!schemaReady || !migrationsReady) {
         throw new Error('Required Tolip database migrations are not installed.');
       }
-
-      const rlsResult = await client.query(
-        "SELECT count(*)::int AS enabled FROM pg_class c " +
-        "JOIN pg_namespace n ON n.oid = c.relnamespace " +
-        "WHERE n.nspname = 'public' AND c.relkind = 'r' " +
-        "AND c.relname = ANY($1::text[]) AND c.relrowsecurity AND c.relforcerowsecurity",
-        [[
-          'tolip_admin_users', 'tolip_store_settings', 'tolip_categories', 'tolip_products',
-          'tolip_product_variants', 'tolip_offers', 'tolip_offer_products', 'tolip_orders',
-          'tolip_order_items', 'tolip_schema_migrations', 'tolip_store_state',
-          'tolip_security_rate_limits',
-        ]]
-      );
-      if (Number(rlsResult.rows[0]?.enabled) !== 12) {
+      if (!rowLevelSecurityReady) {
         throw new Error('Tolip database Row Level Security is not fully enabled.');
       }
 
-      const previousCategories = JSON.stringify(this.baseData.categories);
       this.baseData = await loadRelationalStore(client, this.baseData, ALL_STORE_SECTIONS);
-      this.ensurePerfumesCategory();
 
-      if (JSON.stringify(this.baseData.categories) !== previousCategories) {
+      // Persist only an actual repair made by ensurePerfumesCategory(). Do not
+      // rewrite every category simply because production data differs from the
+      // seed catalog; normal customer/admin edits remain untouched.
+      const categoriesBeforeRepair = JSON.stringify(this.baseData.categories);
+      this.ensurePerfumesCategory();
+      if (JSON.stringify(this.baseData.categories) !== categoriesBeforeRepair) {
         const dirty: DirtyRecords = new Map([
           ['categories', new Set(this.baseData.categories.map((category) => category.id))],
         ]);
