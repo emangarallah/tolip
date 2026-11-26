@@ -33,7 +33,7 @@ router.post('/api/admin/login', async (req: Request, res: Response) => {
 
     let isValid = db.verifyAdminCredentials(email.trim(), password);
     if (!isValid && db.matchesAdminBootstrapCredentials(email.trim(), password)) {
-      isValid = db.completeAdminBootstrap(email.trim(), password) &&
+      isValid = await db.completeAdminBootstrap(email.trim(), password) &&
         db.verifyAdminCredentials(email.trim(), password);
     }
     if (!isValid) {
