@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, Save, X, Tag, Search, Upload } from 'lucide-react';
 import type { Product, StoreOffer, OfferType } from '../types/store.ts';
+import { ConfirmDeleteDialog } from './ConfirmDeleteDialog.tsx';
 
 interface Props { token: string; products: Product[]; onUpdated: () => void; }
 const emptyOffer: Partial<StoreOffer> = { title:'', description:'', image:'', type:'percentage', productIds:[], value:10, bundlePrice:null, buyQuantity:2, getQuantity:1, startsAt:null, endsAt:null, isActive:true };
@@ -11,6 +12,9 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<StoreOffer | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const headers = { 'Content-Type':'application/json', Authorization: `Bearer ${token}` };
   const load = async () => {
     const res = await fetch('/api/offers?includeInactive=true', { headers, cache:'no-store' });
@@ -35,11 +39,28 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       setEditing(null); await load(); onUpdated();
     } catch (e:any) { setError(e.message || 'تعذر حفظ العرض'); } finally { setBusy(false); }
   };
-  const remove = async (offer: StoreOffer) => {
-    if (!confirm(`حذف العرض «${offer.title}»؟`)) return;
-    const res = await fetch(`/api/offers/${offer.id}`, { method:'DELETE', headers });
-    if (!res.ok) { const d=await res.json().catch(()=>({})); setError(d.error || 'تعذر حذف العرض'); return; }
-    await load(); onUpdated();
+  const remove = (offer: StoreOffer) => {
+    setDeleteError('');
+    setPendingDelete(offer);
+  };
+  const confirmRemove = async () => {
+    if (!pendingDelete || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError('');
+    try {
+      const res = await fetch(`/api/offers/${pendingDelete.id}`, { method: 'DELETE', headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'تعذر حذف العرض');
+      }
+      setPendingDelete(null);
+      await load();
+      onUpdated();
+    } catch (e: any) {
+      setDeleteError(e.message || 'تعذر حذف العرض. حاولي مرة أخرى.');
+    } finally {
+      setDeleteBusy(false);
+    }
   };
   const uploadImage = (file:File) => { const reader=new FileReader(); reader.onload=async()=>{ try { const res=await fetch('/api/upload',{method:'POST',headers,body:JSON.stringify({base64Data:reader.result,filename:file.name})}); const data=await res.json(); if(!res.ok) throw new Error(data.error||'فشل رفع الصورة'); setEditing(prev=>prev?({...prev,image:data.url}):prev); } catch(e:any){setError(e.message||'فشل رفع الصورة');} }; reader.readAsDataURL(file); };
   const toggleProduct = (id:string, checked:boolean) => setEditing(prev => prev ? ({...prev, productIds:checked ? [...new Set([...(prev.productIds||[]),id])] : (prev.productIds||[]).filter(x=>x!==id)}) : prev);
@@ -47,6 +68,8 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
   const filtered = offers.filter(o => o.title.toLowerCase().includes(search.toLowerCase()));
   const input = 'w-full rounded-xl border border-[#D9D2C9] bg-white px-3 py-2.5 text-sm text-[#1F2421] focus:border-[#C74169] focus:outline-none';
   return <section className="space-y-5" dir="rtl">
+    {!editing && (
+    <>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h3 className="text-lg font-bold">إدارة العروض والخصومات</h3><p className="mt-1 text-xs text-gray-500">أنشئي العروض وحددي المنتجات ومدة نشرها.</p></div>
       <button onClick={()=>startEdit()} className="inline-flex items-center gap-2 rounded-xl bg-[#C74169] px-4 py-2.5 text-sm font-bold text-white"><Plus className="h-4 w-4"/> عرض جديد</button>
@@ -61,7 +84,9 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       </article>)}
       {!filtered.length && <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-gray-500">لا توجد عروض بعد. أضيفي أول عرض للمتجر.</div>}
     </div>
-    {editing && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-3xl bg-white p-5 sm:p-6">
+        </>
+    )}
+    {editing && <div className="rounded-3xl border border-[#EFE9E2] bg-white p-4 shadow-sm animate-in fade-in duration-200 dark:border-[#2D3830] dark:bg-[#1A1F1C]"><form onSubmit={save} className="mx-auto w-full max-w-3xl space-y-4 rounded-3xl bg-white p-1 sm:p-2 dark:bg-[#1A1F1C]">
       <div className="flex items-center justify-between"><h3 className="text-lg font-bold">{editing.id?'تعديل العرض':'إضافة عرض جديد'}</h3><button type="button" onClick={()=>setEditing(null)} className="rounded-full p-2"><X className="h-5 w-5"/></button></div>
       {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -78,5 +103,20 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.isActive!==false} onChange={e=>setEditing({...editing,isActive:e.target.checked})}/> تفعيل العرض</label>
       <div className="flex justify-end gap-2 border-t pt-3"><button type="button" onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2 text-sm">إلغاء</button><button disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-[#C74169] px-5 py-2 text-sm font-bold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{busy?'جارٍ الحفظ...':'حفظ العرض'}</button></div>
     </form></div>}
+    <ConfirmDeleteDialog
+      isOpen={Boolean(pendingDelete)}
+      title="تأكيد حذف العرض"
+      description="هل أنتِ متأكدة من حذف هذا العرض؟ لن يظهر للعملاء بعد إتمام الحذف، ولا يمكن التراجع عن العملية."
+      itemName={pendingDelete?.title}
+      busy={deleteBusy}
+      error={deleteError}
+      onCancel={() => {
+        if (!deleteBusy) {
+          setPendingDelete(null);
+          setDeleteError('');
+        }
+      }}
+      onConfirm={confirmRemove}
+    />
   </section>;
 };
