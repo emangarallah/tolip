@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { consumeRateLimit, applySecurityHeaders, validateOrderPayload } from '../src/server/middleware/security.ts';
 
 test('rate limiter allows configured number and returns retry time after limit', () => {
-  const key = `security-test-${crypto.randomUUID()}`;
+  const key = `security-test-${randomUUID()}`;
   const start = 1_000_000;
   assert.equal(consumeRateLimit(key, 2, 60_000, start).allowed, true);
   assert.equal(consumeRateLimit(key, 2, 60_000, start + 1).allowed, true);
@@ -16,9 +17,7 @@ test('rate limiter allows configured number and returns retry time after limit',
 
 test('security headers prevent MIME sniffing, framing and plugin content', () => {
   const headers: Record<string, string> = {};
-  const response = {
-    setHeader(name: string, value: string) { headers[name] = value; },
-  } as any;
+  const response = { setHeader(name: string, value: string) { headers[name] = value; } } as any;
   let called = false;
   applySecurityHeaders({} as any, response, () => { called = true; });
   assert.equal(headers['X-Content-Type-Options'], 'nosniff');
@@ -38,20 +37,17 @@ test('order payload rejects oversized customer fields and unsafe URL protocols',
   };
 
   const oversized = makeResponse();
-  validateOrderPayload({
-    body: { customerDetails: { fullName: 'x'.repeat(121) }, items: [] },
-  } as any, oversized.res, (() => { throw new Error('next should not run'); }) as any);
+  validateOrderPayload({ body: { customerDetails: { fullName: 'x'.repeat(121) }, items: [] } } as any,
+    oversized.res, (() => { throw new Error('next should not run'); }) as any);
   assert.equal(oversized.result.statusCode, 400);
 
   const unsafeUrl = makeResponse();
-  validateOrderPayload({
-    body: { customerDetails: { googleMapsUrl: 'javascript:alert(1)' }, items: [] },
-  } as any, unsafeUrl.res, (() => { throw new Error('next should not run'); }) as any);
+  validateOrderPayload({ body: { customerDetails: { googleMapsUrl: 'javascript:alert(1)' }, items: [] } } as any,
+    unsafeUrl.res, (() => { throw new Error('next should not run'); }) as any);
   assert.equal(unsafeUrl.result.statusCode, 400);
 });
 
 test('order payload accepts bounded fields and HTTP(S) map links', () => {
-  const response = { statusCode: 200 };
   let called = false;
   validateOrderPayload({
     body: {
@@ -59,7 +55,7 @@ test('order payload accepts bounded fields and HTTP(S) map links', () => {
       items: [{ productId: 'p', variantId: 'v', quantity: 1 }],
     },
   } as any, {
-    status(code: number) { response.statusCode = code; return this; },
+    status() { return this; },
     json() { return this; },
   } as any, (() => { called = true; }) as any);
   assert.equal(called, true);
