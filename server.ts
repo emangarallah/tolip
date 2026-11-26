@@ -8,6 +8,8 @@ import { put } from '@vercel/blob';
 import { db, generateToken, verifyToken } from './src/server/db.ts';
 import { validateProductVariants } from './src/server/validation/product.ts';
 import { getAdminPayload, requireAdmin, isLoginRateLimited } from './src/server/middleware/admin-auth.ts';
+import offersRouter from './src/server/routes/offers.ts';
+import { offerIsCurrentlyActive } from './src/server/services/offers.ts';
 
 dotenv.config();
 
@@ -157,74 +159,8 @@ app.delete('/api/categories/:id', requireAdmin, (req: Request, res: Response) =>
   }
 });
 
-// ==========================================
-// 2.5. Offers / Promotions API
-// ==========================================
-const offerIsCurrentlyActive = (offer: any) => {
-  const now = Date.now();
-  const start = offer.startsAt ? Date.parse(offer.startsAt) : NaN;
-  const end = offer.endsAt ? Date.parse(offer.endsAt) : NaN;
-  return offer.isActive === true && (!Number.isFinite(start) || start <= now) && (!Number.isFinite(end) || end >= now);
-};
-
-app.get('/api/offers', (req: Request, res: Response) => {
-  try {
-    const includeInactive = req.query.includeInactive === 'true' && Boolean(getAdminPayload(req));
-    const offers = db.getOffers(includeInactive);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json(offers.filter((offer: any) => includeInactive || offerIsCurrentlyActive(offer)));
-  } catch { res.status(500).json({ error: 'تعذر جلب العروض' }); }
-});
-
-function validateOfferInput(body: any): string | null {
-  if (typeof body.title !== 'string' || !body.title.trim()) return 'اسم العرض مطلوب.';
-  if (!['percentage', 'fixed', 'bundle', 'buy_get'].includes(body.type)) return 'نوع العرض غير صحيح.';
-  if (!Array.isArray(body.productIds) || body.productIds.length < 1) return 'يرجى اختيار منتج واحد على الأقل.';
-  if (body.productIds.some((id: any) => typeof id !== 'string' || !db.getProductById(id))) return 'أحد المنتجات المختارة غير موجود.';
-  if (!Number.isFinite(Number(body.value)) || Number(body.value) < 0) return 'قيمة الخصم غير صحيحة.';
-  if (body.type === 'percentage' && Number(body.value) > 100) return 'نسبة الخصم لا يمكن أن تتجاوز 100%.';
-  if (body.type === 'bundle' && (!Number.isFinite(Number(body.bundlePrice)) || Number(body.bundlePrice) < 0)) return 'سعر الحزمة غير صحيح.';
-  if (body.startsAt && !Number.isFinite(Date.parse(body.startsAt))) return 'تاريخ بداية العرض غير صحيح.';
-  if (body.endsAt && !Number.isFinite(Date.parse(body.endsAt))) return 'تاريخ نهاية العرض غير صحيح.';
-  if (body.startsAt && body.endsAt && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) return 'يجب أن يكون تاريخ الانتهاء بعد تاريخ البداية.';
-  return null;
-}
-
-app.post('/api/offers', requireAdmin, (req: Request, res: Response) => {
-  const error = validateOfferInput(req.body);
-  if (error) { res.status(400).json({ error }); return; }
-  const offer = db.createOffer({
-    title: req.body.title.trim(), description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
-    image: typeof req.body.image === 'string' ? req.body.image.trim() : '', type: req.body.type,
-    productIds: Array.from(new Set<string>(req.body.productIds as string[])), value: Number(req.body.value),
-    bundlePrice: req.body.bundlePrice === '' || req.body.bundlePrice == null ? null : Number(req.body.bundlePrice),
-    buyQuantity: Math.max(1, Math.floor(Number(req.body.buyQuantity) || 1)),
-    getQuantity: Math.max(1, Math.floor(Number(req.body.getQuantity) || 1)),
-    startsAt: req.body.startsAt || null, endsAt: req.body.endsAt || null, isActive: req.body.isActive !== false,
-  });
-  res.status(201).json(offer);
-});
-
-app.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
-  const error = validateOfferInput(req.body);
-  if (error) { res.status(400).json({ error }); return; }
-  const updated = db.updateOffer(req.params.id, {
-    title: req.body.title.trim(), description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
-    image: typeof req.body.image === 'string' ? req.body.image.trim() : '', type: req.body.type,
-    productIds: Array.from(new Set<string>(req.body.productIds as string[])), value: Number(req.body.value),
-    bundlePrice: req.body.bundlePrice === '' || req.body.bundlePrice == null ? null : Number(req.body.bundlePrice),
-    buyQuantity: Math.max(1, Math.floor(Number(req.body.buyQuantity) || 1)),
-    getQuantity: Math.max(1, Math.floor(Number(req.body.getQuantity) || 1)),
-    startsAt: req.body.startsAt || null, endsAt: req.body.endsAt || null, isActive: req.body.isActive !== false,
-  });
-  if (!updated) { res.status(404).json({ error: 'العرض غير موجود.' }); return; }
-  res.json(updated);
-});
-
-app.delete('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
-  if (!db.deleteOffer(req.params.id)) { res.status(404).json({ error: 'العرض غير موجود.' }); return; }
-  res.json({ success: true });
-});
+// Offers are mounted as a dedicated route module.
+app.use(offersRouter);
 
 // ==========================================
 // 3. Products API
