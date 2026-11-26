@@ -965,7 +965,7 @@ class StoreDatabase {
       await client.query("SELECT set_config('app.admin_candidate_id', $1, true)", [identity.adminCandidate?.id || '']);
       await client.query("SELECT set_config('app.login_email', $1, true)", [identity.loginEmail?.trim().toLowerCase() || '']);
       await client.query("SELECT set_config('app.track_order_number', $1, true)", [identity.trackingOrderNumber?.trim() || '']);
-      await client.query("SELECT set_config('app.track_order_phone', $1, true)", [identity.trackingPhone?.replace(/\\D/g, '') || '']);
+      await client.query("SELECT set_config('app.track_order_phone', $1, true)", [identity.trackingPhone?.replace(/[^0-9]/g, '') || '']);
       await client.query("SELECT set_config('app.created_order_id', '', true)");
       await client.query("SELECT set_config('app.rate_limit_access', 'false', true)");
 
@@ -1130,8 +1130,12 @@ class StoreDatabase {
     );
   }
 
-  public completeAdminBootstrap(email: string, pass: string): boolean {
+  public async completeAdminBootstrap(email: string, pass: string): Promise<boolean> {
     if (!this.matchesAdminBootstrapCredentials(email, pass)) return false;
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      await context.client.query("SELECT set_config('app.actor_role', 'bootstrap', true)");
+    }
     this.updateAdminCredentials(email, pass);
     return true;
   }
