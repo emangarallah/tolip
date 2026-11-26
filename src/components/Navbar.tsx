@@ -8,7 +8,6 @@ import {
   ArrowUpRight,
   Sun,
   Moon,
-  Globe,
 } from 'lucide-react';
 import { TulipLogo } from './TulipLogo.tsx';
 import type { StoreSettings } from '../types/store.ts';
@@ -24,7 +23,6 @@ interface NavbarProps {
   onOpenFavorites: () => void;
   onOpenSearch: () => void;
   onToggleTheme: () => void;
-  onToggleLanguage: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,7 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFavorites,
   onOpenSearch,
   onToggleTheme,
-  onToggleLanguage,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = translations[language];
@@ -100,16 +97,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop controls */}
           <div className="hidden shrink-0 items-center gap-2 md:flex">
-            <button
-              onClick={onToggleLanguage}
-              aria-label={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#EBE4DC] px-3 text-xs font-semibold text-[#4A4E4B] transition-colors hover:bg-[#F4EFEA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] dark:border-[#2D332F] dark:text-[#D1D8D3] dark:hover:bg-[#1C221E]"
-              title={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
-            >
-              <Globe className="h-4 w-4 text-[#C74169] dark:text-[#E06287]" />
-              <span className="font-sans uppercase tracking-wider">{language === 'ar' ? 'English' : 'عربي'}</span>
-            </button>
-
             <button
               onClick={onToggleTheme}
               aria-label={themeLabel}
@@ -222,13 +209,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Heart className="h-4 w-4 text-[#C74169]" />
               {t.favorites}{favoritesCount > 0 ? ` (${favoritesCount})` : ''}
-            </button>
-            <button
-              onClick={onToggleLanguage}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#E9E1D9] bg-white px-3 text-sm font-semibold text-[#4A4E4B] dark:border-[#303832] dark:bg-[#1B211D] dark:text-[#E2E7E3]"
-            >
-              <Globe className="h-4 w-4 text-[#C74169]" />
-              {language === 'ar' ? 'English' : 'عربي'}
             </button>
           </div>
 
