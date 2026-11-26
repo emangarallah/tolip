@@ -287,7 +287,7 @@ app.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
   const updated = db.updateOffer(req.params.id, {
     title: req.body.title.trim(), description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
     image: typeof req.body.image === 'string' ? req.body.image.trim() : '', type: req.body.type,
-    productIds: [...new Set(req.body.productIds)], value: Number(req.body.value),
+    productIds: Array.from(new Set<string>(req.body.productIds as string[])), value: Number(req.body.value),
     bundlePrice: req.body.bundlePrice === '' || req.body.bundlePrice == null ? null : Number(req.body.bundlePrice),
     buyQuantity: Math.max(1, Math.floor(Number(req.body.buyQuantity) || 1)),
     getQuantity: Math.max(1, Math.floor(Number(req.body.getQuantity) || 1)),
