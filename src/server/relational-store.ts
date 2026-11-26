@@ -170,6 +170,224 @@ export async function loadRelationalStore(
   return state;
 }
 
+
+export interface RelationalPage<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+function makePage<T>(items: T[], page: number, pageSize: number, total: number): RelationalPage<T> {
+  const totalPages = Math.ceil(total / pageSize);
+  return {
+    items,
+    page,
+    pageSize,
+    total,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1 && totalPages > 0,
+  };
+}
+
+export async function getRelationalProductPage(
+  client: any,
+  filters: {
+    categoryId?: string;
+    search?: string;
+    isFeatured?: boolean;
+    isBestSeller?: boolean;
+    inStockOnly?: boolean;
+    includeInactive?: boolean;
+    sortBy?: 'price-asc' | 'price-desc' | 'newest' | 'name';
+  },
+  requestedPage: number,
+  pageSize: number
+): Promise<RelationalPage<Product>> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  const add = (sql: string, value: unknown) => {
+    values.push(value);
+    conditions.push(sql.replace('?', '$' + values.length));
+  };
+
+  if (!filters.includeInactive) conditions.push('p.is_active = true');
+  if (filters.categoryId && filters.categoryId !== 'all') add('p.category_id = ?', filters.categoryId);
+  if (filters.isFeatured) conditions.push('p.is_featured = true');
+  if (filters.isBestSeller) conditions.push('p.is_best_seller = true');
+  if (filters.inStockOnly) conditions.push('p.in_stock = true');
+  if (filters.search?.trim()) {
+    add('(p.name ILIKE ? OR p.description ILIKE ? OR p.features::text ILIKE ?)', `%${filters.search.trim()}%`);
+    const valueIndex = values.length;
+    // One parameter can be reused for each searchable column.
+    conditions[conditions.length - 1] = `(p.name ILIKE $${valueIndex} OR p.description ILIKE $${valueIndex} OR p.features::text ILIKE $${valueIndex})`;
+  }
+
+  const whereSql = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+  const countResult = await client.query(
+    `SELECT count(*)::int AS total FROM tolip_products p ${whereSql}`,
+    values
+  );
+  const total = Number(countResult.rows[0]?.total) || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  const page = Math.min(requestedPage, Math.max(1, totalPages));
+  const offset = (page - 1) * pageSize;
+
+  let orderSql = 'p.created_at DESC, p.id ASC';
+  if (filters.sortBy === 'name') orderSql = 'p.name ASC, p.id ASC';
+  if (filters.sortBy === 'price-asc') {
+    orderSql = '(SELECT min(v.price) FROM tolip_product_variants v WHERE v.product_id = p.id) ASC NULLS LAST, p.created_at DESC, p.id ASC';
+  }
+  if (filters.sortBy === 'price-desc') {
+    orderSql = '(SELECT max(v.price) FROM tolip_product_variants v WHERE v.product_id = p.id) DESC NULLS LAST, p.created_at DESC, p.id ASC';
+  }
+
+  const pageValues = [...values, pageSize, offset];
+  const result = await client.query(
+    `SELECT p.id, p.name, p.slug, p.category_id, p.description, p.features,
+            p.usage_instructions, p.images, p.is_featured, p.is_best_seller,
+            p.is_active, p.in_stock, p.created_at, p.updated_at,
+            COALESCE(c.name, 'عام') AS category_name
+     FROM tolip_products p
+     LEFT JOIN tolip_categories c ON c.id = p.category_id
+     ${whereSql}
+     ORDER BY ${orderSql}
+     LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+    pageValues
+  );
+
+  const ids = result.rows.map((row: any) => row.id);
+  const variantsResult = ids.length
+    ? await client.query(
+      'SELECT id, product_id, name, price, original_price, stock, sku FROM tolip_product_variants WHERE product_id = ANY($1::text[]) ORDER BY product_id, id',
+      [ids]
+    )
+    : { rows: [] };
+
+  const variantsByProduct = new Map<string, ProductVariant[]>();
+  for (const row of variantsResult.rows) {
+    const variants = variantsByProduct.get(row.product_id) || [];
+    variants.push({
+      id: row.id,
+      name: row.name,
+      price: toNumberOrNull(row.price),
+      originalPrice: toNumberOrNull(row.original_price),
+      stock: Number(row.stock) || 0,
+      ...(row.sku ? { sku: row.sku } : {}),
+    });
+    variantsByProduct.set(row.product_id, variants);
+  }
+
+  const items = result.rows.map((row: any): Product => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    categoryId: row.category_id || '',
+    categoryName: row.category_name || 'عام',
+    description: row.description || '',
+    features: readJsonArray<string>(row.features),
+    usageInstructions: row.usage_instructions || '',
+    images: readJsonArray<string>(row.images),
+    variants: variantsByProduct.get(row.id) || [],
+    isFeatured: Boolean(row.is_featured),
+    isBestSeller: Boolean(row.is_best_seller),
+    isActive: Boolean(row.is_active),
+    inStock: Boolean(row.in_stock),
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  }));
+
+  return makePage(items, page, pageSize, total);
+}
+
+export async function getRelationalOrderPage(
+  client: any,
+  filters: { status?: string; search?: string },
+  requestedPage: number,
+  pageSize: number
+): Promise<RelationalPage<Order>> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  const add = (sql: string, value: unknown) => {
+    values.push(value);
+    conditions.push(sql.replace('?', '$' + values.length));
+  };
+
+  if (filters.status && filters.status !== 'all') add('o.status = ?', filters.status);
+  if (filters.search?.trim()) {
+    values.push(`%${filters.search.trim()}%`);
+    const index = values.length;
+    conditions.push(`(o.order_number ILIKE $${index} OR o.customer_details->>'fullName' ILIKE $${index} OR o.customer_details->>'phone' ILIKE $${index} OR o.customer_details->>'city' ILIKE $${index})`);
+  }
+
+  const whereSql = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+  const countResult = await client.query(
+    `SELECT count(*)::int AS total FROM tolip_orders o ${whereSql}`,
+    values
+  );
+  const total = Number(countResult.rows[0]?.total) || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  const page = Math.min(requestedPage, Math.max(1, totalPages));
+  const offset = (page - 1) * pageSize;
+  const pageValues = [...values, pageSize, offset];
+
+  const result = await client.query(
+    `SELECT o.id, o.order_number, o.customer_details, o.items_total, o.delivery_fee,
+            o.delivery_fee_note, o.final_total, o.status, o.whatsapp_message,
+            o.created_at, o.updated_at
+     FROM tolip_orders o
+     ${whereSql}
+     ORDER BY o.created_at DESC, o.id DESC
+     LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+    pageValues
+  );
+
+  const ids = result.rows.map((row: any) => row.id);
+  const itemsResult = ids.length
+    ? await client.query(
+      'SELECT order_id, line_number, product_id, product_name, variant_id, variant_name, quantity, unit_price, total_price, image FROM tolip_order_items WHERE order_id = ANY($1::text[]) ORDER BY order_id, line_number',
+      [ids]
+    )
+    : { rows: [] };
+
+  const itemsByOrder = new Map<string, OrderItem[]>();
+  for (const row of itemsResult.rows) {
+    const items = itemsByOrder.get(row.order_id) || [];
+    items.push({
+      productId: row.product_id,
+      productName: row.product_name,
+      variantId: row.variant_id,
+      variantName: row.variant_name,
+      quantity: Number(row.quantity) || 0,
+      unitPrice: toNumberOrNull(row.unit_price),
+      totalPrice: toNumberOrNull(row.total_price),
+      ...(row.image ? { image: row.image } : {}),
+    });
+    itemsByOrder.set(row.order_id, items);
+  }
+
+  const items = result.rows.map((row: any): Order => ({
+    id: row.id,
+    orderNumber: row.order_number,
+    customerDetails: row.customer_details,
+    items: itemsByOrder.get(row.id) || [],
+    itemsTotal: toNumberOrNull(row.items_total),
+    deliveryFee: toNumberOrNull(row.delivery_fee),
+    ...(row.delivery_fee_note ? { deliveryFeeNote: row.delivery_fee_note } : {}),
+    finalTotal: toNumberOrNull(row.final_total),
+    status: row.status,
+    whatsappMessage: row.whatsapp_message || '',
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  }));
+
+  return makePage(items, page, pageSize, total);
+}
+
 export async function persistRelationalChanges(
   client: any,
   state: DatabaseSchema,

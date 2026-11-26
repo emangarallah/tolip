@@ -76,3 +76,12 @@ The first production startup applies `migrations/001_normalized_store.sql` insid
 API reads use transaction-scoped shared advisory locks; writes use transaction-scoped exclusive locks. These locks are released automatically on commit/rollback and remain compatible with transaction-mode connection pooling. Request state is isolated with AsyncLocalStorage so concurrent reads cannot overwrite one another's in-memory data. Lock and statement timeouts are bounded to return a controlled 503 before the Vercel execution limit.
 
 The original JSONB snapshot is deliberately not dual-written after cutover. The migration is additive and retains the legacy snapshot, but after new relational writes begin, a rollback must use a forward-compatible code release or restore/reconcile the legacy snapshot; deploying an older application build that reads only `tolip_store_state` would not see subsequent writes.
+
+
+## Server-side pagination and load verification
+
+The admin product list uses `GET /api/products?page=1&pageSize=12` with optional `search`, `categoryId`, and `includeInactive` filters. The admin order list uses `GET /api/orders?page=1&pageSize=10` with optional `status` and `search`. Paginated responses include `items`, `page`, `pageSize`, `total`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. Page size is bounded to 100. Requests without `page` or `pageSize` retain the legacy array response for compatibility.
+
+For Neon-backed requests, COUNT and LIMIT/OFFSET are executed in PostgreSQL; product variants and order items are fetched only for the selected page. Pagination requests do not hydrate full product/order collections into request memory. The storefront's existing unpaginated product endpoint remains unchanged until its search/filter UX is migrated separately.
+
+`tests/load-smoke.test.ts` starts an isolated local copy of the Express API and simulates concurrent catalog reads, order-list reads, and 12 test order submissions. It records p50/p95/max response time and verifies all responses, unique order numbers, and persisted order count. It uses a temporary copy of the seed file and never connects to Neon or a deployed environment; it is a regression/load-smoke test, not a production capacity benchmark.

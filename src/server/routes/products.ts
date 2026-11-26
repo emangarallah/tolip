@@ -3,30 +3,44 @@ import crypto from 'crypto';
 import { db } from '../db.ts';
 import { getAdminPayload, requireAdmin } from '../middleware/admin-auth.ts';
 import { validateProductVariants } from '../validation/product.ts';
+import { hasPaginationQuery, parsePaginationQuery } from '../pagination.ts';
 
 const router = Router();
 
 // ==========================================
 // 3. Products API
 // ==========================================
-router.get('/api/products', (req: Request, res: Response) => {
+router.get('/api/products', async (req: Request, res: Response) => {
   try {
     const { categoryId, search, isFeatured, isBestSeller, inStockOnly, includeInactive, sortBy } = req.query;
-    const products = db.getProducts({
+    const options = {
       categoryId: categoryId as string,
       search: search as string,
       isFeatured: isFeatured === 'true',
       isBestSeller: isBestSeller === 'true',
       inStockOnly: inStockOnly === 'true',
       includeInactive: includeInactive === 'true' && Boolean(getAdminPayload(req)),
-      sortBy: sortBy as any,
-    });
-    res.json(products);
+      sortBy: sortBy as 'price-asc' | 'price-desc' | 'newest' | 'name',
+    };
+
+    if (hasPaginationQuery(req.query as Record<string, unknown>)) {
+      const parsed = parsePaginationQuery(req.query as Record<string, unknown>);
+      if (!parsed.ok) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      const result = await db.getProductsPage(options, parsed.value.page, parsed.value.pageSize);
+      res.setHeader('Cache-Control', options.includeInactive ? 'no-store' : 'public, max-age=15, stale-while-revalidate=30');
+      res.json(result);
+      return;
+    }
+
+    res.json(db.getProducts(options));
   } catch (err) {
+    console.error('Products query failed:', err);
     res.status(500).json({ error: 'فشل في جلب المنتجات' });
   }
 });
-
 router.get('/api/products/:id', (req: Request, res: Response) => {
   try {
     const product = db.getProductById(req.params.id);

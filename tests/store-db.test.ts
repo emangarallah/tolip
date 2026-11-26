@@ -157,3 +157,26 @@ test('request contexts isolate request state and persist local writes', async ()
   const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.runtime.json'), 'utf8'));
   assert.ok(persisted.categories.some((entry: any) => entry.id === createdId));
 });
+test('database pagination returns bounded, distinct product and order pages', async () => {
+  const context = await db.beginRequest(true);
+  const firstProducts = await db.runInRequest(context, () =>
+    db.getProductsPage({ includeInactive: true, sortBy: 'name' }, 1, 8)
+  );
+  const secondProducts = await db.runInRequest(context, () =>
+    db.getProductsPage({ includeInactive: true, sortBy: 'name' }, 2, 8)
+  );
+
+  assert.equal(firstProducts.items.length, 8);
+  assert.equal(firstProducts.total, 25);
+  assert.equal(firstProducts.totalPages, 4);
+  assert.equal(firstProducts.hasNextPage, true);
+  assert.equal(secondProducts.page, 2);
+  assert.equal(secondProducts.items.length, 8);
+  assert.equal(new Set([...firstProducts.items, ...secondProducts.items].map((item: any) => item.id)).size, 16);
+
+  const orders = await db.runInRequest(context, () => db.getOrdersPage({ status: 'confirmed' }, 1, 5));
+  assert.ok(orders.total >= 1);
+  assert.ok(orders.items.every((order: any) => order.status === 'confirmed'));
+  assert.ok(orders.items.length <= 5);
+});
+
