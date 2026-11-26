@@ -18,8 +18,10 @@ function parseProductWritePayload(body: any, partial: boolean): { value?: Record
     usageInstructions: 3000,
   };
   for (const [field, maxLength] of Object.entries(textFields)) {
-    if (body[field] === undefined && partial) continue;
-    if (body[field] === undefined && field !== 'name' && field !== 'slug') continue;
+    if (body[field] === undefined) {
+      if (!partial && field === 'name') return { error: 'اسم المنتج مطلوب ويجب ألا يتجاوز 160 حرفًا.' };
+      continue;
+    }
     if (typeof body[field] !== 'string' || body[field].length > maxLength || (!partial && field === 'name' && !body[field].trim())) {
       return { error: field === 'name' ? 'اسم المنتج مطلوب ويجب ألا يتجاوز 160 حرفًا.' : 'أحد حقول المنتج النصية غير صحيح.' };
     }
@@ -78,7 +80,7 @@ function parseProductWritePayload(body: any, partial: boolean): { value?: Record
       return { error: 'إعدادات ظهور المنتج غير صحيحة.' };
     }
     if (body[field] !== undefined) value[field] = body[field];
-    else if (!partial) value[field] = true;
+    else if (!partial) value[field] = field === 'isFeatured' || field === 'isBestSeller' ? false : true;
   }
 
   return { value };
