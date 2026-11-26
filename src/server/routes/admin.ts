@@ -13,9 +13,9 @@ router.use('/api/admin', (_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-router.post('/api/admin/login', (req: Request, res: Response) => {
+router.post('/api/admin/login', async (req: Request, res: Response) => {
   try {
-    if (isLoginRateLimited(req)) {
+    if (await isLoginRateLimited(req)) {
       res.setHeader('Retry-After', '900');
       res.status(429).json({ error: 'تم تجاوز عدد محاولات تسجيل الدخول. حاول بعد 15 دقيقة.' });
       return;
@@ -44,7 +44,7 @@ router.post('/api/admin/login', (req: Request, res: Response) => {
     db.markAdminBootstrapCompleted();
 
     const admin = db.getAdminInfo();
-    clearLoginAttempts(req);
+    await clearLoginAttempts(req);
     const sessionVersion = db.rotateAdminSession();
     const token = generateToken({ email: admin.email, id: admin.id, sessionVersion, role: 'admin' });
 
