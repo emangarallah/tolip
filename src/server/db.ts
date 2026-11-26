@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Pool } from 'pg';
-import { loadRelationalStore, persistRelationalChanges } from './relational-store.ts';
+import { getRelationalOrderPage, getRelationalProductPage, loadRelationalStore, persistRelationalChanges, type RelationalPage } from './relational-store.ts';
 import type {
   Category,
   Product,
@@ -1233,6 +1233,41 @@ class StoreDatabase {
     return result;
   }
 
+  public async getProductsPage(
+    options: {
+      categoryId?: string;
+      search?: string;
+      isFeatured?: boolean;
+      isBestSeller?: boolean;
+      inStockOnly?: boolean;
+      includeInactive?: boolean;
+      sortBy?: 'price-asc' | 'price-desc' | 'newest' | 'name';
+    },
+    page: number,
+    pageSize: number
+  ): Promise<RelationalPage<Product>> {
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      return getRelationalProductPage(context.client, options, page, pageSize);
+    }
+
+    const all = this.getProducts(options);
+    const total = all.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const safePage = Math.min(page, Math.max(1, totalPages));
+    const offset = (safePage - 1) * pageSize;
+    const items = all.slice(offset, offset + pageSize);
+    return {
+      items,
+      page: safePage,
+      pageSize,
+      total,
+      totalPages,
+      hasNextPage: safePage < totalPages,
+      hasPreviousPage: safePage > 1 && totalPages > 0,
+    };
+  }
+
   public getProductById(id: string): Product | undefined {
     const product = this.data.products.find((p) => p.id === id || p.slug === id);
     if (!product) return undefined;
@@ -1362,6 +1397,33 @@ class StoreDatabase {
       );
     }
     return list;
+  }
+
+  public async getOrdersPage(
+    filters: { status?: string; search?: string },
+    page: number,
+    pageSize: number
+  ): Promise<RelationalPage<Order>> {
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      return getRelationalOrderPage(context.client, filters, page, pageSize);
+    }
+
+    const all = this.getOrders(filters);
+    const total = all.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const safePage = Math.min(page, Math.max(1, totalPages));
+    const offset = (safePage - 1) * pageSize;
+    const items = all.slice(offset, offset + pageSize);
+    return {
+      items,
+      page: safePage,
+      pageSize,
+      total,
+      totalPages,
+      hasNextPage: safePage < totalPages,
+      hasPreviousPage: safePage > 1 && totalPages > 0,
+    };
   }
 
   public getOrderById(id: string): Order | undefined {
