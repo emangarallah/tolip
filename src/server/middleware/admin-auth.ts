@@ -59,3 +59,8 @@ export function isLoginRateLimited(req: Request): boolean {
   }
   return false;
 }
+
+
+export function clearLoginAttempts(req: Request): void {
+  loginAttemptBuckets.delete(req.ip || req.socket.remoteAddress || 'unknown');
+}
