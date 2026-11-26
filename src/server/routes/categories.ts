@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import crypto from 'crypto';
 import { db } from '../db.ts';
 import { getAdminPayload, requireAdmin } from '../middleware/admin-auth.ts';
 
@@ -68,8 +69,5 @@ router.delete('/api/categories/:id', requireAdmin, (req: Request, res: Response)
     res.status(500).json({ error: 'فشل في حذف القسم' });
   }
 });
-
-// Offers are mounted as a dedicated route module.
-router.use(offersRouter);
 
 export default router;
