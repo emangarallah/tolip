@@ -57,7 +57,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   let requestContext;
 
   try {
-    requestContext = await db.beginRequest(readOnly, getRequiredStoreDataSections(req.method, req.path));
+    requestContext = await db.beginRequest(readOnly, getRequiredStoreDataSections(req.method, req.path, req.query as Record<string, unknown>));
   } catch (error) {
     console.error('Failed to initialize Neon store request:', error);
     res.setHeader('Retry-After', '2');
