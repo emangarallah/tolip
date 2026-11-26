@@ -81,6 +81,7 @@ export default function App() {
   const [checkoutVariantId, setCheckoutVariantId] = useState('');
   const [checkoutQuantity, setCheckoutQuantity] = useState(1);
   const [checkoutOfferId, setCheckoutOfferId] = useState<string | undefined>(undefined);
+  const [checkoutOffer, setCheckoutOffer] = useState<StoreOffer | undefined>(undefined);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -164,7 +165,7 @@ export default function App() {
   const isRtl = language === 'ar';
 
   // Open the delivery form directly for a single selected product.
-  const handleStartOrder = (product: Product, variantId?: string, quantity = 1, offerId?: string) => {
+  const handleStartOrder = (product: Product, variantId?: string, quantity = 1, offer?: StoreOffer) => {
     const selectedVariant =
       product.variants.find((variant) => variant.id === variantId && variant.stock > 0) ||
       product.variants.find((variant) => variant.stock > 0);
@@ -173,7 +174,8 @@ export default function App() {
     setCheckoutProduct(product);
     setCheckoutVariantId(selectedVariant.id);
     setCheckoutQuantity(Math.max(1, Math.floor(quantity)));
-    setCheckoutOfferId(offerId);
+    setCheckoutOfferId(offer?.id);
+    setCheckoutOffer(offer);
     setSelectedProduct(null);
     setIsCheckoutOpen(true);
   };
@@ -418,7 +420,7 @@ export default function App() {
               />
             </div>
 
-            <OffersSection products={products} settings={settings} language={language} onOrder={(product, offerId) => handleStartOrder(product, undefined, 1, offerId)} />
+            <OffersSection products={products} settings={settings} language={language} onOrder={(product, offer) => handleStartOrder(product, undefined, 1, offer)} />
 
             {/* Featured Products Showcase */}
             {featuredProducts.length > 0 && (
@@ -865,6 +867,7 @@ export default function App() {
       {/* Single-product delivery form */}
       <CheckoutModal
           offerId={checkoutOfferId}
+          offer={checkoutOffer}
         isOpen={isCheckoutOpen}
         product={checkoutProduct}
         initialVariantId={checkoutVariantId}
@@ -877,6 +880,7 @@ export default function App() {
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
           setCheckoutOfferId(undefined);
+          setCheckoutOffer(undefined);
         }}
         onOrderSuccess={(order, whatsappUrl) => {
           setIsCheckoutOpen(false);
@@ -884,6 +888,7 @@ export default function App() {
           setCheckoutVariantId('');
           setCheckoutQuantity(1);
           setCheckoutOfferId(undefined);
+          setCheckoutOffer(undefined);
           setCompletedOrder({ order, whatsappUrl });
         }}
       />
