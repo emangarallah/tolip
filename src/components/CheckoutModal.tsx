@@ -8,6 +8,7 @@ interface CheckoutModalProps {
   product: Product | null;
   initialVariantId: string;
   initialQuantity: number;
+  offerId?: string;
   settings: StoreSettings;
   language: Language;
   onClose: () => void;
@@ -19,6 +20,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   initialVariantId,
   initialQuantity,
+  offerId,
   settings,
   language,
   onClose,
@@ -159,6 +161,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           customerDetails,
           items,
           deliveryFee,
+          offerId,
         }),
       });
 
