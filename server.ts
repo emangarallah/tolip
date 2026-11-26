@@ -13,6 +13,7 @@ import { UPLOADS_DIR } from './src/server/storage/uploads.ts';
 import { db } from './src/server/db.ts';
 import { isReadOnlyStoreRequest } from './src/server/request-mode.ts';
 import { getRequiredStoreDataSections } from './src/server/request-scope.ts';
+import { applySecurityHeaders, createRateLimit, validateOrderPayload } from './src/server/middleware/security.ts';
 
 dotenv.config();
 
@@ -22,9 +23,25 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// Vercel terminates TLS and forwards the original client IP in the first trusted hop.
+if (process.env.VERCEL) app.set('trust proxy', 1);
+app.use(applySecurityHeaders);
+
 // Parse JSON and URL-encoded bodies (allowing up to 15MB for custom image uploads)
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Per-instance emergency throttles. Use Vercel Firewall or a shared Neon-backed
+// limiter for a strict distributed limit across serverless instances.
+app.post('/api/orders', createRateLimit({
+  keyPrefix: 'create-order', windowMs: 10 * 60 * 1000, max: 12,
+  message: 'تم تجاوز عدد الطلبات من هذا الاتصال. يرجى المحاولة بعد قليل.',
+}));
+app.post('/api/orders/track', createRateLimit({
+  keyPrefix: 'track-order', windowMs: 10 * 60 * 1000, max: 30,
+  message: 'تم تجاوز عدد محاولات تتبع الطلب. يرجى المحاولة بعد قليل.',
+}));
+app.post('/api/orders', validateOrderPayload);
 
 const isProductionRuntime = process.env.NODE_ENV === 'production';
 const distPath = path.resolve(__dirname, 'dist');
