@@ -17,6 +17,17 @@ import type {
 
 dotenv.config();
 
+export function normalizeNeonConnectionString(connectionString: string): string {
+  const parsed = new URL(connectionString);
+  if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
+    return connectionString;
+  }
+  // pg-connection-string currently treats "require" as verify-full but warns that
+  // this alias will change in pg v9. Keep today's secure behavior explicit.
+  parsed.searchParams.set('sslmode', 'verify-full');
+  return parsed.toString();
+}
+
 // In-app database file location
 // Keep the committed seed outside Vite's public dist directory and never write
 // live local orders/admin state back into the tracked seed file.
@@ -846,7 +857,8 @@ class StoreDatabase {
     if (this.pool) return;
 
     const pool = new Pool({
-      connectionString,
+      // Keep certificate and hostname verification explicit across pg major versions.
+      connectionString: normalizeNeonConnectionString(connectionString),
       max: 5,
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 5000,
@@ -859,12 +871,38 @@ class StoreDatabase {
       transactionStarted = true;
       await client.query("SET LOCAL lock_timeout = '10s'");
       await client.query("SET LOCAL statement_timeout = '20s'");
-      // A transaction-scoped lock is compatible with Neon/PgBouncer transaction pooling.
-      await client.query('SELECT pg_advisory_xact_lock(7319462027)');
 
       await client.query(
         'CREATE TABLE IF NOT EXISTS tolip_store_state (id smallint PRIMARY KEY CHECK (id = 1), payload jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())'
       );
+
+      // Existing Vercel instances all run initializeApp() on cold start. Once the
+      // relational migration is complete and its required seed category exists,
+      // initialization is read-only, so cold starts can safely share this lock.
+      // Keep the exclusive lock for first-time migration or seed repair only.
+      const initialMigrationTable = await client.query(
+        "SELECT to_regclass('public.tolip_schema_migrations') IS NOT NULL AS exists"
+      );
+      let initialMigrationApplied = false;
+      if (initialMigrationTable.rows[0]?.exists) {
+        const initialVersion = await client.query(
+          'SELECT 1 FROM tolip_schema_migrations WHERE version = 1'
+        );
+        initialMigrationApplied = initialVersion.rows.length > 0;
+      }
+
+      let perfumeCategoryExists = false;
+      if (initialMigrationApplied) {
+        const categoryResult = await client.query(
+          "SELECT 1 FROM tolip_categories WHERE id = 'cat-perfumes' LIMIT 1"
+        );
+        perfumeCategoryExists = categoryResult.rows.length > 0;
+      }
+
+      const initializationLock = initialMigrationApplied && perfumeCategoryExists
+        ? 'SELECT pg_advisory_xact_lock_shared(7319462027)'
+        : 'SELECT pg_advisory_xact_lock(7319462027)';
+      await client.query(initializationLock);
 
       const legacyResult = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
       if (!legacyResult.rows.length) {
