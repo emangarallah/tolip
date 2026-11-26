@@ -68,5 +68,47 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 if (process.env.NODE_ENV !== 'production') app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Store Settings API are handled by a dedicated route module.
+// API route modules, mounted in the same order as the original endpoints.
 app.use(settingsRouter);
+app.use(categoriesRouter);
+app.use(offersRouter);
+app.use(productsRouter);
+app.use(ordersRouter);
+app.use(adminRouter);
+app.use(uploadRouter);
 
+// 7. Vite Integration (SPA & Static Serving)
+// ==========================================
+let initialization: Promise<void> | null = null;
+export function initializeApp(): Promise<void> {
+  if (!initialization) initialization = db.initializePersistentStore();
+  return initialization;
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.resolve(distPath, 'index.html'));
+  });
+}
+
+async function startServer() {
+  if (isProduction) await initializeApp();
+  else {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
+    app.use(vite.middlewares);
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌸 متجر توليب للعناية الطبيعية شغال على http://localhost:${PORT}`);
+  });
+}
+
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
+
+export default app;
