@@ -2,10 +2,89 @@ import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db.ts';
 import { getAdminPayload, requireAdmin } from '../middleware/admin-auth.ts';
-import { validateProductVariants } from '../validation/product.ts';
+import { isSafeAssetReference, validateProductVariants } from '../validation/product.ts';
 import { hasPaginationQuery, parsePaginationQuery } from '../pagination.ts';
 
 const router = Router();
+
+function parseProductWritePayload(body: any, partial: boolean): { value?: Record<string, any>; error?: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { error: 'بيانات المنتج غير صحيحة.' };
+  const value: Record<string, any> = {};
+
+  const textFields: Record<string, number> = {
+    name: 160,
+    slug: 180,
+    description: 5000,
+    usageInstructions: 3000,
+  };
+  for (const [field, maxLength] of Object.entries(textFields)) {
+    if (body[field] === undefined) {
+      if (!partial && field === 'name') return { error: 'اسم المنتج مطلوب ويجب ألا يتجاوز 160 حرفًا.' };
+      continue;
+    }
+    if (typeof body[field] !== 'string' || body[field].length > maxLength || (!partial && field === 'name' && !body[field].trim())) {
+      return { error: field === 'name' ? 'اسم المنتج مطلوب ويجب ألا يتجاوز 160 حرفًا.' : 'أحد حقول المنتج النصية غير صحيح.' };
+    }
+    if (field === 'name' || field === 'description' || field === 'usageInstructions') value[field] = body[field].trim();
+    if (field === 'slug') {
+      const slug = body[field].trim().toLowerCase();
+      if (slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return { error: 'رابط المنتج المختصر غير صحيح.' };
+      if (slug) value.slug = slug;
+    }
+  }
+
+  if (body.categoryId !== undefined || !partial) {
+    if (typeof body.categoryId !== 'string' || body.categoryId.length > 128 || !db.getCategoryById(body.categoryId)) {
+      return { error: 'يجب اختيار قسم موجود للمنتج.' };
+    }
+    value.categoryId = body.categoryId;
+  }
+
+  if (body.features !== undefined || !partial) {
+    if (body.features !== undefined && (!Array.isArray(body.features) || body.features.length > 20 ||
+      body.features.some((item: unknown) => typeof item !== 'string' || item.length > 160))) {
+      return { error: 'قائمة مميزات المنتج غير صحيحة.' };
+    }
+    value.features = Array.isArray(body.features) ? body.features.map((item: string) => item.trim()) : [];
+  }
+
+  if (body.images !== undefined || !partial) {
+    if (body.images !== undefined && (!Array.isArray(body.images) || body.images.length > 12 ||
+      body.images.some((item: unknown) => !isSafeAssetReference(item)))) {
+      return { error: 'صور المنتج غير صحيحة.' };
+    }
+    value.images = Array.isArray(body.images) && body.images.length
+      ? body.images
+      : ['/src/assets/images/product_skincare_cream_1795590418002.jpg'];
+  }
+
+  if (body.variants !== undefined || !partial) {
+    const variants = body.variants === undefined || (Array.isArray(body.variants) && body.variants.length === 0)
+      ? [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }]
+      : body.variants;
+    const variantsError = validateProductVariants(variants);
+    if (variantsError) return { error: variantsError };
+    value.variants = variants.map((variant: any) => ({
+      id: variant.id.trim(),
+      name: variant.name.trim(),
+      price: variant.price ?? null,
+      originalPrice: variant.originalPrice ?? null,
+      stock: variant.stock,
+      ...(typeof variant.sku === 'string' && variant.sku ? { sku: variant.sku.trim() } : {}),
+    }));
+  }
+
+  for (const field of ['isFeatured', 'isBestSeller', 'inStock', 'isActive']) {
+    if (body[field] === undefined && partial) continue;
+    if (body[field] !== undefined && typeof body[field] !== 'boolean') {
+      return { error: 'إعدادات ظهور المنتج غير صحيحة.' };
+    }
+    if (body[field] !== undefined) value[field] = body[field];
+    else if (!partial) value[field] = field === 'isFeatured' || field === 'isBestSeller' ? false : true;
+  }
+
+  return { value };
+}
 
 // ==========================================
 // 3. Products API
@@ -61,68 +140,49 @@ router.get('/api/products/:id', (req: Request, res: Response) => {
 
 router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
   try {
-    const { name, categoryId, description, features, usageInstructions, images, variants, isFeatured, isBestSeller, inStock, isActive } = req.body;
-    if (!name || !name.trim()) {
-      res.status(400).json({ error: 'اسم المنتج مطلوب' });
+    const parsed = parseProductWritePayload(req.body, false);
+    if (parsed.error || !parsed.value) {
+      res.status(400).json({ error: parsed.error || 'بيانات المنتج غير صحيحة.' });
       return;
     }
-    if (!categoryId || !db.getCategoryById(String(categoryId))) {
-      res.status(400).json({ error: 'يجب اختيار قسم موجود للمنتج' });
-      return;
-    }
-    const incomingVariants = Array.isArray(variants) && variants.length > 0
-      ? variants
-      : [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }];
-    const variantsError = validateProductVariants(incomingVariants);
-    if (variantsError) {
-      res.status(400).json({ error: variantsError });
-      return;
-    }
-    const slug = typeof req.body.slug === 'string' && req.body.slug.trim() ? req.body.slug.trim().toLowerCase() : 'product-' + crypto.randomUUID();
+    const value = parsed.value;
+    const slug = value.slug || 'product-' + crypto.randomUUID();
     const newProduct = db.createProduct({
-      name: name.trim(),
+      name: value.name,
       slug,
-      categoryId,
-      description: description || '',
-      features: Array.isArray(features) ? features : [],
-      usageInstructions: usageInstructions || '',
-      images: Array.isArray(images) && images.length > 0 ? images : ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-      variants: incomingVariants,
-      isFeatured: Boolean(isFeatured),
-      isBestSeller: Boolean(isBestSeller),
-      isActive: isActive !== false,
-      inStock: inStock !== false,
+      categoryId: value.categoryId,
+      description: value.description || '',
+      features: value.features || [],
+      usageInstructions: value.usageInstructions || '',
+      images: value.images || ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
+      variants: value.variants,
+      isFeatured: value.isFeatured ?? false,
+      isBestSeller: value.isBestSeller ?? false,
+      isActive: value.isActive ?? true,
+      inStock: value.inStock ?? true,
     });
     res.status(201).json(newProduct);
   } catch (err) {
+    console.error('Product creation failed:', err);
     res.status(500).json({ error: 'فشل في إضافة المنتج' });
   }
 });
 
 router.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
   try {
-    if (req.body.name !== undefined && (typeof req.body.name !== 'string' || !req.body.name.trim())) {
-      res.status(400).json({ error: 'اسم المنتج مطلوب.' });
+    const parsed = parseProductWritePayload(req.body, true);
+    if (parsed.error || !parsed.value || Object.keys(parsed.value).length === 0) {
+      res.status(400).json({ error: parsed.error || 'لا توجد تغييرات صالحة لحفظها.' });
       return;
     }
-    if (req.body.categoryId !== undefined && !db.getCategoryById(String(req.body.categoryId))) {
-      res.status(400).json({ error: 'القسم المحدد غير موجود.' });
-      return;
-    }
-    if (req.body.variants !== undefined) {
-      const variantsError = validateProductVariants(req.body.variants);
-      if (variantsError) {
-        res.status(400).json({ error: variantsError });
-        return;
-      }
-    }
-    const updated = db.updateProduct(req.params.id, req.body);
+    const updated = db.updateProduct(req.params.id, parsed.value);
     if (!updated) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;
     }
     res.json(updated);
   } catch (err) {
+    console.error('Product update failed:', err);
     res.status(500).json({ error: 'فشل في تحديث المنتج' });
   }
 });

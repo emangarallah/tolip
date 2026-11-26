@@ -13,9 +13,9 @@ router.use('/api/admin', (_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-router.post('/api/admin/login', (req: Request, res: Response) => {
+router.post('/api/admin/login', async (req: Request, res: Response) => {
   try {
-    if (isLoginRateLimited(req)) {
+    if (await isLoginRateLimited(req)) {
       res.setHeader('Retry-After', '900');
       res.status(429).json({ error: 'تم تجاوز عدد محاولات تسجيل الدخول. حاول بعد 15 دقيقة.' });
       return;
@@ -33,18 +33,21 @@ router.post('/api/admin/login', (req: Request, res: Response) => {
 
     let isValid = db.verifyAdminCredentials(email.trim(), password);
     if (!isValid && db.matchesAdminBootstrapCredentials(email.trim(), password)) {
-      isValid = db.completeAdminBootstrap(email.trim(), password) &&
+      isValid = await db.completeAdminBootstrap(email.trim(), password) &&
         db.verifyAdminCredentials(email.trim(), password);
     }
     if (!isValid) {
       res.status(401).json({ error: 'بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.' });
       return;
     }
+    // Elevate this trusted transaction only after the password was verified.
+    await db.authorizeAuthenticatedAdmin();
+
     // Disable deployment-secret bootstrap once the owner has authenticated successfully.
     db.markAdminBootstrapCompleted();
 
     const admin = db.getAdminInfo();
-    clearLoginAttempts(req);
+    await clearLoginAttempts(req);
     const sessionVersion = db.rotateAdminSession();
     const token = generateToken({ email: admin.email, id: admin.id, sessionVersion, role: 'admin' });
 
@@ -78,17 +81,38 @@ router.post('/api/admin/logout', requireAdmin, (req: Request, res: Response) => 
 
 router.post('/api/admin/change-password', requireAdmin, (req: Request, res: Response) => {
   try {
-    const { currentPassword, newEmail, newPassword } = req.body;
+    const { currentPassword, newEmail, newPassword } = req.body || {};
+    const allowedFields = new Set(['currentPassword', 'newEmail', 'newPassword']);
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body) ||
+        Object.keys(req.body).some((key) => !allowedFields.has(key))) {
+      res.status(400).json({ error: 'بيانات تحديث الحساب غير صحيحة.' });
+      return;
+    }
+    if (typeof currentPassword !== 'string' || !currentPassword || currentPassword.length > 256) {
+      res.status(400).json({ error: 'كلمة المرور الحالية مطلوبة.' });
+      return;
+    }
+    if (newEmail !== undefined &&
+        (typeof newEmail !== 'string' || newEmail.length > 254 ||
+         !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(newEmail.trim()))) {
+      res.status(400).json({ error: 'البريد الإلكتروني الجديد غير صحيح.' });
+      return;
+    }
+    if (newPassword !== undefined &&
+        (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128)) {
+      res.status(400).json({ error: 'كلمة المرور الجديدة يجب أن تكون بين 12 و128 حرفًا.' });
+      return;
+    }
+    if (newEmail === undefined && newPassword === undefined) {
+      res.status(400).json({ error: 'أدخلي بريدًا إلكترونيًا جديدًا أو كلمة مرور جديدة.' });
+      return;
+    }
+
     const admin = db.getAdminInfo();
 
     // Verify current password first
     if (!db.verifyAdminCredentials(admin.email, currentPassword)) {
       res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة.' });
-      return;
-    }
-
-    if (newPassword && newPassword.length < 12) {
-      res.status(400).json({ error: 'كلمة المرور الجديدة يجب ألا تقل عن 12 حرفًا.' });
       return;
     }
 

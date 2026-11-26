@@ -452,6 +452,10 @@ export async function persistRelationalChanges(
       continue;
     }
 
+    // Public checkout can only create order items for the exact server-generated
+    // order ID being persisted in this transaction.
+    await client.query("SELECT set_config('app.created_order_id', $1, true)", [order.id]);
+
     await client.query(
       'INSERT INTO tolip_orders (id,order_number,customer_details,items_total,delivery_fee,delivery_fee_note,final_total,status,whatsapp_message,created_at,updated_at) VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (id) DO UPDATE SET order_number=EXCLUDED.order_number,customer_details=EXCLUDED.customer_details,items_total=EXCLUDED.items_total,delivery_fee=EXCLUDED.delivery_fee,delivery_fee_note=EXCLUDED.delivery_fee_note,final_total=EXCLUDED.final_total,status=EXCLUDED.status,whatsapp_message=EXCLUDED.whatsapp_message,updated_at=EXCLUDED.updated_at',
       [order.id, order.orderNumber, JSON.stringify(order.customerDetails), order.itemsTotal ?? null, order.deliveryFee ?? null, order.deliveryFeeNote ?? null, order.finalTotal ?? null, order.status, order.whatsappMessage || '', order.createdAt, order.updatedAt]

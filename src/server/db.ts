@@ -52,6 +52,13 @@ export interface StoreRequestContext {
   dirtyRecords: DirtyRecords;
 }
 
+export interface StoreRequestIdentity {
+  adminCandidate?: ReturnType<typeof verifyToken>;
+  loginEmail?: string;
+  trackingOrderNumber?: string;
+  trackingPhone?: string;
+}
+
 const ALL_STORE_SECTIONS = new Set<StoreDataSection>([
   'adminUser', 'settings', 'categories', 'products', 'offers', 'orders',
 ]);
@@ -859,34 +866,44 @@ class StoreDatabase {
       transactionStarted = true;
       await client.query("SET LOCAL lock_timeout = '10s'");
       await client.query("SET LOCAL statement_timeout = '20s'");
+      // Startup is the only trusted bootstrap context. Normal API requests never receive it.
+      await client.query("SELECT set_config('app.actor_role', 'bootstrap', true)");
       // A transaction-scoped lock is compatible with Neon/PgBouncer transaction pooling.
       await client.query('SELECT pg_advisory_xact_lock(7319462027)');
 
-      await client.query(
-        'CREATE TABLE IF NOT EXISTS tolip_store_state (id smallint PRIMARY KEY CHECK (id = 1), payload jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())'
+      // Production schema changes are applied as reviewed migrations, never by a
+      // request-serving Lambda using its restricted runtime database role.
+      const schemaResult = await client.query(
+        "SELECT to_regclass('public.tolip_store_state') IS NOT NULL AS legacy_exists, " +
+        "to_regclass('public.tolip_schema_migrations') IS NOT NULL AS migrations_exist, " +
+        "to_regclass('public.tolip_security_rate_limits') IS NOT NULL AS security_exists"
       );
-
-      const legacyResult = await client.query('SELECT payload FROM tolip_store_state WHERE id = 1');
-      if (!legacyResult.rows.length) {
-        await client.query(
-          'INSERT INTO tolip_store_state (id, payload, updated_at) VALUES (1, $1::jsonb, now()) ON CONFLICT (id) DO NOTHING',
-          [JSON.stringify(this.baseData)]
-        );
+      if (!schemaResult.rows[0]?.legacy_exists || !schemaResult.rows[0]?.migrations_exist || !schemaResult.rows[0]?.security_exists) {
+        throw new Error('Required Tolip database migrations are not installed.');
       }
 
-      const migrationTable = await client.query("SELECT to_regclass('public.tolip_schema_migrations') IS NOT NULL AS exists");
-      let migrationApplied = false;
-      if (migrationTable.rows[0]?.exists) {
-        const versionResult = await client.query('SELECT 1 FROM tolip_schema_migrations WHERE version = 1');
-        migrationApplied = versionResult.rows.length > 0;
+      const migrationResult = await client.query(
+        'SELECT version FROM tolip_schema_migrations WHERE version IN (1, 2) ORDER BY version'
+      );
+      const installedVersions = new Set(migrationResult.rows.map((row: any) => Number(row.version)));
+      if (!installedVersions.has(1) || !installedVersions.has(2)) {
+        throw new Error('Required Tolip database migrations are not installed.');
       }
 
-      if (!migrationApplied) {
-        const migrationPath = path.resolve(process.cwd(), 'migrations/001_normalized_store.sql');
-        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-        for (const statement of migrationSql.split(';').map((part) => part.trim()).filter(Boolean)) {
-          await client.query(statement);
-        }
+      const rlsResult = await client.query(
+        "SELECT count(*)::int AS enabled FROM pg_class c " +
+        "JOIN pg_namespace n ON n.oid = c.relnamespace " +
+        "WHERE n.nspname = 'public' AND c.relkind = 'r' " +
+        "AND c.relname = ANY($1::text[]) AND c.relrowsecurity AND c.relforcerowsecurity",
+        [[
+          'tolip_admin_users', 'tolip_store_settings', 'tolip_categories', 'tolip_products',
+          'tolip_product_variants', 'tolip_offers', 'tolip_offer_products', 'tolip_orders',
+          'tolip_order_items', 'tolip_schema_migrations', 'tolip_store_state',
+          'tolip_security_rate_limits',
+        ]]
+      );
+      if (Number(rlsResult.rows[0]?.enabled) !== 12) {
+        throw new Error('Tolip database Row Level Security is not fully enabled.');
       }
 
       const previousCategories = JSON.stringify(this.baseData.categories);
@@ -916,7 +933,8 @@ class StoreDatabase {
 
   public async beginRequest(
     readOnly = false,
-    scopes: ReadonlySet<StoreDataSection> = ALL_STORE_SECTIONS
+    scopes: ReadonlySet<StoreDataSection> = ALL_STORE_SECTIONS,
+    identity: StoreRequestIdentity = {}
   ): Promise<StoreRequestContext> {
     if (!this.pool) {
       return {
@@ -940,6 +958,34 @@ class StoreDatabase {
           ? 'SELECT pg_advisory_xact_lock_shared(7319462026)'
           : 'SELECT pg_advisory_xact_lock(7319462026)'
       );
+
+      // Default-deny request context. Admin rights are granted only after the
+      // signed token is matched against the current database session version.
+      await client.query("SELECT set_config('app.actor_role', 'public', true)");
+      await client.query("SELECT set_config('app.admin_candidate_id', $1, true)", [identity.adminCandidate?.id || '']);
+      await client.query("SELECT set_config('app.login_email', $1, true)", [identity.loginEmail?.trim().toLowerCase() || '']);
+      await client.query("SELECT set_config('app.track_order_number', $1, true)", [identity.trackingOrderNumber?.trim() || '']);
+      await client.query("SELECT set_config('app.track_order_phone', $1, true)", [identity.trackingPhone?.replace(/[^0-9]/g, '') || '']);
+      await client.query("SELECT set_config('app.created_order_id', '', true)");
+      await client.query("SELECT set_config('app.rate_limit_access', 'false', true)");
+
+      if (identity.adminCandidate) {
+        const candidateResult = await client.query(
+          'SELECT id, email, session_version FROM tolip_admin_users WHERE id = $1 LIMIT 1',
+          [identity.adminCandidate.id]
+        );
+        const candidate = candidateResult.rows[0];
+        const candidateIsCurrent = Boolean(
+          candidate &&
+          String(candidate.email).toLowerCase() === identity.adminCandidate.email.toLowerCase() &&
+          String(candidate.session_version || '') === identity.adminCandidate.sessionVersion
+        );
+        if (candidateIsCurrent) {
+          await client.query("SELECT set_config('app.actor_role', 'admin', true)");
+        } else {
+          await client.query("SELECT set_config('app.admin_candidate_id', '', true)");
+        }
+      }
 
       const data = await loadRelationalStore(client, this.baseData, scopes);
       return {
@@ -1012,6 +1058,57 @@ class StoreDatabase {
   }
 
   // --- Auth & Admin Methods ---
+  private hashRateLimitKey(key: string): string {
+    return crypto.createHmac('sha256', getAuthSecret()).update(key).digest('hex');
+  }
+
+  public async consumePersistentRateLimit(
+    key: string,
+    max: number,
+    windowMs: number
+  ): Promise<{ allowed: boolean; remaining: number; retryAfterSeconds: number } | null> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return null;
+
+    const keyHash = this.hashRateLimitKey(key);
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    const result = await context.client.query(
+      `INSERT INTO tolip_security_rate_limits (key_hash, window_started_at, attempts, updated_at)
+       VALUES ($1, now(), 1, now())
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN 1
+           ELSE tolip_security_rate_limits.attempts + 1
+         END,
+         window_started_at = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN now()
+           ELSE tolip_security_rate_limits.window_started_at
+         END,
+         updated_at = now()
+       RETURNING attempts,
+         GREATEST(1, CEIL(EXTRACT(EPOCH FROM (
+           window_started_at + ($2::int * interval '1 millisecond') - now()
+         ))))::int AS retry_after_seconds`,
+      [keyHash, windowMs]
+    );
+    const attempts = Number(result.rows[0]?.attempts) || 1;
+    return {
+      allowed: attempts <= max,
+      remaining: Math.max(0, max - attempts),
+      retryAfterSeconds: Math.max(1, Number(result.rows[0]?.retry_after_seconds) || Math.ceil(windowMs / 1000)),
+    };
+  }
+
+  public async clearPersistentRateLimit(key: string): Promise<void> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return;
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    await context.client.query(
+      'DELETE FROM tolip_security_rate_limits WHERE key_hash = $1',
+      [this.hashRateLimitKey(key)]
+    );
+  }
+
   public verifyAdminCredentials(email: string, pass: string): boolean {
     if (this.data.adminUser.email.toLowerCase() !== email.toLowerCase()) {
       return false;
@@ -1033,10 +1130,21 @@ class StoreDatabase {
     );
   }
 
-  public completeAdminBootstrap(email: string, pass: string): boolean {
+  public async completeAdminBootstrap(email: string, pass: string): Promise<boolean> {
     if (!this.matchesAdminBootstrapCredentials(email, pass)) return false;
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      await context.client.query("SELECT set_config('app.actor_role', 'bootstrap', true)");
+    }
     this.updateAdminCredentials(email, pass);
     return true;
+  }
+
+  public async authorizeAuthenticatedAdmin(): Promise<void> {
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      await context.client.query("SELECT set_config('app.actor_role', 'admin', true)");
+    }
   }
 
   public markAdminBootstrapCompleted(): void {

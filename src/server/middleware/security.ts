@@ -75,8 +75,22 @@ export function validateOrderPayload(req: Request, res: Response, next: NextFunc
       return;
     }
   }
-  if (Array.isArray(req.body.items) && req.body.items.length > 25) {
-    res.status(400).json({ error: 'يمكن إرسال 25 منتجًا كحد أقصى في الطلب الواحد.' });
+  if (!Array.isArray(req.body?.items) || req.body.items.length < 1 || req.body.items.length > 25) {
+    res.status(400).json({ error: 'يرجى إرسال منتج واحد على الأقل وبحد أقصى 25 منتجًا.' });
+    return;
+  }
+  if (req.body.items.some((item: any) =>
+    !item || typeof item !== 'object' || Array.isArray(item) ||
+    typeof item.productId !== 'string' || item.productId.length < 1 || item.productId.length > 128 ||
+    typeof item.variantId !== 'string' || item.variantId.length < 1 || item.variantId.length > 128 ||
+    typeof item.quantity !== 'number' || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 99
+  )) {
+    res.status(400).json({ error: 'بيانات أحد المنتجات أو الكميات غير صحيحة.' });
+    return;
+  }
+  if (req.body.offerId !== undefined &&
+      (typeof req.body.offerId !== 'string' || req.body.offerId.length > 128)) {
+    res.status(400).json({ error: 'معرّف العرض غير صحيح.' });
     return;
   }
   next();
