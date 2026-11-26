@@ -1140,6 +1140,13 @@ class StoreDatabase {
     return true;
   }
 
+  public async authorizeAuthenticatedAdmin(): Promise<void> {
+    const context = this.requestStorage.getStore();
+    if (context?.client) {
+      await context.client.query("SELECT set_config('app.actor_role', 'admin', true)");
+    }
+  }
+
   public markAdminBootstrapCompleted(): void {
     if (this.data.adminUser.bootstrapCompleted !== true) {
       this.data.adminUser.bootstrapCompleted = true;
