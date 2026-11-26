@@ -3,10 +3,10 @@
   "adminUser": {
     "id": "admin-1",
     "email": "admin@invalid.local",
-    "passwordHash": "475fa266d6a20c99cc58d1145474571a7da81bca75f5803f9aab292e2de70f022a237a32137bef1bce612379b8ea4f954cdc9ba8bdae7f968849d438e907b8ac",
-    "salt": "7c08b91ce356db2024b4042e03aff54b",
+    "passwordHash": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "salt": "00000000000000000000000000000000",
     "name": "صاحب متجر توليب",
-    "sessionVersion": "oGNagp4VH_dmam9yuVDU89SAa1pLepuMVi5eV8RgBN8",
+    "sessionVersion": "seed-placeholder-never-used",
     "bootstrapCompleted": false
   },
   "settings": {
