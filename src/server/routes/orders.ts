@@ -24,11 +24,27 @@ router.post('/api/orders', (req: Request, res: Response) => {
       res.status(400).json({ error: 'يرجى استكمال الاسم ورقم الهاتف والمدينة والمنطقة والعنوان التفصيلي.' });
       return;
     }
-    const normalizedCustomerPhone = customerDetails.phone.replace(/[\s()-]/g, '');
+    const normalizedCustomerPhone = customerDetails.phone.replace(/[^0-9]/g, '');
     if (!/^\+?[0-9]{7,15}$/.test(normalizedCustomerPhone)) {
       res.status(400).json({ error: 'رقم هاتف العميل غير صحيح.' });
       return;
     }
+
+    const safeCustomerDetails = {
+      fullName: customerDetails.fullName.trim(),
+      phone: customerDetails.phone.trim(),
+      city: customerDetails.city.trim(),
+      area: customerDetails.area.trim(),
+      detailedAddress: customerDetails.detailedAddress.trim(),
+      ...(typeof customerDetails.nearestLandmark === 'string' && customerDetails.nearestLandmark.trim()
+        ? { nearestLandmark: customerDetails.nearestLandmark.trim() } : {}),
+      ...(typeof customerDetails.notes === 'string' && customerDetails.notes.trim()
+        ? { notes: customerDetails.notes.trim() } : {}),
+      ...(typeof customerDetails.preferredContactTime === 'string' && customerDetails.preferredContactTime.trim()
+        ? { preferredContactTime: customerDetails.preferredContactTime.trim() } : {}),
+      ...(typeof customerDetails.googleMapsUrl === 'string' && customerDetails.googleMapsUrl.trim()
+        ? { googleMapsUrl: customerDetails.googleMapsUrl.trim() } : {}),
+    };
 
     // Accept one direct item or multiple cart items; all prices and stock are verified server-side.
     if (!Array.isArray(items) || items.length < 1 || items.length > 25) {
@@ -40,7 +56,8 @@ router.post('/api/orders', (req: Request, res: Response) => {
     const itemIndexes = new Map<string, number>();
 
     for (const requestedItem of items) {
-      if (!requestedItem?.productId || !requestedItem?.variantId) {
+      if (!requestedItem || typeof requestedItem.productId !== 'string' || requestedItem.productId.length > 128 ||
+          typeof requestedItem.variantId !== 'string' || requestedItem.variantId.length > 128) {
         res.status(400).json({ error: 'بيانات أحد المنتجات أو الأحجام المختارة غير مكتملة.' });
         return;
       }
@@ -57,8 +74,8 @@ router.post('/api/orders', (req: Request, res: Response) => {
         return;
       }
 
-      const quantity = Number(requestedItem.quantity);
-      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      const quantity = requestedItem.quantity;
+      if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
         res.status(400).json({ error: 'الكمية المطلوبة غير صحيحة.' });
         return;
       }
@@ -170,7 +187,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
 شكرًا لكم.`;
 
     const savedOrder = db.createOrder({
-      customerDetails,
+      customerDetails: safeCustomerDetails,
       items: formattedItems,
       itemsTotal,
       deliveryFee: calculatedDeliveryFee,
@@ -213,7 +230,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
 router.post('/api/orders/track', (req: Request, res: Response) => {
   try {
     const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber.trim() : '';
-    const phone = typeof req.body?.phone === 'string' ? req.body.phone.replace(/\\D/g, '') : '';
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.replace(/[^0-9]/g, '') : '';
     if (!orderNumber || phone.length < 7) {
       res.status(400).json({ error: 'يرجى إدخال رقم الطلب ورقم الهاتف الصحيح.' });
       return;
@@ -221,7 +238,7 @@ router.post('/api/orders/track', (req: Request, res: Response) => {
 
     const candidates = db.getOrders({ search: orderNumber });
     const order = candidates.find((entry: any) => entry.orderNumber.toLowerCase() === orderNumber.toLowerCase());
-    const savedPhone = order?.customerDetails?.phone?.replace(/\\D/g, '') || '';
+    const savedPhone = order?.customerDetails?.phone?.replace(/[^0-9]/g, '') || '';
     if (!order || savedPhone !== phone) {
       res.status(404).json({ error: 'لم يتم العثور على طلب مطابق. تحقق من رقم الطلب ورقم الهاتف.' });
       return;
@@ -291,11 +308,20 @@ router.get('/api/orders/:id', requireAdmin, (req: Request, res: Response) => {
 router.patch('/api/orders/:id/status', requireAdmin, (req: Request, res: Response) => {
   try {
     const { status } = req.body;
-    if (!status) {
-      res.status(400).json({ error: 'حالة الطلب مطلوبة' });
+    const allowedStatuses: OrderStatus[] = [
+      'new',
+      'awaiting_whatsapp_confirmation',
+      'confirmed',
+      'processing',
+      'out_for_delivery',
+      'delivered',
+      'cancelled',
+    ];
+    if (typeof status !== 'string' || !allowedStatuses.includes(status as OrderStatus)) {
+      res.status(400).json({ error: 'حالة الطلب غير صحيحة.' });
       return;
     }
-    const updated = db.updateOrderStatus(req.params.id, status);
+    const updated = db.updateOrderStatus(req.params.id, status as OrderStatus);
     if (!updated) {
       res.status(404).json({ error: 'الطلب غير موجود' });
       return;
