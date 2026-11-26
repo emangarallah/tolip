@@ -268,17 +268,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   }, [isOpen, token, activeTab, ordersPage, ordersFilterStatus, ordersSearch]);
 
   useEffect(() => {
-    if (!isOpen || !token || activeTab !== 'offers') return;
+    if (!isOpen || !token || activeTab !== 'offers' || loading) return;
+    let cancelled = false;
     fetch('/api/products?includeInactive=true', { headers: authHeaders() })
       .then(async (res) => {
         if (res.status === 401) {
           handleUnauthorized();
           return;
         }
-        if (res.ok) setProducts(await res.json());
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setProducts(data);
+        }
       })
       .catch((err) => console.error('Error loading products for offers:', err));
-  }, [isOpen, token, activeTab]);
+    return () => { cancelled = true; };
+  }, [isOpen, token, activeTab, loading]);
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
