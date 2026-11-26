@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AdminOffers } from './AdminOffers.tsx';
+import { ConfirmDeleteDialog } from './ConfirmDeleteDialog.tsx';
 import type {
   Product,
   Category,
@@ -111,6 +112,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const productsRequestId = useRef(0);
   const ordersRequestId = useRef(0);
   const [toastMessage, setToastMessage] = useState<string>('');
+  const [pendingDelete, setPendingDelete] = useState<{ type: 'product' | 'category'; id: string; name: string } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Security credentials change form
   const [currentPass, setCurrentPass] = useState('');
@@ -121,6 +125,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const navigateToTab = (tab: AdminTab) => {
+    setEditingProduct(null);
+    setEditingCategory(null);
+    setActiveTab(tab);
   };
 
   // Helper auth headers
@@ -352,24 +362,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (!confirm(`هل أنتِ متأكدة من حذف المنتج "${name}" نهائياً من المتجر؟`)) return;
-
-    try {
-      const res = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.error || 'فشل في حذف المنتج');
-      }
-      showToast('تم حذف المنتج بنجاح');
-      loadAdminData();
-      onStoreUpdated();
-    } catch (err: any) {
-      alert(err.message || 'فشل في حذف المنتج');
-    }
+  const handleDeleteProduct = (id: string, name: string) => {
+    setDeleteError('');
+    setPendingDelete({ type: 'product', id, name });
   };
 
   const handleToggleProductStatus = async (product: Product, field: 'isActive' | 'inStock' | 'isFeatured' | 'isBestSeller') => {
@@ -421,23 +416,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`هل أنتِ متأكدة من حذف القسم "${name}"؟ سيتم إخفاء المنتجات التابعة له.`)) return;
+  const handleDeleteCategory = (id: string, name: string) => {
+    setDeleteError('');
+    setPendingDelete({ type: 'category', id, name });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError('');
     try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-      });
+      const endpoint = pendingDelete.type === 'product'
+        ? `/api/products/${pendingDelete.id}`
+        : `/api/categories/${pendingDelete.id}`;
+      const res = await fetch(endpoint, { method: 'DELETE', headers: authHeaders() });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
-        throw new Error(error.error || 'فشل في حذف القسم');
+        throw new Error(error.error || (pendingDelete.type === 'product' ? 'فشل في حذف المنتج' : 'فشل في حذف القسم'));
       }
-      showToast('تم حذف القسم بنجاح');
-      loadAdminData();
-      onStoreUpdated();
+      const deletedType = pendingDelete.type;
+      setPendingDelete(null);
+      showToast(deletedType === 'product' ? 'تم حذف المنتج بنجاح' : 'تم حذف القسم بنجاح');
+      await loadAdminData();
+      await onStoreUpdated();
     } catch (err: any) {
-      alert(err.message || 'فشل في حذف القسم');
+      setDeleteError(err.message || 'تعذر إكمال عملية الحذف. حاولي مرة أخرى.');
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -571,9 +576,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[80] h-dvh w-full overflow-hidden bg-[#FCFCFA] dark:bg-[#161917]">
       <div
-        className="relative w-full max-w-6xl bg-white dark:bg-[#161917] rounded-3xl shadow-2xl border border-[#EFE9E2] dark:border-[#262C28] overflow-hidden flex flex-col h-[90vh] text-right"
+        className="relative h-full w-full max-w-none overflow-hidden rounded-none border-0 bg-white text-right shadow-none dark:bg-[#161917] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
@@ -705,7 +710,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* Sidebar Navigation */}
             <div className="w-full md:w-60 border-b md:border-b-0 md:border-l border-[#F0EBE6] dark:border-[#222724] bg-[#FAF8F5] dark:bg-[#131614] p-3 sm:p-4 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible shrink-0">
               <button
-                onClick={() => setActiveTab('overview')}
+                onClick={() => navigateToTab('overview')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'overview'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -717,7 +722,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('products')}
+                onClick={() => navigateToTab('products')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'products'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -729,7 +734,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('categories')}
+                onClick={() => navigateToTab('categories')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'categories'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -741,7 +746,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('orders')}
+                onClick={() => navigateToTab('orders')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'orders'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -756,7 +761,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('offers')}
+                onClick={() => navigateToTab('offers')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'offers' ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm' : 'text-[#555C57] dark:text-[#A8B0AA] hover:bg-[#EFE9E2] dark:hover:bg-[#1C211E]'
                 }`}
@@ -766,7 +771,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('settings')}
+                onClick={() => navigateToTab('settings')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'settings'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -778,7 +783,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('security')}
+                onClick={() => navigateToTab('security')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'security'
                     ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm'
@@ -1569,9 +1574,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             MODAL: ADD / EDIT PRODUCT
         ------------------------------------------------------------- */}
         {editingProduct && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in">
+          <div className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 animate-in fade-in duration-200 dark:bg-[#161917]">
             <div
-              className="relative w-full max-w-2xl bg-white dark:bg-[#1A1F1C] rounded-3xl shadow-2xl border border-[#EFE9E2] dark:border-[#2D3830] overflow-hidden p-6 space-y-4 max-h-[90vh] overflow-y-auto text-right text-[#1F2421] dark:text-[#E2DFD9]"
+              className="relative mx-auto w-full max-w-3xl space-y-4 overflow-visible rounded-none border-0 bg-white p-2 shadow-none text-right text-[#1F2421] dark:bg-[#161917] dark:text-[#E2DFD9]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-3 border-b border-[#F0EBE6] dark:border-[#2D3830]">
@@ -1850,9 +1855,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             MODAL: ADD / EDIT CATEGORY
         ------------------------------------------------------------- */}
         {editingCategory && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in">
+          <div className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 animate-in fade-in duration-200 dark:bg-[#161917]">
             <div
-              className="relative w-full max-w-md bg-white dark:bg-[#1A1F1C] rounded-3xl shadow-2xl border border-[#EFE9E2] dark:border-[#2D3830] overflow-hidden p-6 space-y-4 text-right text-[#1F2421] dark:text-[#E2DFD9]"
+              className="relative mx-auto w-full max-w-2xl space-y-4 overflow-visible rounded-none border-0 bg-white p-2 shadow-none text-right text-[#1F2421] dark:bg-[#161917] dark:text-[#E2DFD9]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-3 border-b border-[#F0EBE6] dark:border-[#2D3830]">
@@ -2064,6 +2069,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
         )}
+        <ConfirmDeleteDialog
+          isOpen={Boolean(pendingDelete)}
+          title={pendingDelete?.type === 'product' ? 'تأكيد حذف المنتج' : 'تأكيد حذف القسم'}
+          description={pendingDelete?.type === 'product'
+            ? 'هل أنتِ متأكدة من حذف هذا المنتج نهائياً من المتجر؟ لا يمكن التراجع عن هذه العملية.'
+            : 'هل أنتِ متأكدة من حذف هذا القسم؟ قد يتم إخفاء المنتجات التابعة له من واجهة المتجر.'}
+          itemName={pendingDelete?.name}
+          busy={deleteBusy}
+          error={deleteError}
+          onCancel={() => {
+            if (!deleteBusy) {
+              setPendingDelete(null);
+              setDeleteError('');
+            }
+          }}
+          onConfirm={handleConfirmDelete}
+        />
       </div>
     </div>
   );
