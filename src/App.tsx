@@ -26,6 +26,7 @@ import { PolicyModal, PolicyType } from './components/PolicyModal.tsx';
 import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { OffersSection } from './components/OffersSection.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
 import { TrackingModal } from './components/TrackingModal.tsx';
@@ -54,7 +55,7 @@ export default function App() {
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
 
   // Navigation & View States
-  const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'about' | 'contact'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'offers' | 'about' | 'contact'>('home');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [productSortBy, setProductSortBy] = useState<'newest' | 'price-asc' | 'price-desc' | 'name'>('newest');
   const [filterInStockOnly, setFilterInStockOnly] = useState(false);
@@ -79,6 +80,7 @@ export default function App() {
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
   const [checkoutVariantId, setCheckoutVariantId] = useState('');
   const [checkoutQuantity, setCheckoutQuantity] = useState(1);
+  const [checkoutOfferId, setCheckoutOfferId] = useState<string | undefined>(undefined);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -162,7 +164,7 @@ export default function App() {
   const isRtl = language === 'ar';
 
   // Open the delivery form directly for a single selected product.
-  const handleStartOrder = (product: Product, variantId?: string, quantity = 1) => {
+  const handleStartOrder = (product: Product, variantId?: string, quantity = 1, offerId?: string) => {
     const selectedVariant =
       product.variants.find((variant) => variant.id === variantId && variant.stock > 0) ||
       product.variants.find((variant) => variant.stock > 0);
@@ -171,6 +173,7 @@ export default function App() {
     setCheckoutProduct(product);
     setCheckoutVariantId(selectedVariant.id);
     setCheckoutQuantity(Math.max(1, Math.floor(quantity)));
+    setCheckoutOfferId(offerId);
     setSelectedProduct(null);
     setIsCheckoutOpen(true);
   };
@@ -192,6 +195,10 @@ export default function App() {
     } else if (tab === 'products') {
       setActiveTab('products');
       if (categoryId) setSelectedCategoryId(categoryId);
+      setShowFavoritesOnly(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (tab === 'offers') {
+      setActiveTab('offers');
       setShowFavoritesOnly(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'categories') {
@@ -412,6 +419,8 @@ export default function App() {
               />
             </div>
 
+            <OffersSection products={products} settings={settings} language={language} onOrder={(product, offerId) => handleStartOrder(product, undefined, 1, offerId)} />
+
             {/* Featured Products Showcase */}
             {featuredProducts.length > 0 && (
               <section className="py-14 sm:py-20 bg-[#FAF7F3] dark:bg-[#151816] border-y border-[#F0EBE6] dark:border-[#222724] transition-colors duration-200">
@@ -543,6 +552,8 @@ export default function App() {
         {/* -------------------------------------------------------------
             VIEW 2: FULL PRODUCTS CATALOG
         ------------------------------------------------------------- */}
+        {activeTab === 'offers' && <OffersSection products={products} settings={settings} language={language} onOrder={(product, offerId) => handleStartOrder(product, undefined, 1, offerId)} />}
+
         {activeTab === 'products' && (
           <div className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-start">
             {/* Header */}
@@ -854,6 +865,7 @@ export default function App() {
 
       {/* Single-product delivery form */}
       <CheckoutModal
+          offerId={checkoutOfferId}
         isOpen={isCheckoutOpen}
         product={checkoutProduct}
         initialVariantId={checkoutVariantId}
