@@ -90,58 +90,17 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* Gentle, attention-catching motion for the opening logo only. */
+/* Motion drives the opening logo; preserve depth and a soft brand finish. */
 .tulip-opening-3d {
   display: inline-block;
   perspective: 1100px;
   transform-style: preserve-3d;
-  animation: tulip-logo-3d-float 8s ease-in-out 4.5s infinite;
 }
 
 .tulip-opening-logo {
   transform-origin: 50% 58%;
   transform-style: preserve-3d;
-  animation:
-    tulip-logo-enter 4.5s cubic-bezier(0.2, 0.75, 0.25, 1) both,
-    tulip-logo-glow 7s ease-in-out 4.5s infinite;
-}
-
-@keyframes tulip-logo-enter {
-  0% {
-    opacity: 0;
-    transform: translateY(18px) scale(0.82) rotate(-4deg);
-  }
-  68% {
-    opacity: 1;
-    transform: translateY(-3px) scale(1.045) rotate(1.5deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1) rotate(0);
-  }
-}
-
-@keyframes tulip-logo-glow {
-  0%, 100% {
-    filter: drop-shadow(1px 2px 0 rgba(255, 255, 255, 0.52)) drop-shadow(-1px -1px 0 rgba(126, 45, 75, 0.12)) drop-shadow(0 10px 16px rgba(184, 63, 107, 0.10));
-  }
-  50% {
-    filter: drop-shadow(1px 2px 0 rgba(255, 255, 255, 0.58)) drop-shadow(-1px -1px 0 rgba(126, 45, 75, 0.15)) drop-shadow(0 14px 23px rgba(184, 63, 107, 0.25));
-  }
-}
-
-@keyframes tulip-logo-3d-float {
-  0%, 100% { transform: rotateX(0deg) rotateY(0deg) translateY(0); }
-  25% { transform: rotateX(3deg) rotateY(-5deg) translateY(-3px); }
-  50% { transform: rotateX(-2deg) rotateY(4deg) translateY(1px); }
-  75% { transform: rotateX(2deg) rotateY(2deg) translateY(-2px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tulip-opening-3d,
-  .tulip-opening-logo {
-    animation: none;
-  }
+  filter: drop-shadow(0 12px 18px rgba(184, 63, 107, 0.16));
 }
 
 /* Seamless, low-distraction homepage offers ticker. */

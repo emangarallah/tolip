@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import {
   X,
   LayoutDashboard,
@@ -709,7 +710,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-[#FCFCFA] dark:bg-[#161917]">
             {/* Sidebar Navigation */}
             <div className="w-full md:w-60 border-b md:border-b-0 md:border-l border-[#F0EBE6] dark:border-[#222724] bg-[#FAF8F5] dark:bg-[#131614] p-3 sm:p-4 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible shrink-0">
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('overview')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'overview'
@@ -719,9 +720,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>نظرة عامة وإحصائيات</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('products')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'products'
@@ -731,9 +732,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <Package className="w-4 h-4" />
                 <span>إدارة المنتجات ({products.length})</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('categories')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'categories'
@@ -743,9 +744,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <FolderTree className="w-4 h-4" />
                 <span>إدارة الأقسام ({categories.length})</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('orders')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'orders'
@@ -758,9 +759,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {orders.filter((o) => o.status === 'new' || o.status === 'awaiting_whatsapp_confirmation').length > 0 && (
                   <span className="w-2 h-2 rounded-full bg-[#C74169] dark:bg-[#E06287] mr-auto" />
                 )}
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('offers')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'offers' ? 'bg-[#1F2421] text-white dark:bg-[#D45278] shadow-sm' : 'text-[#555C57] dark:text-[#A8B0AA] hover:bg-[#EFE9E2] dark:hover:bg-[#1C211E]'
@@ -768,9 +769,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <Sparkles className="w-4 h-4" />
                 <span>العروض والخصومات</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('settings')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'settings'
@@ -780,9 +781,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <Settings className="w-4 h-4" />
                 <span>إعدادات المتجر</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
                 onClick={() => navigateToTab('security')}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === 'security'
@@ -792,11 +793,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <Lock className="w-4 h-4" />
                 <span>الحساب والأمان</span>
-              </button>
+              </motion.button>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FCFCFA] dark:bg-[#161917] text-[#1F2421] dark:text-white">
+            <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26, ease: "easeOut" }} className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FCFCFA] dark:bg-[#161917] text-[#1F2421] dark:text-white">
               {/* -------------------------------------------------------------
                   TAB 1: OVERVIEW & STATS
               ------------------------------------------------------------- */}
@@ -1566,7 +1567,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </form>
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
         )}
 
@@ -1574,7 +1575,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             MODAL: ADD / EDIT PRODUCT
         ------------------------------------------------------------- */}
         {editingProduct && (
-          <div className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 animate-in fade-in duration-200 dark:bg-[#161917]">
+          <motion.div initial={{ opacity: 0, y: 16, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: "easeOut" }} className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 dark:bg-[#161917]">
             <div
               className="relative mx-auto w-full max-w-3xl space-y-4 overflow-visible rounded-none border-0 bg-white p-2 shadow-none text-right text-[#1F2421] dark:bg-[#161917] dark:text-[#E2DFD9]"
               onClick={(e) => e.stopPropagation()}
@@ -1848,14 +1849,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </form>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* -------------------------------------------------------------
             MODAL: ADD / EDIT CATEGORY
         ------------------------------------------------------------- */}
         {editingCategory && (
-          <div className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 animate-in fade-in duration-200 dark:bg-[#161917]">
+          <motion.div initial={{ opacity: 0, y: 16, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: "easeOut" }} className="absolute top-[132px] md:top-[76px] right-0 md:right-60 bottom-0 left-0 z-30 overflow-y-auto bg-white p-3 sm:p-5 dark:bg-[#161917]">
             <div
               className="relative mx-auto w-full max-w-2xl space-y-4 overflow-visible rounded-none border-0 bg-white p-2 shadow-none text-right text-[#1F2421] dark:bg-[#161917] dark:text-[#E2DFD9]"
               onClick={(e) => e.stopPropagation()}
@@ -1949,7 +1950,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </form>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* -------------------------------------------------------------
