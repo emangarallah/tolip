@@ -83,6 +83,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [isLoginPasswordVisible, setIsLoginPasswordVisible] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -736,7 +737,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     dir="ltr"
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="admin@tulip.ye"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-right bg-[#FCFCFA] dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
                   />
                 </div>
@@ -745,15 +745,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <label className="text-xs font-bold text-[#1F2421] dark:text-white block mb-1">
                     كلمة المرور
                   </label>
-                  <input
-                    type="password"
-                    required
-                    dir="ltr"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-right bg-[#FCFCFA] dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
-                  />
+                  <div className="relative">
+                    <input
+                      type={isLoginPasswordVisible ? 'text' : 'password'}
+                      required
+                      dir="ltr"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-right bg-[#FCFCFA] dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsLoginPasswordVisible((visible) => !visible)}
+                      aria-label={isLoginPasswordVisible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      title={isLoginPasswordVisible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-md p-1 text-[#717772] hover:text-[#C74169] dark:text-[#A6AEA8] dark:hover:text-[#E06287] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] transition-colors"
+                    >
+                      {isLoginPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
