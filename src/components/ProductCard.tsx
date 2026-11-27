@@ -38,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isAvailable = hasAvailableVariant;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} whileHover={{ y: -5 }} whileTap={{ scale: 0.99 }} transition={{ duration: 0.38, ease: "easeOut" }} className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} whileHover={{ y: -5 }} whileTap={{ scale: 0.975, y: -2, transition: { duration: 0.16, ease: "easeOut" } }} transition={{ duration: 0.38, ease: "easeOut" }} className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
       {/* Top Image Area */}
       <div
         className="relative aspect-[4/3] w-full bg-[#FAF7F2] dark:bg-[#202522] overflow-hidden cursor-pointer"
@@ -49,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           alt={product.name}
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          whileTap={{ scale: 1.045 }}
+          whileTap={{ scale: 1.07 }}
           transition={{ duration: 0.48, ease: 'easeOut' }}
           onError={(e) => {
             (e.target as HTMLElement).style.display = 'none';
