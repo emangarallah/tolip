@@ -295,8 +295,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   useEffect(() => {
     if (isOpen && token) {
-      loadAdminData();
-      void loadOffers();
+      // Finish the main dashboard requests first, then load offers and their
+      // product choices so the Neon pool is not flooded on initial entry.
+      void loadAdminData().finally(() => { void loadOffers(); });
     }
   }, [token, isOpen]);
 
