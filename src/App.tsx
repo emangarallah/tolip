@@ -20,18 +20,19 @@ import { Navbar } from './components/Navbar.tsx';
 import { Hero } from './components/Hero.tsx';
 import { CategoriesSection } from './components/CategoriesSection.tsx';
 import { ProductCard } from './components/ProductCard.tsx';
-import { ProductDetailModal } from './components/ProductDetailModal.tsx';
-import { CheckoutModal } from './components/CheckoutModal.tsx';
-import { OrderSuccessModal } from './components/OrderSuccessModal.tsx';
-import { PolicyModal, PolicyType } from './components/PolicyModal.tsx';
+import type { PolicyType } from './components/PolicyModal.tsx';
+const ProductDetailModal = lazy(() => import('./components/ProductDetailModal.tsx').then(({ ProductDetailModal }) => ({ default: ProductDetailModal })));
+const CheckoutModal = lazy(() => import('./components/CheckoutModal.tsx').then(({ CheckoutModal }) => ({ default: CheckoutModal })));
+const OrderSuccessModal = lazy(() => import('./components/OrderSuccessModal.tsx').then(({ OrderSuccessModal }) => ({ default: OrderSuccessModal })));
+const PolicyModal = lazy(() => import('./components/PolicyModal.tsx').then(({ PolicyModal }) => ({ default: PolicyModal })));
 import { Footer } from './components/Footer.tsx';
-import { SearchModal } from './components/SearchModal.tsx';
+const SearchModal = lazy(() => import('./components/SearchModal.tsx').then(({ SearchModal }) => ({ default: SearchModal })));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard.tsx').then(({ AdminDashboard }) => ({ default: AdminDashboard })) );
 import { OffersSection } from './components/OffersSection.tsx';
 import { OffersTicker } from './components/OffersTicker.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
 import { TulipOpeningMark } from './components/TulipOpeningMark.tsx';
-import { TrackingModal } from './components/TrackingModal.tsx';
+const TrackingModal = lazy(() => import('./components/TrackingModal.tsx').then(({ TrackingModal }) => ({ default: TrackingModal })));
 import type { Product, Category, StoreSettings, Order, StoreOffer } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
@@ -879,75 +880,84 @@ export default function App() {
           MODALS & DRAWERS
       ------------------------------------------------------------- */}
 
-      <TrackingModal isOpen={isTrackingOpen} language={language} onClose={() => setIsTrackingOpen(false)} />
+      <Suspense fallback={null}>
+        {isTrackingOpen && (
+          <TrackingModal isOpen={isTrackingOpen} language={language} onClose={() => setIsTrackingOpen(false)} />
+        )}
 
-      {/* Single-product delivery form */}
-      <CheckoutModal
-          offerId={checkoutOfferId}
-          offer={checkoutOffer}
-        isOpen={isCheckoutOpen}
-        product={checkoutProduct}
-        initialVariantId={checkoutVariantId}
-        initialQuantity={checkoutQuantity}
-        settings={settings}
-        language={language}
-        onClose={() => {
-          setIsCheckoutOpen(false);
-          setCheckoutProduct(null);
-          setCheckoutVariantId('');
-          setCheckoutQuantity(1);
-          setCheckoutOfferId(undefined);
-          setCheckoutOffer(undefined);
-        }}
-        onOrderSuccess={(order, whatsappUrl) => {
-          setIsCheckoutOpen(false);
-          setCheckoutProduct(null);
-          setCheckoutVariantId('');
-          setCheckoutQuantity(1);
-          setCheckoutOfferId(undefined);
-          setCheckoutOffer(undefined);
-          setCompletedOrder({ order, whatsappUrl });
-        }}
-      />
+        {isCheckoutOpen && (
+          <CheckoutModal
+            offerId={checkoutOfferId}
+            offer={checkoutOffer}
+            isOpen={isCheckoutOpen}
+            product={checkoutProduct}
+            initialVariantId={checkoutVariantId}
+            initialQuantity={checkoutQuantity}
+            settings={settings}
+            language={language}
+            onClose={() => {
+              setIsCheckoutOpen(false);
+              setCheckoutProduct(null);
+              setCheckoutVariantId('');
+              setCheckoutQuantity(1);
+              setCheckoutOfferId(undefined);
+              setCheckoutOffer(undefined);
+            }}
+            onOrderSuccess={(order, whatsappUrl) => {
+              setIsCheckoutOpen(false);
+              setCheckoutProduct(null);
+              setCheckoutVariantId('');
+              setCheckoutQuantity(1);
+              setCheckoutOfferId(undefined);
+              setCheckoutOffer(undefined);
+              setCompletedOrder({ order, whatsappUrl });
+            }}
+          />
+        )}
 
-      {/* Order Success & WhatsApp Launcher Modal */}
-      <OrderSuccessModal
-        order={completedOrder?.order ?? null}
-        whatsappUrl={completedOrder?.whatsappUrl ?? ''}
-        settings={settings}
-        language={language}
-        onClose={() => setCompletedOrder(null)}
-      />
+        {completedOrder && (
+          <OrderSuccessModal
+            order={completedOrder.order}
+            whatsappUrl={completedOrder.whatsappUrl}
+            settings={settings}
+            language={language}
+            onClose={() => setCompletedOrder(null)}
+          />
+        )}
 
-      {/* Product Detail Modal */}
-      <ProductDetailModal
-        product={selectedProduct}
-        similarProducts={similarProducts}
-        isFavorite={selectedProduct ? favorites.includes(selectedProduct.id) : false}
-        language={language}
-        onClose={() => setSelectedProduct(null)}
-        onToggleFavorite={handleToggleFavorite}
-        onOrder={handleStartOrder}
-        onSelectSimilarProduct={(p) => setSelectedProduct(p)}
-      />
+        {selectedProduct && (
+          <ProductDetailModal
+            product={selectedProduct}
+            similarProducts={similarProducts}
+            isFavorite={favorites.includes(selectedProduct.id)}
+            language={language}
+            onClose={() => setSelectedProduct(null)}
+            onToggleFavorite={handleToggleFavorite}
+            onOrder={handleStartOrder}
+            onSelectSimilarProduct={(p) => setSelectedProduct(p)}
+          />
+        )}
 
-      {/* Search Modal */}
-      <SearchModal
-        isOpen={isSearchOpen}
-        products={products}
-        categories={categories}
-        language={language}
-        onClose={() => setIsSearchOpen(false)}
-        onSelectProduct={(p) => setSelectedProduct(p)}
-      />
+        {isSearchOpen && (
+          <SearchModal
+            isOpen={isSearchOpen}
+            products={products}
+            categories={categories}
+            language={language}
+            onClose={() => setIsSearchOpen(false)}
+            onSelectProduct={(p) => setSelectedProduct(p)}
+          />
+        )}
 
-      {/* Store Policies Modal */}
-      <PolicyModal
-        type={policyType}
-        settings={settings}
-        language={language}
-        onClose={() => setPolicyType(null)}
-      />
+        {policyType && (
+          <PolicyModal
+            type={policyType}
+            settings={settings}
+            language={language}
+            onClose={() => setPolicyType(null)}
+          />
+        )}
+      </Suspense>
 
       {/* Load the admin-only bundle only when the dashboard is opened. */}
       <Suspense fallback={null}>
