@@ -1355,6 +1355,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onLoadOffers={loadOffers}
                   onRefreshAfterDelete={refreshOffersAfterDelete}
                   onDeleteSuccess={() => showToast('تم حذف العرض بنجاح.')}
+                  onSaveSuccess={(message) => showToast(message)}
                   offersLoading={offersLoading}
                   offersError={offersError}
                   onUpdated={() => { loadAdminData(); onStoreUpdated(); }}

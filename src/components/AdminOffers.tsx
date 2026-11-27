@@ -12,6 +12,7 @@ interface Props {
   onLoadOffers: () => Promise<void>;
   onRefreshAfterDelete: () => Promise<void>;
   onDeleteSuccess: () => void;
+  onSaveSuccess: (message: string) => void;
   offersLoading: boolean;
   offersError: string;
   onUpdated: () => void;
@@ -19,7 +20,7 @@ interface Props {
 const emptyOffer: Partial<StoreOffer> = { title:'', description:'', image:'', type:'percentage', productIds:[], value:10, bundlePrice:null, buyQuantity:2, getQuantity:1, startsAt:null, endsAt:null, isActive:true };
 
 export const AdminOffers: React.FC<Props> = ({
-  token, products, offers, onOffersChange, onLoadOffers, onRefreshAfterDelete, onDeleteSuccess, offersLoading, offersError, onUpdated,
+  token, products, offers, onOffersChange, onLoadOffers, onRefreshAfterDelete, onDeleteSuccess, onSaveSuccess, offersLoading, offersError, onUpdated,
 }) => {
   const [editing, setEditing] = useState<Partial<StoreOffer> | null>(null);
   const [search, setSearch] = useState('');
@@ -43,6 +44,7 @@ export const AdminOffers: React.FC<Props> = ({
       const payload = { ...editing, startsAt: editing.startsAt ? new Date(editing.startsAt).toISOString() : null, endsAt: editing.endsAt ? new Date(editing.endsAt).toISOString() : null };
       const res = await fetch(editing.id ? `/api/offers/${editing.id}` : '/api/offers', { method:editing.id?'PUT':'POST', headers, body:JSON.stringify(payload) });
       const data = await res.json(); if (!res.ok) throw new Error(data.error || 'تعذر حفظ العرض');
+      onSaveSuccess(editing.id ? 'تم تحديث العرض بنجاح.' : 'تمت إضافة العرض بنجاح.');
       setEditing(null); await onLoadOffers(); onUpdated();
     } catch (e:any) { setError(e.message || 'تعذر حفظ العرض'); } finally { setBusy(false); }
   };
