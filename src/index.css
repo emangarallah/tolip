@@ -151,3 +151,32 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     transform: none;
   }
 }
+
+
+/* Admin dashboard native select controls: keep values and option menus readable in both themes. */
+.admin-dashboard select {
+  color: #1F2421;
+  color-scheme: light;
+}
+
+.admin-dashboard select option {
+  color: #1F2421;
+  background-color: #FFFFFF;
+}
+
+html.dark .admin-dashboard select {
+  color: #F1F4F2;
+  background-color: #1E2320;
+  border-color: #3D4640;
+  color-scheme: dark;
+}
+
+html.dark .admin-dashboard select option {
+  color: #F1F4F2;
+  background-color: #1A1F1C;
+}
+
+html.dark .admin-dashboard select:focus-visible {
+  outline: 2px solid #E06287;
+  outline-offset: 2px;
+}
