@@ -28,9 +28,20 @@ export function getRequiredStoreDataSections(
     scopes.add('categories');
     if (!paginated) scopes.add('products');
   } else if (path.startsWith('/api/offers')) {
-    scopes.add('offers');
-    if (normalizedMethod === 'POST' || normalizedMethod === 'PUT') {
-      scopes.add('products');
+    // Deletion runs a direct SQL DELETE and does not need to hydrate the offers
+    // list or product catalog into memory. Keep only the admin session scope.
+    const isOfferDeletion =
+      (normalizedMethod === 'DELETE' && /^\/api\/offers\/[^/]+$/.test(path)) ||
+      (normalizedMethod === 'POST' && (
+        path === '/api/offers/delete' ||
+        /^\/api\/offers\/[^/]+\/delete$/.test(path)
+      ));
+
+    if (!isOfferDeletion) {
+      scopes.add('offers');
+      if (normalizedMethod === 'POST' || normalizedMethod === 'PUT') {
+        scopes.add('products');
+      }
     }
   } else if (path.startsWith('/api/orders')) {
     if (normalizedMethod === 'POST' && path === '/api/orders') {
