@@ -27,10 +27,10 @@ router.get('/api/offers', (req: Request, res: Response) => {
 
 
 
-router.post('/api/offers', requireAdmin, (req: Request, res: Response) => {
+router.post('/api/offers', requireAdmin, async (req: Request, res: Response) => {
   const error = validateOfferInput(req.body);
   if (error) { res.status(400).json({ error }); return; }
-  const offer = db.createOffer({
+  const offer = await db.createOfferInStore({
     title: req.body.title.trim(), description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
     image: typeof req.body.image === 'string' ? req.body.image.trim() : '', type: req.body.type,
     productIds: Array.from(new Set<string>(req.body.productIds as string[])), value: Number(req.body.value),
