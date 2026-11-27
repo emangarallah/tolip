@@ -57,7 +57,7 @@ export const WhatsAppChatWidget: React.FC<WhatsAppChatWidgetProps> = ({
     const defaultGreeting =
       language === 'ar'
         ? 'مرحباً متجر توليب، أود التواصل معكم بخصوص المنتجات'
-        : 'Hello Tolipe Natural Care, I would like to inquire about your products';
+        : 'Hello Tulip Natural Care, I would like to inquire about your products';
 
     const textToEncode = finalMsg || defaultGreeting;
     const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(textToEncode)}`;
@@ -91,7 +91,7 @@ export const WhatsAppChatWidget: React.FC<WhatsAppChatWidgetProps> = ({
 
               <div>
                 <h4 className="font-bold text-sm leading-tight">
-                  {language === 'ar' ? 'توليب – شات واتساب المباشر' : 'Tolipe – Live WhatsApp'}
+                  {language === 'ar' ? 'توليب – شات واتساب المباشر' : 'Tulip – Live WhatsApp'}
                 </h4>
                 <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-white/90">
                   <span className="w-2 h-2 rounded-full bg-emerald-300 inline-block animate-pulse" />
@@ -120,7 +120,7 @@ export const WhatsAppChatWidget: React.FC<WhatsAppChatWidgetProps> = ({
                 <p className="font-semibold text-[#1F2421] dark:text-white mb-1">
                   {language === 'ar'
                     ? 'أهلاً بكِ في توليب للعناية الطبيعية!'
-                    : 'Welcome to Tolipe Natural Care!'}
+                    : 'Welcome to Tulip Natural Care!'}
                 </p>
                 <p className="text-[11.5px] text-[#555C57] dark:text-[#BAC0BB]">
                   {language === 'ar'
