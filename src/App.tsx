@@ -102,6 +102,10 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.style.colorScheme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute(
+      'content',
+      theme === 'dark' ? '#121513' : '#FFF7F5'
+    );
     try {
       localStorage.setItem('tulip_theme', theme);
     } catch (e) {
