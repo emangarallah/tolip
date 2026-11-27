@@ -74,6 +74,33 @@ test('admin can create, update and delete a category and product persistently', 
   assert.ok(!persisted.categories.some((entry: any) => entry.id === category.id));
 });
 
+test('admin can delete an offer and persist its removal', async () => {
+  const product = db.getProducts({ includeInactive: true })[0];
+  assert.ok(product);
+
+  const offer = db.createOffer({
+    title: 'Offer Delete Test',
+    description: '',
+    image: '',
+    type: 'percentage',
+    productIds: [product.id],
+    value: 15,
+    bundlePrice: null,
+    buyQuantity: 2,
+    getQuantity: 1,
+    startsAt: null,
+    endsAt: null,
+    isActive: true,
+  });
+
+  assert.ok(db.getOfferById(offer.id));
+  assert.equal(await db.deleteOffer(offer.id), true);
+  assert.equal(db.getOfferById(offer.id), undefined);
+
+  const persisted = JSON.parse(readFileSync(join(tempRoot, 'data', 'store_database.runtime.json'), 'utf8'));
+  assert.ok(!persisted.offers.some((entry: any) => entry.id === offer.id));
+});
+
 test('admin password is scrypt-verified and login session rotation invalidates prior sessions', () => {
   const previousSession = db.getAdminSessionVersion();
   const email = 'owner-test@example.com';
