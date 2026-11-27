@@ -180,3 +180,118 @@ html.dark .admin-dashboard select:focus-visible {
   outline: 2px solid #E06287;
   outline-offset: 2px;
 }
+
+
+/* Dark-mode contrast fallbacks for admin controls and legacy light-only utility classes. */
+html.dark .admin-dashboard :is(
+  [class~="bg-white"]:not([class*="dark:bg-"]),
+  [class~="bg-[#FAF8F5]"]:not([class*="dark:bg-"]),
+  [class~="bg-[#F7F5F0]"]:not([class*="dark:bg-"]),
+  [class~="bg-[#FCFCFA]"]:not([class*="dark:bg-"]),
+  [class~="bg-[#F2EDE6]"]:not([class*="dark:bg-"])
+) { background-color: #1A1F1C !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="bg-gray-50"]:not([class*="dark:bg-"]),
+  [class~="bg-gray-100"]:not([class*="dark:bg-"])
+) { background-color: #252C28 !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="bg-[#FFF0F4]"]:not([class*="dark:bg-"]),
+  [class~="bg-pink-50"]:not([class*="dark:bg-"])
+) { background-color: #2A161E !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="bg-red-50"]:not([class*="dark:bg-"]),
+  [class~="bg-[#FEE2E2]"]:not([class*="dark:bg-"])
+) { background-color: #35191D !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="bg-[#EAF5EC]"]:not([class*="dark:bg-"]),
+  [class~="bg-green-50"]:not([class*="dark:bg-"])
+) { background-color: #152B1B !important; }
+
+/* Preserve status meaning while using readable foregrounds on dark status chips. */
+html.dark .admin-dashboard [class~="bg-blue-100"]:not([class*="dark:bg-"]) { background-color: #1E3A5F !important; }
+html.dark .admin-dashboard [class~="text-blue-800"]:not([class*="dark:text-"]) { color: #BFDBFE !important; }
+html.dark .admin-dashboard [class~="bg-amber-100"]:not([class*="dark:bg-"]) { background-color: #4A3515 !important; }
+html.dark .admin-dashboard [class~="text-amber-800"]:not([class*="dark:text-"]) { color: #FDE68A !important; }
+html.dark .admin-dashboard [class~="bg-emerald-100"]:not([class*="dark:bg-"]) { background-color: #123D2B !important; }
+html.dark .admin-dashboard [class~="text-emerald-800"]:not([class*="dark:text-"]) { color: #A7F3D0 !important; }
+html.dark .admin-dashboard [class~="bg-purple-100"]:not([class*="dark:bg-"]) { background-color: #3B1C55 !important; }
+html.dark .admin-dashboard [class~="text-purple-800"]:not([class*="dark:text-"]) { color: #E9D5FF !important; }
+html.dark .admin-dashboard [class~="bg-indigo-100"]:not([class*="dark:bg-"]) { background-color: #25265F !important; }
+html.dark .admin-dashboard [class~="text-indigo-800"]:not([class*="dark:text-"]) { color: #C7D2FE !important; }
+html.dark .admin-dashboard [class~="bg-green-100"]:not([class*="dark:bg-"]) { background-color: #164326 !important; }
+html.dark .admin-dashboard [class~="text-green-800"]:not([class*="dark:text-"]) { color: #BBF7D0 !important; }
+html.dark .admin-dashboard [class~="bg-red-100"]:not([class*="dark:bg-"]) { background-color: #4A2026 !important; }
+html.dark .admin-dashboard [class~="text-red-800"]:not([class*="dark:text-"]) { color: #FECACA !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#1F2421]"]:not([class*="dark:text-"]),
+  [class~="text-[#373D39]"]:not([class*="dark:text-"]),
+  [class~="text-[#4A4E4B]"]:not([class*="dark:text-"])
+) { color: #E2E7E3 !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#555C57]"]:not([class*="dark:text-"]),
+  [class~="text-[#616662]"]:not([class*="dark:text-"]),
+  [class~="text-[#6B7280]"]:not([class*="dark:text-"]),
+  [class~="text-gray-600"]:not([class*="dark:text-"]),
+  [class~="text-gray-500"]:not([class*="dark:text-"])
+) { color: #A8B0AA !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#717772]"]:not([class*="dark:text-"]),
+  [class~="text-[#8C938E]"]:not([class*="dark:text-"]),
+  [class~="text-[#9CA3AF]"]:not([class*="dark:text-"]),
+  [class~="text-gray-400"]:not([class*="dark:text-"])
+) { color: #8D9690 !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#C74169]"]:not([class*="dark:text-"]),
+  [class~="text-[#8C4A5E]"]:not([class*="dark:text-"])
+) { color: #E06287 !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#2D5237]"]:not([class*="dark:text-"]),
+  [class~="text-[#1B8340]"]:not([class*="dark:text-"]),
+  [class~="text-[#206935]"]:not([class*="dark:text-"])
+) { color: #75C98C !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="text-[#DC2626]"]:not([class*="dark:text-"]),
+  [class~="text-red-600"]:not([class*="dark:text-"]),
+  [class~="text-red-700"]:not([class*="dark:text-"])
+) { color: #F87171 !important; }
+
+html.dark .admin-dashboard :is(
+  [class~="border-[#D9D2C9]"]:not([class*="dark:border-"]),
+  [class~="border-[#EFE9E2]"]:not([class*="dark:border-"]),
+  [class~="border-[#EAE3DC]"]:not([class*="dark:border-"]),
+  [class~="border-[#F0EBE6]"]:not([class*="dark:border-"])
+) { border-color: #343C36 !important; }
+
+html.dark .admin-dashboard :is(input, select, textarea) {
+  color: #E2E7E3;
+  color-scheme: dark;
+}
+
+html.dark .admin-dashboard :is(input, textarea)::placeholder {
+  color: #8D9690;
+  opacity: 1;
+}
+
+html.dark .admin-dashboard :is(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid #E06287;
+  outline-offset: 2px;
+}
+
+html.dark .admin-dashboard [class*="hover:bg-[#FAF8F5]"]:not([class*="dark:hover:bg-"]):hover,
+html.dark .admin-dashboard [class*="hover:bg-[#F2EDE6]"]:not([class*="dark:hover:bg-"]):hover,
+html.dark .admin-dashboard [class~="hover:bg-white"]:not([class*="dark:hover:bg-"]):hover,
+html.dark .admin-dashboard [class~="hover:bg-gray-50"]:not([class*="dark:hover:bg-"]):hover {
+  background-color: #252C28 !important;
+}
+
+html.dark .admin-dashboard button:disabled { cursor: not-allowed; }

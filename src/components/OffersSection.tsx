@@ -83,14 +83,14 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-7 flex items-end justify-between gap-3">
           <div>
-            <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#C74169]">
+            <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#C74169] dark:bg-[#2A161E] dark:text-[#F2A9C3]">
               <Tag className="h-3.5 w-3.5" />
               {language === 'ar' ? 'عروض توليب' : 'Tolip Offers'}
             </span>
             <h2 className="text-2xl font-extrabold text-[#1F2421] dark:text-white">
               {language === 'ar' ? 'عروض وخصومات مميزة' : 'Special Offers'}
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-[#A8B0AA]">
               {language === 'ar' ? 'فرص مميزة لفترة محدودة' : 'Special deals for a limited time'}
             </p>
           </div>
@@ -128,18 +128,18 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
                     </span>
                   </div>
 
-                  {offer.description && <p className="text-sm leading-6 text-gray-500">{offer.description}</p>}
-                  <p className="text-xs text-gray-500">{linkedProducts.map((product) => product.name).join('، ')}</p>
+                  {offer.description && <p className="text-sm leading-6 text-gray-500 dark:text-[#A8B0AA]">{offer.description}</p>}
+                  <p className="text-xs text-gray-500 dark:text-[#A8B0AA]">{linkedProducts.map((product) => product.name).join('، ')}</p>
 
                   {firstProduct && price !== null && (
-                    <div className="text-sm font-bold text-[#C74169]">
+                    <div className="text-sm font-bold text-[#C74169] dark:text-[#E98EAD]">
                       {price.toLocaleString(locale)} {currency}
-                      <span className="mr-1 text-xs font-normal text-gray-400">ابتداءً من</span>
+                      <span className="mr-1 text-xs font-normal text-gray-400 dark:text-[#8D9690]">ابتداءً من</span>
                     </div>
                   )}
 
                   {offer.endsAt && (
-                    <p className="flex items-center gap-1 text-[11px] text-gray-400">
+                    <p className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-[#8D9690]">
                       <Clock className="h-3 w-3" />
                       ينتهي {new Date(offer.endsAt).toLocaleDateString(locale)}
                     </p>
@@ -149,7 +149,8 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
                     firstProduct && (
                       <button
                         onClick={() => onOrder(firstProduct, offer)}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C74169] py-3 text-sm font-bold text-white hover:bg-[#B3355A]"
+                        type="button"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C74169] py-3 text-sm font-bold text-white transition-colors hover:bg-[#B3355A] dark:bg-[#D45278] dark:hover:bg-[#C74169] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] dark:focus-visible:ring-[#E06287]"
                       >
                         <MessageCircle className="h-4 w-4" />
                         اطلبي العرض عبر واتساب
@@ -160,7 +161,7 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
                       href={whatsappUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-bold text-white"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-bold text-white transition-colors hover:bg-[#20BA57] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
                     >
                       <MessageCircle className="h-4 w-4" />
                       استفسري عن العرض عبر واتساب
