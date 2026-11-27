@@ -91,7 +91,7 @@ export const Hero: React.FC<HeroProps> = ({
               <motion.div whileHover={{ scale: 1.012 }} transition={{ duration: 0.45, ease: "easeOut" }} className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl border border-[#EDE4DE] dark:border-[#2D332F] bg-white dark:bg-[#1A1E1B] aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3]">
                 <img
                   src={settings.heroImage || '/src/assets/images/hero_tulip_botanical_1795590417391.jpg'}
-                  alt="Tolipe Natural Care Collection"
+                  alt="Tulip Natural Care Collection"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
                   onError={(e) => {
