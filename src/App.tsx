@@ -73,8 +73,24 @@ export default function App() {
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(isPageReload);
 
   // Navigation & View States
-  const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'offers' | 'about' | 'contact'>('home');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  // Restore the visitor's current store page after a browser refresh in the same tab.
+  const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'offers' | 'about' | 'contact'>(() => {
+    try {
+      const savedTab = sessionStorage.getItem('tulip_active_tab');
+      return savedTab && ['home', 'products', 'categories', 'offers', 'about', 'contact'].includes(savedTab)
+        ? savedTab as 'home' | 'products' | 'categories' | 'offers' | 'about' | 'contact'
+        : 'home';
+    } catch {
+      return 'home';
+    }
+  });
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('tulip_selected_category') || 'all';
+    } catch {
+      return 'all';
+    }
+  });
   const [productSortBy, setProductSortBy] = useState<'newest' | 'price-asc' | 'price-desc' | 'name'>('newest');
   const [filterInStockOnly, setFilterInStockOnly] = useState(false);
   const [filterBestSellersOnly, setFilterBestSellersOnly] = useState(false);
@@ -106,7 +122,13 @@ export default function App() {
   const [policyType, setPolicyType] = useState<PolicyType | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [completedOrder, setCompletedOrder] = useState<{ order: Order; whatsappUrl: string } | null>(null);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(() => {
+    try {
+      return sessionStorage.getItem('tulip_show_favorites_only') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Keep the document class, browser controls and stored preference in sync.
   useEffect(() => {
@@ -141,6 +163,17 @@ export default function App() {
       console.error(e);
     }
   }, [language]);
+
+  // Keep the current page and selected category when the customer refreshes.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('tulip_active_tab', activeTab);
+      sessionStorage.setItem('tulip_selected_category', selectedCategoryId);
+      sessionStorage.setItem('tulip_show_favorites_only', String(showFavoritesOnly));
+    } catch (err) {
+      console.error('Unable to save the current store page:', err);
+    }
+  }, [activeTab, selectedCategoryId, showFavoritesOnly]);
 
   // Sync Favorites to localStorage
   useEffect(() => {
