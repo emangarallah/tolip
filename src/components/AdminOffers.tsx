@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Tag, Search, Upload } from 'lucide-react';
 import type { Product, StoreOffer, OfferType } from '../types/store.ts';
