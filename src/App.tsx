@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Sparkles,
@@ -26,7 +26,7 @@ import { OrderSuccessModal } from './components/OrderSuccessModal.tsx';
 import { PolicyModal, PolicyType } from './components/PolicyModal.tsx';
 import { Footer } from './components/Footer.tsx';
 import { SearchModal } from './components/SearchModal.tsx';
-import { AdminDashboard } from './components/AdminDashboard.tsx';
+const AdminDashboard = lazy(() => import('./components/AdminDashboard.tsx').then(({ AdminDashboard }) => ({ default: AdminDashboard })) );
 import { OffersSection } from './components/OffersSection.tsx';
 import { OffersTicker } from './components/OffersTicker.tsx';
 import { WhatsAppChatWidget } from './components/WhatsAppChatWidget.tsx';
@@ -949,12 +949,16 @@ export default function App() {
         onClose={() => setPolicyType(null)}
       />
 
-      {/* Admin Dashboard */}
-      <AdminDashboard
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-        onStoreUpdated={fetchStoreData}
-      />
+      {/* Load the admin-only bundle only when the dashboard is opened. */}
+      <Suspense fallback={null}>
+        {isAdminOpen && (
+          <AdminDashboard
+            isOpen={isAdminOpen}
+            onClose={() => setIsAdminOpen(false)}
+            onStoreUpdated={fetchStoreData}
+          />
+        )}
+      </Suspense>
 
       {/* Floating WhatsApp Live Chat Widget */}
       {settings && (
