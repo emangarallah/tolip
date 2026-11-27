@@ -97,7 +97,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               type="button"
               onClick={() => setQuery('')}
               aria-label={language === 'ar' ? 'مسح البحث' : 'Clear search'}
-              className="text-xs text-[#9CA3AF] dark:text-[#78827A] hover:text-[#1F2421] dark:hover:text-white px-2 py-1"
+              className="text-xs text-[#717772] dark:text-[#C5CEC8] hover:text-[#1F2421] dark:hover:text-white px-2 py-1 transition-colors"
             >
               {language === 'ar' ? 'مسح' : 'Clear'}
             </button>
