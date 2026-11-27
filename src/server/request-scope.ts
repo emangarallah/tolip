@@ -29,8 +29,8 @@ export function getRequiredStoreDataSections(
       // Creating a product validates its category, but does not need the existing catalog.
       scopes.add('categories');
     } else if (normalizedMethod === 'PUT') {
+      // Product edits read and write only their target row in SQL.
       scopes.add('categories');
-      scopes.add('products');
     }
     // Product DELETE is a direct SQL DELETE; foreign keys cascade variants and offer links.
   } else if (path === '/api/offers' || path.startsWith('/api/offers/')) {
