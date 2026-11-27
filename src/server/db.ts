@@ -1043,13 +1043,24 @@ class StoreDatabase {
 
       // Default-deny request context. Admin rights are granted only after the
       // signed token is matched against the current database session version.
-      await client.query("SELECT set_config('app.actor_role', 'public', true)");
-      await client.query("SELECT set_config('app.admin_candidate_id', $1, true)", [identity.adminCandidate?.id || '']);
-      await client.query("SELECT set_config('app.login_email', $1, true)", [identity.loginEmail?.trim().toLowerCase() || '']);
-      await client.query("SELECT set_config('app.track_order_number', $1, true)", [identity.trackingOrderNumber?.trim() || '']);
-      await client.query("SELECT set_config('app.track_order_phone', $1, true)", [identity.trackingPhone?.replace(/[^0-9]/g, '') || '']);
-      await client.query("SELECT set_config('app.created_order_id', '', true)");
-      await client.query("SELECT set_config('app.rate_limit_access', 'false', true)");
+      // Apply transaction-local security context in one round trip instead of
+      // seven sequential Neon queries on every API request.
+      await client.query(
+        `SELECT
+           set_config('app.actor_role', 'public', true),
+           set_config('app.admin_candidate_id', $1, true),
+           set_config('app.login_email', $2, true),
+           set_config('app.track_order_number', $3, true),
+           set_config('app.track_order_phone', $4, true),
+           set_config('app.created_order_id', '', true),
+           set_config('app.rate_limit_access', 'false', true)`,
+        [
+          identity.adminCandidate?.id || '',
+          identity.loginEmail?.trim().toLowerCase() || '',
+          identity.trackingOrderNumber?.trim() || '',
+          identity.trackingPhone?.replace(/[^0-9]/g, '') || '',
+        ]
+      );
 
       if (identity.adminCandidate) {
         const candidateResult = await client.query(
@@ -1304,6 +1315,34 @@ class StoreDatabase {
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
+  public async getCategoriesWithCounts(includeInactive = false): Promise<Category[]> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.getCategories(includeInactive);
+
+    const result = await context.client.query(
+      `SELECT c.id, c.name, c.slug, c.description, c.image, c.sort_order, c.is_active, c.created_at,
+              COUNT(p.id) FILTER (WHERE $1::boolean OR p.is_active = true)::int AS product_count
+       FROM tolip_categories c
+       LEFT JOIN tolip_products p ON p.category_id = c.id
+       WHERE ($1::boolean OR c.is_active = true)
+       GROUP BY c.id
+       ORDER BY c.sort_order, c.id`,
+      [includeInactive]
+    );
+
+    return result.rows.map((row: any): Category => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description || '',
+      image: row.image || '',
+      sortOrder: Number(row.sort_order) || 0,
+      isActive: Boolean(row.is_active),
+      productCount: Number(row.product_count) || 0,
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+    }));
+  }
+
   public getCategoryById(id: string): Category | undefined {
     return this.data.categories.find((c) => c.id === id);
   }
@@ -1348,6 +1387,23 @@ class StoreDatabase {
     });
     this.persist('categories', id);
     return true;
+  }
+
+  // Production deletion is set-based: it avoids hydrating and rewriting every
+  // product and its variants just to remove a category.
+  public async deleteCategoryFromStore(id: string): Promise<boolean> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.deleteCategory(id);
+
+    await context.client.query(
+      "UPDATE tolip_products SET is_active = false, category_id = NULL, updated_at = now() WHERE category_id = $1",
+      [id]
+    );
+    const result = await context.client.query(
+      'DELETE FROM tolip_categories WHERE id = $1 RETURNING id',
+      [id]
+    );
+    return result.rows.length > 0;
   }
 
   // --- Products Methods ---
@@ -1510,6 +1566,19 @@ class StoreDatabase {
       }
     }
     return true;
+  }
+
+  // PostgreSQL cascades removal to product variants and offer-product links.
+  // Use one DELETE statement rather than loading the complete catalog first.
+  public async deleteProductFromStore(id: string): Promise<boolean> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.deleteProduct(id);
+
+    const result = await context.client.query(
+      'DELETE FROM tolip_products WHERE id = $1 RETURNING id',
+      [id]
+    );
+    return result.rows.length > 0;
   }
 
   // --- Promotions / Offers Methods ---
