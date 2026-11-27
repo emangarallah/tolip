@@ -1553,7 +1553,8 @@ class StoreDatabase {
       if (!result.rowCount) return false;
 
       // The request-scoped cache may not contain this offer; SQL is authoritative.
-      const index = (this.data.offers || []).findIndex((offer) => offer.id === id);
+      this.data.offers ??= [];
+      const index = this.data.offers.findIndex((offer) => offer.id === id);
       if (index >= 0) this.data.offers.splice(index, 1);
       return true;
     }
