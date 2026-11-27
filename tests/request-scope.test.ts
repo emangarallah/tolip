@@ -17,7 +17,7 @@ test('category writes avoid loading the product catalog', () => {
 
 test('product writes load only collections required by the operation', () => {
   assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/products')].sort(), ['adminUser', 'categories'].sort());
-  assert.deepEqual([...getRequiredStoreDataSections('PUT', '/api/products/prod-1')].sort(), ['adminUser', 'categories', 'products'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('PUT', '/api/products/prod-1')].sort(), ['adminUser', 'categories'].sort());
   assert.deepEqual([...getRequiredStoreDataSections('DELETE', '/api/products/prod-1')], ['adminUser']);
 });
 
