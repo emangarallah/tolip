@@ -1726,6 +1726,113 @@ class StoreDatabase {
     return order;
   }
 
+  // Dashboard analytics are aggregated in PostgreSQL so the admin login
+  // does not hydrate the entire products and order history into Node memory.
+  public async getAdminStatsForDashboard(): Promise<AdminStats> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.getAdminStats();
+
+    const result = await context.client.query(
+      `WITH metrics AS (
+         SELECT
+           (SELECT COUNT(*)::int FROM tolip_products) AS total_products,
+           (SELECT COUNT(*)::int FROM tolip_categories) AS total_categories,
+           (SELECT COUNT(*)::int FROM tolip_orders) AS total_orders,
+           (SELECT COUNT(*)::int FROM tolip_orders
+             WHERE status IN ('new', 'awaiting_whatsapp_confirmation')) AS new_orders,
+           (SELECT COUNT(*)::int FROM tolip_products p
+             WHERE p.in_stock = false OR NOT EXISTS (
+               SELECT 1 FROM tolip_product_variants v
+               WHERE v.product_id = p.id AND v.stock > 0
+             )) AS out_of_stock_products,
+           (SELECT COALESCE(SUM(COALESCE(final_total, items_total, 0)), 0)::numeric
+             FROM tolip_orders
+             WHERE status IN ('confirmed', 'delivered', 'processing')) AS confirmed_revenue
+       ),
+       best_selling AS (
+         SELECT
+           oi.product_id AS id,
+           COALESCE(MAX(oi.product_name), MAX(p.name), '') AS name,
+           SUM(oi.quantity)::int AS sales_count,
+           COALESCE(NULLIF(MAX(oi.image), ''), MAX(p.images->>0), '') AS image
+         FROM tolip_order_items oi
+         LEFT JOIN tolip_products p ON p.id = oi.product_id
+         GROUP BY oi.product_id, p.images
+         ORDER BY sales_count DESC, id ASC
+         LIMIT 5
+       ),
+       recent_orders AS (
+         SELECT
+           o.id, o.order_number, o.customer_details, o.items_total, o.delivery_fee,
+           o.delivery_fee_note, o.final_total, o.status, o.whatsapp_message,
+           o.created_at, o.updated_at,
+           COALESCE(
+             json_agg(
+               json_build_object(
+                 'productId', oi.product_id,
+                 'productName', oi.product_name,
+                 'variantId', oi.variant_id,
+                 'variantName', oi.variant_name,
+                 'quantity', oi.quantity,
+                 'unitPrice', oi.unit_price,
+                 'totalPrice', oi.total_price,
+                 'image', oi.image
+               ) ORDER BY oi.line_number
+             ) FILTER (WHERE oi.order_id IS NOT NULL),
+             '[]'::json
+           ) AS items
+         FROM (
+           SELECT * FROM tolip_orders
+           ORDER BY created_at DESC, id DESC
+           LIMIT 6
+         ) o
+         LEFT JOIN tolip_order_items oi ON oi.order_id = o.id
+         GROUP BY
+           o.id, o.order_number, o.customer_details, o.items_total, o.delivery_fee,
+           o.delivery_fee_note, o.final_total, o.status, o.whatsapp_message,
+           o.created_at, o.updated_at
+       )
+       SELECT
+         metrics.*,
+         COALESCE(
+           (SELECT json_agg(json_build_object(
+             'id', b.id, 'name', b.name, 'salesCount', b.sales_count, 'image', b.image
+           ) ORDER BY b.sales_count DESC, b.id ASC) FROM best_selling b),
+           '[]'::json
+         ) AS best_selling_products,
+         COALESCE(
+           (SELECT json_agg(json_build_object(
+             'id', r.id,
+             'orderNumber', r.order_number,
+             'customerDetails', r.customer_details,
+             'items', r.items,
+             'itemsTotal', r.items_total,
+             'deliveryFee', r.delivery_fee,
+             'deliveryFeeNote', r.delivery_fee_note,
+             'finalTotal', r.final_total,
+             'status', r.status,
+             'createdAt', r.created_at,
+             'updatedAt', r.updated_at,
+             'whatsappMessage', r.whatsapp_message
+           ) ORDER BY r.created_at DESC, r.id DESC) FROM recent_orders r),
+           '[]'::json
+         ) AS recent_orders
+       FROM metrics`
+    );
+
+    const row = result.rows[0] || {};
+    return {
+      totalProducts: Number(row.total_products) || 0,
+      totalCategories: Number(row.total_categories) || 0,
+      totalOrders: Number(row.total_orders) || 0,
+      newOrders: Number(row.new_orders) || 0,
+      outOfStockProducts: Number(row.out_of_stock_products) || 0,
+      confirmedRevenue: Number(row.confirmed_revenue) || 0,
+      bestSellingProducts: Array.isArray(row.best_selling_products) ? row.best_selling_products : [],
+      recentOrders: Array.isArray(row.recent_orders) ? row.recent_orders : [],
+    };
+  }
+
   // --- Admin Analytics & Stats ---
   public getAdminStats(): AdminStats {
     const totalProducts = this.data.products.length;
