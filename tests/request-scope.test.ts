@@ -2,30 +2,34 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getRequiredStoreDataSections } from '../src/server/request-scope.ts';
 
-test('public catalog requests load only their related store data', () => {
+test('public catalog requests load only the data needed by their response', () => {
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/products')].sort(), ['adminUser', 'categories', 'products'].sort());
-  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/categories')].sort(), ['adminUser', 'categories', 'products'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/categories')].sort(), ['adminUser', 'categories'].sort());
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/settings')].sort(), ['adminUser', 'settings'].sort());
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/offers')].sort(), ['adminUser', 'offers'].sort());
 });
 
-test('offer reads skip product hydration while offer writes retain product validation data', () => {
-  assert.deepEqual(
-    [...getRequiredStoreDataSections('GET', '/api/offers')].sort(),
-    ['adminUser', 'offers'].sort()
-  );
-  assert.deepEqual(
-    [...getRequiredStoreDataSections('POST', '/api/offers')].sort(),
-    ['adminUser', 'offers', 'products'].sort()
-  );
+test('category writes avoid loading the product catalog', () => {
+  assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/categories')].sort(), ['adminUser', 'categories'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('PUT', '/api/categories/cat-1')].sort(), ['adminUser', 'categories'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('DELETE', '/api/categories/cat-1')], ['adminUser']);
+});
+
+test('product writes load only collections required by the operation', () => {
+  assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/products')].sort(), ['adminUser', 'categories'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('PUT', '/api/products/prod-1')].sort(), ['adminUser', 'categories', 'products'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('DELETE', '/api/products/prod-1')], ['adminUser']);
+});
+
+test('offer reads and writes use operation-specific scopes', () => {
+  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/offers')].sort(), ['adminUser', 'offers'].sort());
+  assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/offers')].sort(), ['adminUser', 'products'].sort());
   assert.deepEqual(
     [...getRequiredStoreDataSections('PUT', '/api/offers/offer-1')].sort(),
     ['adminUser', 'offers', 'products'].sort()
   );
-  assert.deepEqual(
-    [...getRequiredStoreDataSections('DELETE', '/api/offers/offer-1')].sort(),
-    ['adminUser', 'offers'].sort()
-  );
+  assert.deepEqual([...getRequiredStoreDataSections('DELETE', '/api/offers/offer-1')], ['adminUser']);
+  assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/offers/delete')], ['adminUser']);
 });
 
 test('checkout and order tracking load the data required by each operation', () => {
@@ -34,18 +38,20 @@ test('checkout and order tracking load the data required by each operation', () 
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/orders')].sort(), ['adminUser', 'orders'].sort());
 });
 
-test('admin analytics intentionally loads all relational sections', () => {
-  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/admin/stats')].sort(), ['adminUser', 'settings', 'categories', 'products', 'offers', 'orders'].sort());
+test('admin analytics loads only the data it currently calculates', () => {
+  assert.deepEqual(
+    [...getRequiredStoreDataSections('GET', '/api/admin/stats')].sort(),
+    ['adminUser', 'categories', 'products', 'orders'].sort()
+  );
 });
 
 test('admin authentication endpoints only require the admin record', () => {
   assert.deepEqual([...getRequiredStoreDataSections('POST', '/api/admin/login')], ['adminUser']);
 });
 
-
-test('paginated product reads skip loading the complete products collection', () => {
+test('paginated product reads use SQL joins without hydrating full collections', () => {
   const scopes = getRequiredStoreDataSections('GET', '/api/products', { page: '2', pageSize: '12' });
-  assert.deepEqual([...scopes].sort(), ['adminUser', 'categories'].sort());
+  assert.deepEqual([...scopes], ['adminUser']);
 });
 
 test('paginated order reads load only the administrator record before SQL paging', () => {
@@ -53,7 +59,7 @@ test('paginated order reads load only the administrator record before SQL paging
   assert.deepEqual([...scopes], ['adminUser']);
 });
 
-test('legacy non-paginated API requests retain their complete collection scopes', () => {
+test('legacy non-paginated reads retain complete collection scopes', () => {
   assert.deepEqual(
     [...getRequiredStoreDataSections('GET', '/api/products')].sort(),
     ['adminUser', 'categories', 'products'].sort()
