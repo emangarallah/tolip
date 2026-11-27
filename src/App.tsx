@@ -36,8 +36,14 @@ import type { Product, Category, StoreSettings, Order, StoreOffer } from './type
 import { Language, Theme, translations } from './utils/i18n.ts';
 
 export default function App() {
-  // Keep Tolip's blush-and-ivory brand palette light so the transparent PNG logo never sits on a black surface.
-  const [theme, setTheme] = useState<Theme>('light');
+  // Restore the visitor's saved theme; light remains the default for first-time visitors.
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      return localStorage.getItem('tulip_theme') === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
 
   // Language State ('ar' | 'en')
   const [language, setLanguage] = useState<Language>(() => {
@@ -340,24 +346,24 @@ export default function App() {
 
   if (isLoading || !settings || !splashMinimumElapsed) {
     return (
-      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#F3D0DC] px-5 py-8 text-[#5B2638]">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#EAAFC4]/60 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#F7E0E7]/75 blur-3xl" />
+      <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#F3D0DC] px-5 py-8 text-[#5B2638] dark:bg-[#171B18] dark:text-[#E7ECE8]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#EAAFC4]/60 blur-3xl dark:bg-[#5C2940]/35" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[#F7E0E7]/75 blur-3xl dark:bg-[#263B2D]/55" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-col items-center text-center animate-in fade-in duration-700">
           <TulipOpeningMark className="mb-1 h-auto w-60 max-w-[72vw] drop-shadow-[0_12px_18px_rgba(199,65,105,0.10)] sm:w-64" />
 
           <div className="mt-7 space-y-2">
-            <p className="text-xl font-bold leading-relaxed text-[#B83F6B]">
+            <p className="text-xl font-bold leading-relaxed text-[#B83F6B] dark:text-[#E98EAD]">
               لقد تم اختيار منتجك بكل عناية
             </p>
-            <p className="text-base font-semibold leading-8 text-[#6A4552]">
+            <p className="text-base font-semibold leading-8 text-[#6A4552] dark:text-[#C5CEC8]">
               ليضيف لمسة من الجمال والتميز إلى يومك.
             </p>
           </div>
 
-          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#E7B5C7]">
-            <div className="h-full w-2/5 rounded-full bg-[#B83F6B] animate-pulse" />
+          <div className="mt-8 h-1 w-24 overflow-hidden rounded-full bg-[#E7B5C7] dark:bg-[#3A4540]">
+            <div className="h-full w-2/5 rounded-full bg-[#B83F6B] animate-pulse dark:bg-[#E06287]" />
           </div>
         </div>
       </main>
