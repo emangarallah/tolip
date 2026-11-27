@@ -575,7 +575,7 @@ export default function App() {
                   <div className="lg:col-span-6 space-y-6 text-start">
                     <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-1.5 rounded-full border border-[#F5E1E8] dark:border-[#3D202B]">
                       <Leaf className="w-3.5 h-3.5" />
-                      <span>{language === 'ar' ? 'فلسفة توليب للعناية الطبيعية' : 'Tolipe Natural Care Philosophy'}</span>
+                      <span>{language === 'ar' ? 'فلسفة توليب للعناية الطبيعية' : 'Tulip Natural Care Philosophy'}</span>
                     </div>
 
                     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#1F2421] dark:text-white leading-tight">
@@ -795,7 +795,7 @@ export default function App() {
                 {t.about}
               </span>
               <h1 className="text-3xl sm:text-4xl font-black text-[#1F2421] dark:text-white">
-                {language === 'ar' ? 'عن متجر توليب للعناية الطبيعية' : 'About Tolipe Natural Care'}
+                {language === 'ar' ? 'عن متجر توليب للعناية الطبيعية' : 'About Tulip Natural Care'}
               </h1>
               <p className="text-sm text-[#717772] dark:text-[#8D9690]">
                 {t.brandBadge}
