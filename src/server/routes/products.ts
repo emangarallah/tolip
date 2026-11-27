@@ -160,7 +160,12 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
       features: value.features || [],
       usageInstructions: value.usageInstructions || '',
       images: value.images || ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-      variants: value.variants,
+      // Variant IDs are server-owned on create. This prevents collisions when
+      // a browser retries or submits the same unsaved form more than once.
+      variants: value.variants.map((variant: any) => ({
+        ...variant,
+        id: `variant-${crypto.randomUUID()}`,
+      })),
       isFeatured: value.isFeatured ?? false,
       isBestSeller: value.isBestSeller ?? false,
       isActive: value.isActive ?? true,
