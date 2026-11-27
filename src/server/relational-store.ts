@@ -406,10 +406,24 @@ export async function persistRelationalChanges(
     );
 
     await client.query('DELETE FROM tolip_product_variants WHERE product_id = $1', [product.id]);
-    for (const variant of product.variants || []) {
+    const variants = product.variants || [];
+    if (variants.length > 0) {
+      // Batch all variant rows into one statement to shorten exclusive write-lock time.
       await client.query(
-        'INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [variant.id, product.id, variant.name, variant.price ?? null, variant.originalPrice ?? null, Number(variant.stock) || 0, variant.sku || null]
+        `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
+         SELECT rows.id, $1, rows.name, rows.price, rows.original_price, rows.stock, rows.sku
+         FROM unnest(
+           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
+         ) AS rows(id, name, price, original_price, stock, sku)`,
+        [
+          product.id,
+          variants.map((variant) => variant.id),
+          variants.map((variant) => variant.name),
+          variants.map((variant) => variant.price ?? null),
+          variants.map((variant) => variant.originalPrice ?? null),
+          variants.map((variant) => Number(variant.stock) || 0),
+          variants.map((variant) => variant.sku || null),
+        ]
       );
     }
   }
@@ -440,8 +454,11 @@ export async function persistRelationalChanges(
     );
 
     await client.query('DELETE FROM tolip_offer_products WHERE offer_id = $1', [offer.id]);
-    for (const productId of offer.productIds || []) {
-      await client.query('INSERT INTO tolip_offer_products (offer_id,product_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [offer.id, productId]);
+    if ((offer.productIds || []).length > 0) {
+      await client.query(
+        'INSERT INTO tolip_offer_products (offer_id, product_id) SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING',
+        [offer.id, offer.productIds]
+      );
     }
   }
 
@@ -462,10 +479,30 @@ export async function persistRelationalChanges(
     );
 
     await client.query('DELETE FROM tolip_order_items WHERE order_id = $1', [order.id]);
-    for (const [index, item] of order.items.entries()) {
+    if (order.items.length > 0) {
+      const items = order.items;
       await client.query(
-        'INSERT INTO tolip_order_items (order_id,line_number,product_id,product_name,variant_id,variant_name,quantity,unit_price,total_price,image) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
-        [order.id, index + 1, item.productId, item.productName, item.variantId, item.variantName, item.quantity, item.unitPrice ?? null, item.totalPrice ?? null, item.image ?? null]
+        `INSERT INTO tolip_order_items (
+           order_id,line_number,product_id,product_name,variant_id,variant_name,quantity,unit_price,total_price,image
+         )
+         SELECT $1, rows.line_number, rows.product_id, rows.product_name, rows.variant_id,
+                rows.variant_name, rows.quantity, rows.unit_price, rows.total_price, rows.image
+         FROM unnest(
+           $2::integer[], $3::text[], $4::text[], $5::text[], $6::text[],
+           $7::integer[], $8::numeric[], $9::numeric[], $10::text[]
+         ) AS rows(line_number, product_id, product_name, variant_id, variant_name, quantity, unit_price, total_price, image)`,
+        [
+          order.id,
+          items.map((_item, index) => index + 1),
+          items.map((item) => item.productId),
+          items.map((item) => item.productName),
+          items.map((item) => item.variantId),
+          items.map((item) => item.variantName),
+          items.map((item) => item.quantity),
+          items.map((item) => item.unitPrice ?? null),
+          items.map((item) => item.totalPrice ?? null),
+          items.map((item) => item.image ?? null),
+        ]
       );
     }
   }

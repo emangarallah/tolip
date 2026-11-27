@@ -101,6 +101,72 @@ test('admin can delete an offer and persist its removal', async () => {
   assert.ok(!persisted.offers.some((entry: any) => entry.id === offer.id));
 });
 
+test('optimized product, offer and order creators retain the local JSON fallback', async () => {
+  const category = db.getCategories(true)[0];
+  const product = await db.createProductInStore({
+    name: 'Optimized Create Test Product',
+    slug: 'optimized-create-test-' + Date.now(),
+    categoryId: category.id,
+    description: '',
+    features: [],
+    usageInstructions: '',
+    images: [],
+    variants: [{ id: 'optimized-variant-' + Date.now(), name: 'Test Size', price: 100, stock: 5 }],
+    isFeatured: false,
+    isBestSeller: false,
+    isActive: true,
+    inStock: true,
+  });
+  assert.equal(db.getProductById(product.id)?.name, product.name);
+
+  const offer = await db.createOfferInStore({
+    title: 'Optimized Create Test Offer',
+    description: '',
+    image: '',
+    type: 'percentage',
+    productIds: [product.id],
+    value: 10,
+    bundlePrice: null,
+    buyQuantity: 2,
+    getQuantity: 1,
+    startsAt: null,
+    endsAt: null,
+    isActive: true,
+  });
+  assert.equal(db.getOfferById(offer.id)?.title, offer.title);
+
+  const order = await db.createOrderInStore({
+    customerDetails: {
+      fullName: 'Optimized Test Customer',
+      phone: '771000001',
+      city: 'صنعاء',
+      area: 'الحي',
+      detailedAddress: 'عنوان اختبار',
+    },
+    items: [{
+      productId: product.id,
+      productName: product.name,
+      variantId: product.variants[0].id,
+      variantName: product.variants[0].name,
+      quantity: 1,
+      unitPrice: 100,
+      totalPrice: 100,
+      image: '',
+    }],
+    itemsTotal: 100,
+    deliveryFee: 2000,
+    finalTotal: 2100,
+    status: 'awaiting_whatsapp_confirmation',
+    whatsappMessage: 'Optimized order test',
+  }, 'TLP-2026-OPTIMIZED');
+
+  assert.equal(db.getOrderById(order.id)?.orderNumber, 'TLP-2026-OPTIMIZED');
+
+  // Keep shared seed data unchanged for the pagination tests that follow.
+  await db.deleteOffer(offer.id);
+  db.deleteProduct(product.id);
+});
+
 test('admin password is scrypt-verified and login session rotation invalidates prior sessions', () => {
   const previousSession = db.getAdminSessionVersion();
   const email = 'owner-test@example.com';

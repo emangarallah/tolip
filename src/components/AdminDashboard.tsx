@@ -105,6 +105,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Modals inside Admin
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingCategory, setEditingCategory] = useState<Partial<Category> | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const productSaveInFlight = useRef(false);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const categorySaveInFlight = useRef(false);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [ordersFilterStatus, setOrdersFilterStatus] = useState<string>('all');
   const [ordersSearch, setOrdersSearch] = useState<string>('');
@@ -278,15 +282,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Load summary data plus the current products and orders pages.
+  // Load only the summary and category counts on dashboard entry.
+  // Product/order pages, offers and settings are fetched when their tabs open.
   const loadAdminData = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [statsRes, catsRes, settingsRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: authHeaders() }),
-        fetch('/api/categories?includeInactive=true', { headers: authHeaders() }),
-        fetch('/api/settings'),
+      const [statsRes, catsRes] = await Promise.all([
+        fetch('/api/admin/stats', { headers: authHeaders(), cache: 'no-store' }),
+        fetch('/api/categories?includeInactive=true', { headers: authHeaders(), cache: 'no-store' }),
       ]);
 
       if (statsRes.status === 401) {
@@ -294,14 +298,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return;
       }
 
-      if (statsRes.ok) setStats(await statsRes.json());
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+        setOrders(Array.isArray(statsData.recentOrders) ? statsData.recentOrders : []);
+      }
       if (catsRes.ok) setCategories(await catsRes.json());
-      if (settingsRes.ok) setSettings(await settingsRes.json());
 
-      await Promise.all([
-        loadProductsPage(productsPage, productsSearch, productsCatFilter),
-        loadOrdersPage(ordersPage, ordersFilterStatus, ordersSearch),
-      ]);
+      const activeTabLoads: Promise<unknown>[] = [];
+      if (activeTab === 'products') {
+        activeTabLoads.push(loadProductsPage(productsPage, productsSearch, productsCatFilter));
+      }
+      if (activeTab === 'orders') {
+        activeTabLoads.push(loadOrdersPage(ordersPage, ordersFilterStatus, ordersSearch));
+      }
+      await Promise.all(activeTabLoads);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
@@ -310,12 +321,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
-    if (isOpen && token) {
-      // Finish the main dashboard requests first, then load offers and their
-      // product choices so the Neon pool is not flooded on initial entry.
-      void loadAdminData().finally(() => { void loadOffers(); });
-    }
+    if (isOpen && token) void loadAdminData();
   }, [token, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !token || activeTab !== 'offers') return;
+    void loadOffers();
+  }, [isOpen, token, activeTab]);
+
+  useEffect(() => {
+    if (!isOpen || !token || activeTab !== 'settings' || settings) return;
+    let cancelled = false;
+    fetch('/api/settings', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('تعذر تحميل إعدادات المتجر.');
+        return res.json();
+      })
+      .then((data) => { if (!cancelled) setSettings(data); })
+      .catch((error) => console.error('Error fetching store settings:', error));
+    return () => { cancelled = true; };
+  }, [isOpen, token, activeTab, settings]);
 
   useEffect(() => {
     if (!isOpen || !token || activeTab !== 'products') return;
@@ -374,8 +399,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // -------------------------------------------------------------
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct || !editingProduct.name) return;
+    if (!editingProduct || !editingProduct.name || productSaveInFlight.current) return;
 
+    productSaveInFlight.current = true;
+    setSavingProduct(true);
     try {
       const isNew = !editingProduct.id;
       const url = isNew ? '/api/products' : `/api/products/${editingProduct.id}`;
@@ -394,10 +421,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       showToast(isNew ? 'تمت إضافة المنتج بنجاح!' : 'تم تحديث بيانات المنتج بنجاح!');
       setEditingProduct(null);
-      loadAdminData();
-      onStoreUpdated();
+      void Promise.all([loadAdminData(), onStoreUpdated()]).catch((error) => {
+        console.error('Product saved, but a background refresh failed:', error);
+      });
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      productSaveInFlight.current = false;
+      setSavingProduct(false);
     }
   };
 
@@ -428,8 +459,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // -------------------------------------------------------------
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCategory || !editingCategory.name) return;
+    if (!editingCategory || !editingCategory.name || categorySaveInFlight.current) return;
 
+    categorySaveInFlight.current = true;
+    setSavingCategory(true);
     try {
       const isNew = !editingCategory.id;
       const url = isNew ? '/api/categories' : `/api/categories/${editingCategory.id}`;
@@ -448,10 +481,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       showToast(isNew ? 'تمت إضافة القسم الجديد بنجاح!' : 'تم تحديث القسم بنجاح!');
       setEditingCategory(null);
-      await loadAdminData();
-      await onStoreUpdated();
+      void Promise.all([loadAdminData(), onStoreUpdated()]).catch((error) => {
+        console.error('Category saved, but a background refresh failed:', error);
+      });
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      categorySaveInFlight.current = false;
+      setSavingCategory(false);
     }
   };
 
@@ -476,8 +513,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const deletedType = pendingDelete.type;
       setPendingDelete(null);
       showToast(deletedType === 'product' ? 'تم حذف المنتج بنجاح' : 'تم حذف القسم بنجاح');
-      await loadAdminData();
-      await onStoreUpdated();
+      void Promise.all([loadAdminData(), onStoreUpdated()]).catch((error) => {
+        console.error('Item deleted, but a background refresh failed:', error);
+      });
     } catch (err: any) {
       setDeleteError(err.message || 'تعذر إكمال عملية الحذف. حاولي مرة أخرى.');
     } finally {
@@ -769,7 +807,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>إدارة المنتجات ({products.length})</span>
+                <span>إدارة المنتجات ({stats?.totalProducts ?? products.length})</span>
               </motion.button>
 
               <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
@@ -781,7 +819,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <FolderTree className="w-4 h-4" />
-                <span>إدارة الأقسام ({categories.length})</span>
+                <span>إدارة الأقسام ({stats?.totalCategories ?? categories.length})</span>
               </motion.button>
 
               <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
@@ -793,8 +831,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>الطلبات ({orders.length})</span>
-                {orders.filter((o) => o.status === 'new' || o.status === 'awaiting_whatsapp_confirmation').length > 0 && (
+                <span>الطلبات ({stats?.totalOrders ?? orders.length})</span>
+                {(stats?.newOrders ?? orders.filter((o) => o.status === 'new' || o.status === 'awaiting_whatsapp_confirmation').length) > 0 && (
                   <span className="w-2 h-2 rounded-full bg-[#C74169] dark:bg-[#E06287] mr-auto" />
                 )}
               </motion.button>
@@ -994,7 +1032,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           features: ['طبيعي 100%'],
                           usageInstructions: '',
                           images: ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-                          variants: [{ id: `v-${Date.now()}`, name: 'حجم قياسي', price: null, stock: 10 }],
+                          variants: [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }],
                           isFeatured: false,
                           isBestSeller: false,
                           isActive: true,
@@ -1362,6 +1400,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               )}
 
+              {activeTab === 'settings' && !settings && (
+                <div className="rounded-2xl border border-[#EFE9E2] bg-white p-6 text-center text-sm text-[#717772] dark:border-[#2D3830] dark:bg-[#1A1F1C] dark:text-[#A8B0AA]">
+                  جارٍ تحميل إعدادات المتجر...
+                </div>
+              )}
               {activeTab === 'settings' && settings && (
                 <form onSubmit={handleSaveSettings} className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -1892,9 +1935,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254]"
+                    disabled={savingProduct}
+                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    حفظ المنتج
+                    {savingProduct ? 'جارٍ حفظ المنتج...' : 'حفظ المنتج'}
                   </button>
                 </div>
               </form>
@@ -1993,9 +2037,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254]"
+                    disabled={savingCategory}
+                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    حفظ القسم
+                    {savingCategory ? 'جارٍ حفظ القسم...' : 'حفظ القسم'}
                   </button>
                 </div>
               </form>

@@ -143,7 +143,7 @@ router.get('/api/products/:id', (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
+router.post('/api/products', requireAdmin, async (req: Request, res: Response) => {
   try {
     const parsed = parseProductWritePayload(req.body, false);
     if (parsed.error || !parsed.value) {
@@ -152,7 +152,7 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
     }
     const value = parsed.value;
     const slug = value.slug || 'product-' + crypto.randomUUID();
-    const newProduct = db.createProduct({
+    const newProduct = await db.createProductInStore({
       name: value.name,
       slug,
       categoryId: value.categoryId,
@@ -160,7 +160,12 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
       features: value.features || [],
       usageInstructions: value.usageInstructions || '',
       images: value.images || ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-      variants: value.variants,
+      // Variant IDs are server-owned on create. This prevents collisions when
+      // a browser retries or submits the same unsaved form more than once.
+      variants: value.variants.map((variant: any) => ({
+        ...variant,
+        id: `variant-${crypto.randomUUID()}`,
+      })),
       isFeatured: value.isFeatured ?? false,
       isBestSeller: value.isBestSeller ?? false,
       isActive: value.isActive ?? true,
@@ -173,14 +178,14 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+router.put('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const parsed = parseProductWritePayload(req.body, true);
     if (parsed.error || !parsed.value || Object.keys(parsed.value).length === 0) {
       res.status(400).json({ error: parsed.error || 'لا توجد تغييرات صالحة لحفظها.' });
       return;
     }
-    const updated = db.updateProduct(req.params.id, parsed.value);
+    const updated = await db.updateProductFromStore(req.params.id, parsed.value);
     if (!updated) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;
@@ -192,9 +197,9 @@ router.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.delete('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+router.delete('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const success = db.deleteProduct(req.params.id);
+    const success = await db.deleteProductFromStore(req.params.id);
     if (!success) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;

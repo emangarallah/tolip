@@ -1043,13 +1043,24 @@ class StoreDatabase {
 
       // Default-deny request context. Admin rights are granted only after the
       // signed token is matched against the current database session version.
-      await client.query("SELECT set_config('app.actor_role', 'public', true)");
-      await client.query("SELECT set_config('app.admin_candidate_id', $1, true)", [identity.adminCandidate?.id || '']);
-      await client.query("SELECT set_config('app.login_email', $1, true)", [identity.loginEmail?.trim().toLowerCase() || '']);
-      await client.query("SELECT set_config('app.track_order_number', $1, true)", [identity.trackingOrderNumber?.trim() || '']);
-      await client.query("SELECT set_config('app.track_order_phone', $1, true)", [identity.trackingPhone?.replace(/[^0-9]/g, '') || '']);
-      await client.query("SELECT set_config('app.created_order_id', '', true)");
-      await client.query("SELECT set_config('app.rate_limit_access', 'false', true)");
+      // Apply transaction-local security context in one round trip instead of
+      // seven sequential Neon queries on every API request.
+      await client.query(
+        `SELECT
+           set_config('app.actor_role', 'public', true),
+           set_config('app.admin_candidate_id', $1, true),
+           set_config('app.login_email', $2, true),
+           set_config('app.track_order_number', $3, true),
+           set_config('app.track_order_phone', $4, true),
+           set_config('app.created_order_id', '', true),
+           set_config('app.rate_limit_access', 'false', true)`,
+        [
+          identity.adminCandidate?.id || '',
+          identity.loginEmail?.trim().toLowerCase() || '',
+          identity.trackingOrderNumber?.trim() || '',
+          identity.trackingPhone?.replace(/[^0-9]/g, '') || '',
+        ]
+      );
 
       if (identity.adminCandidate) {
         const candidateResult = await client.query(
@@ -1181,6 +1192,60 @@ class StoreDatabase {
     };
   }
 
+  public async consumePersistentRateLimits(
+    keys: string[],
+    max: number,
+    windowMs: number
+  ): Promise<Array<{ keyHash: string; allowed: boolean; remaining: number; retryAfterSeconds: number }> | null> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return null;
+    if (keys.length === 0) return [];
+
+    const keyHashes = [...new Set(keys.map((key) => this.hashRateLimitKey(key)))];
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    const result = await context.client.query(
+      `INSERT INTO tolip_security_rate_limits (key_hash, window_started_at, attempts, updated_at)
+       SELECT key_hash, now(), 1, now()
+       FROM unnest($1::text[]) AS requested(key_hash)
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN 1
+           ELSE tolip_security_rate_limits.attempts + 1
+         END,
+         window_started_at = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN now()
+           ELSE tolip_security_rate_limits.window_started_at
+         END,
+         updated_at = now()
+       RETURNING key_hash, attempts,
+         GREATEST(1, CEIL(EXTRACT(EPOCH FROM (
+           window_started_at + ($2::int * interval '1 millisecond') - now()
+         ))))::int AS retry_after_seconds`,
+      [keyHashes, windowMs]
+    );
+
+    return result.rows.map((row: any) => {
+      const attempts = Number(row.attempts) || 1;
+      return {
+        keyHash: String(row.key_hash),
+        allowed: attempts <= max,
+        remaining: Math.max(0, max - attempts),
+        retryAfterSeconds: Math.max(1, Number(row.retry_after_seconds) || Math.ceil(windowMs / 1000)),
+      };
+    });
+  }
+
+  public async clearPersistentRateLimits(keys: string[]): Promise<void> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client || keys.length === 0) return;
+    const keyHashes = [...new Set(keys.map((key) => this.hashRateLimitKey(key)))];
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    await context.client.query(
+      'DELETE FROM tolip_security_rate_limits WHERE key_hash = ANY($1::text[])',
+      [keyHashes]
+    );
+  }
+
   public async clearPersistentRateLimit(key: string): Promise<void> {
     const context = this.requestStorage.getStore();
     if (!context?.client) return;
@@ -1304,6 +1369,34 @@ class StoreDatabase {
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
+  public async getCategoriesWithCounts(includeInactive = false): Promise<Category[]> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.getCategories(includeInactive);
+
+    const result = await context.client.query(
+      `SELECT c.id, c.name, c.slug, c.description, c.image, c.sort_order, c.is_active, c.created_at,
+              COUNT(p.id) FILTER (WHERE $1::boolean OR p.is_active = true)::int AS product_count
+       FROM tolip_categories c
+       LEFT JOIN tolip_products p ON p.category_id = c.id
+       WHERE ($1::boolean OR c.is_active = true)
+       GROUP BY c.id
+       ORDER BY c.sort_order, c.id`,
+      [includeInactive]
+    );
+
+    return result.rows.map((row: any): Category => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description || '',
+      image: row.image || '',
+      sortOrder: Number(row.sort_order) || 0,
+      isActive: Boolean(row.is_active),
+      productCount: Number(row.product_count) || 0,
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+    }));
+  }
+
   public getCategoryById(id: string): Category | undefined {
     return this.data.categories.find((c) => c.id === id);
   }
@@ -1348,6 +1441,23 @@ class StoreDatabase {
     });
     this.persist('categories', id);
     return true;
+  }
+
+  // Production deletion is set-based: it avoids hydrating and rewriting every
+  // product and its variants just to remove a category.
+  public async deleteCategoryFromStore(id: string): Promise<boolean> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.deleteCategory(id);
+
+    await context.client.query(
+      "UPDATE tolip_products SET is_active = false, category_id = NULL, updated_at = now() WHERE category_id = $1",
+      [id]
+    );
+    const result = await context.client.query(
+      'DELETE FROM tolip_categories WHERE id = $1 RETURNING id',
+      [id]
+    );
+    return result.rows.length > 0;
   }
 
   // --- Products Methods ---
@@ -1482,6 +1592,53 @@ class StoreDatabase {
     return newProduct;
   }
 
+  // Create a product directly in Neon when the request intentionally skips
+  // hydrating the full product collection.
+  public async createProductInStore(input: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.createProduct(input);
+
+    const id = `prod-${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
+    const product: Product = { ...input, id, createdAt: now, updatedAt: now };
+
+    await context.client.query(
+      'INSERT INTO tolip_products (id,name,slug,category_id,description,features,usage_instructions,images,is_featured,is_best_seller,is_active,in_stock,created_at,updated_at) VALUES ($1,$2,$3,NULLIF($4,\'\'),$5,$6::jsonb,$7,$8::jsonb,$9,$10,$11,$12,$13,$14)',
+      [
+        product.id, product.name, product.slug, product.categoryId || '',
+        product.description || '', JSON.stringify(product.features || []),
+        product.usageInstructions || '', JSON.stringify(product.images || []),
+        Boolean(product.isFeatured), Boolean(product.isBestSeller),
+        Boolean(product.isActive), Boolean(product.inStock), now, now,
+      ]
+    );
+
+    const variants = product.variants || [];
+    if (variants.length > 0) {
+      await context.client.query(
+        `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
+         SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+         FROM unnest(
+           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
+         ) AS v(id, name, price, original_price, stock, sku)`,
+        [
+          product.id,
+          variants.map((variant) => variant.id),
+          variants.map((variant) => variant.name),
+          variants.map((variant) => variant.price ?? null),
+          variants.map((variant) => variant.originalPrice ?? null),
+          variants.map((variant) => Number(variant.stock) || 0),
+          variants.map((variant) => variant.sku || null),
+        ]
+      );
+    }
+
+    return {
+      ...product,
+      categoryName: this.getCategoryById(product.categoryId)?.name || 'عام',
+    };
+  }
+
   public updateProduct(id: string, partial: Partial<Product>): Product | null {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return null;
@@ -1497,6 +1654,106 @@ class StoreDatabase {
     return this.data.products[idx];
   }
 
+  // Update one product directly in Neon instead of hydrating every product
+  // (and all variants) for a single-row edit or stock toggle.
+  public async updateProductFromStore(id: string, partial: Partial<Product>): Promise<Product | null> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.updateProduct(id, partial);
+
+    const result = await context.client.query(
+      `SELECT p.id, p.name, p.slug, p.category_id, p.description, p.features,
+              p.usage_instructions, p.images, p.is_featured, p.is_best_seller,
+              p.is_active, p.in_stock, p.created_at, p.updated_at,
+              COALESCE(c.name, 'عام') AS category_name
+       FROM tolip_products p
+       LEFT JOIN tolip_categories c ON c.id = p.category_id
+       WHERE p.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+
+    const variantsResult = await context.client.query(
+      'SELECT id, name, price, original_price, stock, sku FROM tolip_product_variants WHERE product_id = $1 ORDER BY id',
+      [id]
+    );
+    const current: Product = {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      categoryId: row.category_id || '',
+      categoryName: row.category_name || 'عام',
+      description: row.description || '',
+      features: Array.isArray(row.features) ? row.features : [],
+      usageInstructions: row.usage_instructions || '',
+      images: Array.isArray(row.images) ? row.images : [],
+      variants: variantsResult.rows.map((variant: any) => ({
+        id: variant.id,
+        name: variant.name,
+        price: variant.price === null ? null : Number(variant.price),
+        originalPrice: variant.original_price === null ? null : Number(variant.original_price),
+        stock: Number(variant.stock) || 0,
+        ...(variant.sku ? { sku: variant.sku } : {}),
+      })),
+      isFeatured: Boolean(row.is_featured),
+      isBestSeller: Boolean(row.is_best_seller),
+      isActive: Boolean(row.is_active),
+      inStock: Boolean(row.in_stock),
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
+    };
+
+    const updated: Product = {
+      ...current,
+      ...partial,
+      id: current.id,
+      createdAt: current.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await context.client.query(
+      `UPDATE tolip_products
+       SET name = $2, slug = $3, category_id = NULLIF($4, ''),
+           description = $5, features = $6::jsonb, usage_instructions = $7,
+           images = $8::jsonb, is_featured = $9, is_best_seller = $10,
+           is_active = $11, in_stock = $12, updated_at = $13
+       WHERE id = $1`,
+      [
+        updated.id, updated.name, updated.slug, updated.categoryId || '',
+        updated.description || '', JSON.stringify(updated.features || []),
+        updated.usageInstructions || '', JSON.stringify(updated.images || []),
+        Boolean(updated.isFeatured), Boolean(updated.isBestSeller),
+        Boolean(updated.isActive), Boolean(updated.inStock), updated.updatedAt,
+      ]
+    );
+
+    if (partial.variants !== undefined) {
+      await context.client.query('DELETE FROM tolip_product_variants WHERE product_id = $1', [id]);
+      const variants = updated.variants || [];
+      if (variants.length > 0) {
+        await context.client.query(
+          `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
+           SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+           FROM unnest(
+             $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
+           ) AS v(id, name, price, original_price, stock, sku)`,
+          [
+            id,
+            variants.map((variant) => variant.id),
+            variants.map((variant) => variant.name),
+            variants.map((variant) => variant.price ?? null),
+            variants.map((variant) => variant.originalPrice ?? null),
+            variants.map((variant) => Number(variant.stock) || 0),
+            variants.map((variant) => variant.sku || null),
+          ]
+        );
+      }
+    }
+
+    return updated;
+  }
+
   public deleteProduct(id: string): boolean {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return false;
@@ -1510,6 +1767,19 @@ class StoreDatabase {
       }
     }
     return true;
+  }
+
+  // PostgreSQL cascades removal to product variants and offer-product links.
+  // Use one DELETE statement rather than loading the complete catalog first.
+  public async deleteProductFromStore(id: string): Promise<boolean> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.deleteProduct(id);
+
+    const result = await context.client.query(
+      'DELETE FROM tolip_products WHERE id = $1 RETURNING id',
+      [id]
+    );
+    return result.rows.length > 0;
   }
 
   // --- Promotions / Offers Methods ---
@@ -1528,6 +1798,43 @@ class StoreDatabase {
     if (!this.data.offers) this.data.offers = [];
     this.data.offers.unshift(offer);
     this.persist('offers', offer.id);
+    return offer;
+  }
+
+  // Create an offer without hydrating the existing offer collection.
+  public async createOfferInStore(
+    input: Omit<StoreOffer, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<StoreOffer> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.createOffer(input);
+
+    const now = new Date().toISOString();
+    const offer: StoreOffer = {
+      ...input,
+      id: `offer-${crypto.randomUUID()}`,
+      productIds: [...input.productIds],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await context.client.query(
+      'INSERT INTO tolip_offers (id,title,description,image,type,value,bundle_price,buy_quantity,get_quantity,starts_at,ends_at,is_active,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      [
+        offer.id, offer.title, offer.description || '', offer.image || '',
+        offer.type, Number(offer.value) || 0, offer.bundlePrice ?? null,
+        Number(offer.buyQuantity) || 1, Number(offer.getQuantity) || 1,
+        offer.startsAt || null, offer.endsAt || null, Boolean(offer.isActive),
+        now, now,
+      ]
+    );
+
+    if (offer.productIds.length > 0) {
+      await context.client.query(
+        'INSERT INTO tolip_offer_products (offer_id, product_id) SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING',
+        [offer.id, offer.productIds]
+      );
+    }
+
     return offer;
   }
 
@@ -1585,6 +1892,72 @@ class StoreDatabase {
     this.data.orders.unshift(newOrder);
     this.persist('orders', id);
     return newOrder;
+  }
+
+  // Checkout inserts the order and all of its items directly in one transaction.
+  // No order-history hydration is needed for a new public order.
+  public async createOrderInStore(
+    input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>,
+    requestedOrderNumber?: string
+  ): Promise<Order> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) {
+      const localOrder = this.createOrder(input);
+      if (requestedOrderNumber) {
+        localOrder.orderNumber = requestedOrderNumber;
+        this.persist('orders', localOrder.id);
+      }
+      return localOrder;
+    }
+
+    const now = new Date().toISOString();
+    const order: Order = {
+      ...input,
+      id: `ord-${crypto.randomUUID()}`,
+      orderNumber: requestedOrderNumber || `TLP-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await context.client.query(
+      'INSERT INTO tolip_orders (id,order_number,customer_details,items_total,delivery_fee,delivery_fee_note,final_total,status,whatsapp_message,created_at,updated_at) VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [
+        order.id, order.orderNumber, JSON.stringify(order.customerDetails),
+        order.itemsTotal ?? null, order.deliveryFee ?? null, order.deliveryFeeNote ?? null,
+        order.finalTotal ?? null, order.status, order.whatsappMessage || '',
+        now, now,
+      ]
+    );
+
+    await context.client.query("SELECT set_config('app.created_order_id', $1, true)", [order.id]);
+    if (order.items.length > 0) {
+      const items = order.items;
+      await context.client.query(
+        `INSERT INTO tolip_order_items (
+           order_id,line_number,product_id,product_name,variant_id,variant_name,quantity,unit_price,total_price,image
+         )
+         SELECT $1, rows.line_number, rows.product_id, rows.product_name, rows.variant_id,
+                rows.variant_name, rows.quantity, rows.unit_price, rows.total_price, rows.image
+         FROM unnest(
+           $2::integer[], $3::text[], $4::text[], $5::text[], $6::text[],
+           $7::integer[], $8::numeric[], $9::numeric[], $10::text[]
+         ) AS rows(line_number, product_id, product_name, variant_id, variant_name, quantity, unit_price, total_price, image)`,
+        [
+          order.id,
+          items.map((_item, index) => index + 1),
+          items.map((item) => item.productId),
+          items.map((item) => item.productName),
+          items.map((item) => item.variantId),
+          items.map((item) => item.variantName),
+          items.map((item) => item.quantity),
+          items.map((item) => item.unitPrice ?? null),
+          items.map((item) => item.totalPrice ?? null),
+          items.map((item) => item.image ?? null),
+        ]
+      );
+    }
+
+    return order;
   }
 
   public getOrders(filters?: {
@@ -1655,6 +2028,113 @@ class StoreDatabase {
     order.updatedAt = new Date().toISOString();
     this.persist('orders', order.id);
     return order;
+  }
+
+  // Dashboard analytics are aggregated in PostgreSQL so the admin login
+  // does not hydrate the entire products and order history into Node memory.
+  public async getAdminStatsForDashboard(): Promise<AdminStats> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.getAdminStats();
+
+    const result = await context.client.query(
+      `WITH metrics AS (
+         SELECT
+           (SELECT COUNT(*)::int FROM tolip_products) AS total_products,
+           (SELECT COUNT(*)::int FROM tolip_categories) AS total_categories,
+           (SELECT COUNT(*)::int FROM tolip_orders) AS total_orders,
+           (SELECT COUNT(*)::int FROM tolip_orders
+             WHERE status IN ('new', 'awaiting_whatsapp_confirmation')) AS new_orders,
+           (SELECT COUNT(*)::int FROM tolip_products p
+             WHERE p.in_stock = false OR NOT EXISTS (
+               SELECT 1 FROM tolip_product_variants v
+               WHERE v.product_id = p.id AND v.stock > 0
+             )) AS out_of_stock_products,
+           (SELECT COALESCE(SUM(COALESCE(NULLIF(final_total, 0), items_total, 0)), 0)::numeric
+             FROM tolip_orders
+             WHERE status IN ('confirmed', 'delivered', 'processing')) AS confirmed_revenue
+       ),
+       best_selling AS (
+         SELECT
+           oi.product_id AS id,
+           COALESCE(MAX(oi.product_name), MAX(p.name), '') AS name,
+           SUM(oi.quantity)::int AS sales_count,
+           COALESCE(NULLIF(MAX(oi.image), ''), MAX(p.images->>0), '') AS image
+         FROM tolip_order_items oi
+         LEFT JOIN tolip_products p ON p.id = oi.product_id
+         GROUP BY oi.product_id, p.images
+         ORDER BY sales_count DESC, id ASC
+         LIMIT 5
+       ),
+       recent_orders AS (
+         SELECT
+           o.id, o.order_number, o.customer_details, o.items_total, o.delivery_fee,
+           o.delivery_fee_note, o.final_total, o.status, o.whatsapp_message,
+           o.created_at, o.updated_at,
+           COALESCE(
+             json_agg(
+               json_build_object(
+                 'productId', oi.product_id,
+                 'productName', oi.product_name,
+                 'variantId', oi.variant_id,
+                 'variantName', oi.variant_name,
+                 'quantity', oi.quantity,
+                 'unitPrice', oi.unit_price,
+                 'totalPrice', oi.total_price,
+                 'image', oi.image
+               ) ORDER BY oi.line_number
+             ) FILTER (WHERE oi.order_id IS NOT NULL),
+             '[]'::json
+           ) AS items
+         FROM (
+           SELECT * FROM tolip_orders
+           ORDER BY created_at DESC, id DESC
+           LIMIT 6
+         ) o
+         LEFT JOIN tolip_order_items oi ON oi.order_id = o.id
+         GROUP BY
+           o.id, o.order_number, o.customer_details, o.items_total, o.delivery_fee,
+           o.delivery_fee_note, o.final_total, o.status, o.whatsapp_message,
+           o.created_at, o.updated_at
+       )
+       SELECT
+         metrics.*,
+         COALESCE(
+           (SELECT json_agg(json_build_object(
+             'id', b.id, 'name', b.name, 'salesCount', b.sales_count, 'image', b.image
+           ) ORDER BY b.sales_count DESC, b.id ASC) FROM best_selling b),
+           '[]'::json
+         ) AS best_selling_products,
+         COALESCE(
+           (SELECT json_agg(json_build_object(
+             'id', r.id,
+             'orderNumber', r.order_number,
+             'customerDetails', r.customer_details,
+             'items', r.items,
+             'itemsTotal', r.items_total,
+             'deliveryFee', r.delivery_fee,
+             'deliveryFeeNote', r.delivery_fee_note,
+             'finalTotal', r.final_total,
+             'status', r.status,
+             'createdAt', r.created_at,
+             'updatedAt', r.updated_at,
+             'whatsappMessage', r.whatsapp_message
+           ) ORDER BY r.created_at DESC, r.id DESC) FROM recent_orders r),
+           '[]'::json
+         ) AS recent_orders
+       FROM metrics`
+    );
+
+    const row = result.rows[0] || {};
+    return {
+      totalProducts: Number(row.total_products) || 0,
+      totalCategories: Number(row.total_categories) || 0,
+      totalOrders: Number(row.total_orders) || 0,
+      newOrders: Number(row.new_orders) || 0,
+      outOfStockProducts: Number(row.out_of_stock_products) || 0,
+      confirmedRevenue: Number(row.confirmed_revenue) || 0,
+      bestSellingProducts: Array.isArray(row.best_selling_products) ? row.best_selling_products : [],
+      recentOrders: Array.isArray(row.recent_orders) ? row.recent_orders : [],
+    };
   }
 
   // --- Admin Analytics & Stats ---

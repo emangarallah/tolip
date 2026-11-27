@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import crypto from 'crypto';
 import { db } from '../db.ts';
 import { requireAdmin } from '../middleware/admin-auth.ts';
 import { offerIsCurrentlyActive } from '../services/offers.ts';
@@ -11,7 +12,7 @@ const router = Router();
 // ==========================================
 // 4. Orders & WhatsApp Checkout API
 // ==========================================
-router.post('/api/orders', (req: Request, res: Response) => {
+router.post('/api/orders', async (req: Request, res: Response) => {
   try {
     const { customerDetails, items } = req.body;
 
@@ -167,11 +168,11 @@ router.post('/api/orders', (req: Request, res: Response) => {
       addressSection += `\nرابط الموقع (خرائط جوجل): ${customerDetails.googleMapsUrl.trim()}`;
     }
 
-    const orderNumberPlaceholder = `TLP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderNumber = `TLP-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
     const whatsappMessage = `مرحبًا متجر توليب للعناية الطبيعية.
 
-أرغب في تأكيد طلب جديد رقم: [${orderNumberPlaceholder}]
+أرغب في تأكيد طلب جديد رقم: [${orderNumber}]
 
 بيانات العميل:
 ${addressSection}
@@ -187,7 +188,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
 
 شكرًا لكم.`;
 
-    const savedOrder = db.createOrder({
+    const orderWithMessage = await db.createOrderInStore({
       customerDetails: safeCustomerDetails,
       items: formattedItems,
       itemsTotal,
@@ -196,15 +197,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
       finalTotal,
       status: 'awaiting_whatsapp_confirmation',
       whatsappMessage,
-    });
-
-    // Replace the placeholder with the actual generated order number and persist
-    // the exact message that is sent to WhatsApp for the admin order record.
-    const finalWhatsappMessage = whatsappMessage.replace(orderNumberPlaceholder, savedOrder.orderNumber);
-    const orderWithMessage = db.updateOrderWhatsAppMessage(savedOrder.id, finalWhatsappMessage);
-    if (!orderWithMessage) {
-      throw new Error('Order was created but its WhatsApp message could not be saved.');
-    }
+    }, orderNumber);
 
     // Build the direct WhatsApp URL
     const targetPhone = String(storeSettings.whatsappPhone || '').replace(/\D/g, '');
@@ -213,7 +206,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
       res.status(503).json({ error: 'رقم واتساب المتجر غير مضبوط. يرجى التواصل مع صاحبة المتجر.' });
       return;
     }
-    const encodedMsg = encodeURIComponent(finalWhatsappMessage);
+    const encodedMsg = encodeURIComponent(whatsappMessage);
     const whatsappUrl = `https://wa.me/${fullPhone}?text=${encodedMsg}`;
 
     res.status(201).json({
