@@ -130,9 +130,9 @@ router.post('/api/admin/change-password', requireAdmin, (req: Request, res: Resp
   }
 });
 
-router.get('/api/admin/stats', requireAdmin, (req: Request, res: Response) => {
+router.get('/api/admin/stats', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const stats = db.getAdminStats();
+    const stats = await db.getAdminStatsForDashboard();
     res.json(stats);
   } catch (err) {
     res.status(500).json({ error: 'فشل في استخراج إحصائيات المتجر' });
