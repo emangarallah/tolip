@@ -2049,7 +2049,7 @@ class StoreDatabase {
                SELECT 1 FROM tolip_product_variants v
                WHERE v.product_id = p.id AND v.stock > 0
              )) AS out_of_stock_products,
-           (SELECT COALESCE(SUM(COALESCE(final_total, items_total, 0)), 0)::numeric
+           (SELECT COALESCE(SUM(COALESCE(NULLIF(final_total, 0), items_total, 0)), 0)::numeric
              FROM tolip_orders
              WHERE status IN ('confirmed', 'delivered', 'processing')) AS confirmed_revenue
        ),
