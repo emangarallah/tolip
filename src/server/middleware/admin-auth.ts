@@ -54,11 +54,11 @@ export async function isLoginRateLimited(req: Request): Promise<boolean> {
 
   // Production uses an atomic, shared Neon counter so all Vercel instances
   // enforce the same window. A database error fails closed via the route handler.
-  const keys = [
+  const rateLimitKeys = [
     `admin-login:ip:${ip}`,
     ...(email ? [`admin-login:account:${email}`] : []),
   ];
-  const limits = await db.consumePersistentRateLimits(keys, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
+  const limits = await db.consumePersistentRateLimits(rateLimitKeys, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
   if (limits) return limits.some((limit) => !limit.allowed);
 
   // Local development fallback; never used in production after Neon initializes.
