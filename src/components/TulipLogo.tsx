@@ -45,7 +45,6 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
             scale: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
             rotateZ: { duration: 8.4, repeat: Infinity, ease: 'easeInOut' },
             boxShadow: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
-            scale: { type: 'spring', stiffness: 240, damping: 17 },
           }}
           className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1]`}
           aria-hidden="true"
@@ -145,7 +144,6 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           y: { duration: 5.6, repeat: Infinity, ease: 'easeInOut' },
           scale: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
           rotateZ: { duration: 8, repeat: Infinity, ease: 'easeInOut' },
-          scale: { type: 'spring', stiffness: 240, damping: 16 },
         }}
         className={`relative ${iconSize} shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#FFF0F4] to-[#F2F8F4] p-1.5 shadow-sm border border-[#F5E1E8]`}
       >
