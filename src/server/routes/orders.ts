@@ -206,7 +206,7 @@ ${appliedOffer ? 'العرض المطبق: ' + appliedOffer.title + ' (' + (appl
       res.status(503).json({ error: 'رقم واتساب المتجر غير مضبوط. يرجى التواصل مع صاحبة المتجر.' });
       return;
     }
-    const encodedMsg = encodeURIComponent(finalWhatsappMessage);
+    const encodedMsg = encodeURIComponent(whatsappMessage);
     const whatsappUrl = `https://wa.me/${fullPhone}?text=${encodedMsg}`;
 
     res.status(201).json({
