@@ -88,7 +88,10 @@ export const ConfirmDeleteDialog: React.FC<ConfirmDeleteDialogProps> = ({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => {
+              console.info('[Tolip offers] delete confirmation button clicked', { busy });
+              if (!busy) onConfirm();
+            }}
             disabled={busy}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#C2415D] px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-[#C2415D]/15 transition hover:bg-[#A9324D] disabled:cursor-not-allowed disabled:opacity-60"
           >
