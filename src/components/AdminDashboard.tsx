@@ -807,7 +807,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>إدارة المنتجات ({products.length})</span>
+                <span>إدارة المنتجات ({stats?.totalProducts ?? products.length})</span>
               </motion.button>
 
               <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
@@ -819,7 +819,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <FolderTree className="w-4 h-4" />
-                <span>إدارة الأقسام ({categories.length})</span>
+                <span>إدارة الأقسام ({stats?.totalCategories ?? categories.length})</span>
               </motion.button>
 
               <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
@@ -831,8 +831,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }`}
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>الطلبات ({orders.length})</span>
-                {orders.filter((o) => o.status === 'new' || o.status === 'awaiting_whatsapp_confirmation').length > 0 && (
+                <span>الطلبات ({stats?.totalOrders ?? orders.length})</span>
+                {(stats?.newOrders ?? orders.filter((o) => o.status === 'new' || o.status === 'awaiting_whatsapp_confirmation').length) > 0 && (
                   <span className="w-2 h-2 rounded-full bg-[#C74169] dark:bg-[#E06287] mr-auto" />
                 )}
               </motion.button>
@@ -1400,6 +1400,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               )}
 
+              {activeTab === 'settings' && !settings && (
+                <div className="rounded-2xl border border-[#EFE9E2] bg-white p-6 text-center text-sm text-[#717772] dark:border-[#2D3830] dark:bg-[#1A1F1C] dark:text-[#A8B0AA]">
+                  جارٍ تحميل إعدادات المتجر...
+                </div>
+              )}
               {activeTab === 'settings' && settings && (
                 <form onSubmit={handleSaveSettings} className="space-y-6">
                   <div className="flex items-center justify-between">
