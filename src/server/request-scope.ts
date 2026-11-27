@@ -1,15 +1,6 @@
 import type { StoreDataSection } from './db.ts';
 import { hasPaginationQuery } from './pagination.ts';
 
-const ALL_SECTIONS: StoreDataSection[] = [
-  'adminUser',
-  'settings',
-  'categories',
-  'products',
-  'offers',
-  'orders',
-];
-
 export function getRequiredStoreDataSections(
   method: string,
   path: string,
@@ -64,9 +55,8 @@ export function getRequiredStoreDataSections(
     }
   } else if (path === '/api/admin/stats') {
     // Analytics currently reads only products, categories, and orders.
-    scopes.add('categories');
-    scopes.add('products');
-    scopes.add('orders');
+    // The analytics endpoint now uses aggregate SQL and the latest six joined orders.
+    // It only needs the verified admin session loaded into the request context.
   }
 
   return scopes;
