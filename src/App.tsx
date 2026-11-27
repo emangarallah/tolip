@@ -924,6 +924,7 @@ export default function App() {
       {/* Search Modal */}
       <SearchModal
         isOpen={isSearchOpen}
+        products={products}
         categories={categories}
         language={language}
         onClose={() => setIsSearchOpen(false)}
