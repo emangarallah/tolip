@@ -1,5 +1,5 @@
 /**
- * Types definition for Tolipe Natural Care (توليب للعناية الطبيعية)
+ * Types definition for Tulip Natural Care (توليب للعناية الطبيعية)
  */
 
 export type OfferType = 'percentage' | 'fixed' | 'bundle' | 'buy_get';
