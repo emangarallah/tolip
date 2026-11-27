@@ -54,13 +54,12 @@ export async function isLoginRateLimited(req: Request): Promise<boolean> {
 
   // Production uses an atomic, shared Neon counter so all Vercel instances
   // enforce the same window. A database error fails closed via the route handler.
-  const ipLimit = await db.consumePersistentRateLimit(`admin-login:ip:${ip}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
-  if (ipLimit) {
-    const accountLimit = email
-      ? await db.consumePersistentRateLimit(`admin-login:account:${email}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS)
-      : null;
-    return !ipLimit.allowed || Boolean(accountLimit && !accountLimit.allowed);
-  }
+  const keys = [
+    `admin-login:ip:${ip}`,
+    ...(email ? [`admin-login:account:${email}`] : []),
+  ];
+  const limits = await db.consumePersistentRateLimits(keys, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
+  if (limits) return limits.some((limit) => !limit.allowed);
 
   // Local development fallback; never used in production after Neon initializes.
   const now = Date.now();
@@ -89,8 +88,10 @@ export async function isLoginRateLimited(req: Request): Promise<boolean> {
 
 export async function clearLoginAttempts(req: Request): Promise<void> {
   const { ip, email } = getLoginRateLimitIdentity(req);
-  await db.clearPersistentRateLimit(`admin-login:ip:${ip}`);
-  if (email) await db.clearPersistentRateLimit(`admin-login:account:${email}`);
+  await db.clearPersistentRateLimits([
+    `admin-login:ip:${ip}`,
+    ...(email ? [`admin-login:account:${email}`] : []),
+  ]);
   loginAttemptBuckets.delete(`ip:${ip}`);
   if (email) loginAttemptBuckets.delete(`account:${email}`);
 }
