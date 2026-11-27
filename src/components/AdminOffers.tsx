@@ -53,9 +53,10 @@ export const AdminOffers: React.FC<Props> = ({
     setDeleteBusy(true);
     setDeleteError('');
     try {
-      const res = await fetch(`/api/offers/${encodeURIComponent(pendingDelete.id)}/delete`, {
+      const res = await fetch('/api/offers/delete', {
         method: 'POST',
         headers,
+        body: JSON.stringify({ id: pendingDelete.id }),
       });
       const responseText = await res.text();
       let data: { success?: boolean; error?: string } = {};
