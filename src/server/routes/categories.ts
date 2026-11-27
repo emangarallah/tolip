@@ -107,7 +107,7 @@ router.put('/api/categories/:id', requireAdmin, (req: Request, res: Response) =>
   }
 });
 
-router.delete('/api/categories/:id', requireAdmin, (req: Request, res: Response) => {
+router.delete('/api/categories/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const success = await db.deleteCategoryFromStore(req.params.id);
     if (!success) {
