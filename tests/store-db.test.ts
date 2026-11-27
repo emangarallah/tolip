@@ -161,6 +161,10 @@ test('optimized product, offer and order creators retain the local JSON fallback
   }, 'TLP-2026-OPTIMIZED');
 
   assert.equal(db.getOrderById(order.id)?.orderNumber, 'TLP-2026-OPTIMIZED');
+
+  // Keep shared seed data unchanged for the pagination tests that follow.
+  await db.deleteOffer(offer.id);
+  db.deleteProduct(product.id);
 });
 
 test('admin password is scrypt-verified and login session rotation invalidates prior sessions', () => {
