@@ -10,6 +10,8 @@ interface Props {
   offers: StoreOffer[];
   onOffersChange: React.Dispatch<React.SetStateAction<StoreOffer[]>>;
   onLoadOffers: () => Promise<void>;
+  onRefreshAfterDelete: () => Promise<void>;
+  onDeleteSuccess: () => void;
   offersLoading: boolean;
   offersError: string;
   onUpdated: () => void;
@@ -17,7 +19,7 @@ interface Props {
 const emptyOffer: Partial<StoreOffer> = { title:'', description:'', image:'', type:'percentage', productIds:[], value:10, bundlePrice:null, buyQuantity:2, getQuantity:1, startsAt:null, endsAt:null, isActive:true };
 
 export const AdminOffers: React.FC<Props> = ({
-  token, products, offers, onOffersChange, onLoadOffers, offersLoading, offersError, onUpdated,
+  token, products, offers, onOffersChange, onLoadOffers, onRefreshAfterDelete, onDeleteSuccess, offersLoading, offersError, onUpdated,
 }) => {
   const [editing, setEditing] = useState<Partial<StoreOffer> | null>(null);
   const [search, setSearch] = useState('');
@@ -78,6 +80,11 @@ export const AdminOffers: React.FC<Props> = ({
       onOffersChange(current => current.filter(offer => offer.id !== deletedId));
       setPendingDelete(null);
       setDeleteError('');
+      // Re-sync from the server in the background; the local list updates immediately.
+      void onRefreshAfterDelete().catch((refreshError) => {
+        console.error('[Tolip offers] refresh after delete failed', refreshError);
+      });
+      onDeleteSuccess();
       onUpdated();
     } catch (e: any) {
       console.error('[Tolip offers] delete request failed', e);
