@@ -162,7 +162,7 @@ export const translations = {
     deliveryPolicy: 'سياسة الشحن والتوصيل',
     returnPolicy: 'سياسة الاستبدال والاسترجاع',
     privacyPolicy: 'سياسة الخصوصية',
-    allRightsReserved: 'جميع الحقوق محفوظة © {year} متجر توليب للعناية الطبيعية – Tolipe Natural Care',
+    allRightsReserved: 'جميع الحقوق محفوظة © {year} متجر توليب للعناية الطبيعية – Tulip Natural Care',
     footerLoveNote: 'صُنعت منتجاتنا بعناية وشغف من خيرات الطبيعة',
   },
 
@@ -185,7 +185,7 @@ export const translations = {
     // Hero
     brandBadge: 'Luxury Yemeni Natural Beauty Brand',
     defaultHeroTitle: 'Your Beauty Begins with Pure Care',
-    defaultHeroSubtext: 'Discover carefully crafted Tolipe natural products designed to revitalize your skin, body, and hair every day.',
+    defaultHeroSubtext: 'Discover carefully crafted Tulip natural products designed to revitalize your skin, body, and hair every day.',
     shopNow: 'Shop Now',
     exploreProducts: 'Explore Products',
     natural100: '100% Natural',
@@ -200,7 +200,7 @@ export const translations = {
     // Categories
     curatedCollections: 'Curated Collections',
     storeCategories: 'Store Categories',
-    categoriesSub: 'Explore Tolipe’s integrated selection of botanical treasures for complete head-to-toe beauty care.',
+    categoriesSub: 'Explore Tulip’s integrated selection of botanical treasures for complete head-to-toe beauty care.',
     exploreCategory: 'Explore Category',
     itemsCount: 'products',
 
@@ -290,7 +290,7 @@ export const translations = {
 
     // Success Modal
     orderSuccessTitle: 'Order Placed Successfully!',
-    orderSuccessSubtitle: 'Thank you for choosing Tolipe Natural Care. Your order has been recorded with a unique reference number:',
+    orderSuccessSubtitle: 'Thank you for choosing Tulip Natural Care. Your order has been recorded with a unique reference number:',
     copyOrderNumber: 'Copy Order Number',
     nextStepTitle: 'Next Step to Finalize:',
     nextStepDesc: 'Click the button below to message the store owner on WhatsApp to confirm item availability and delivery timing.',
@@ -301,15 +301,15 @@ export const translations = {
     itemsQuantity: 'Items:',
     paymentMethod: 'Payment Method:',
     codMethod: 'Agreed via WhatsApp',
-    backToStore: 'Back to Tolipe Natural Store',
+    backToStore: 'Back to Tulip Natural Store',
 
     // About & Contact Views
     philosophyTitle: 'Your Natural Beauty Deserves Pure Botanical Care',
-    philosophyDesc: 'At Tolipe, we believe pure nature holds the most effective and safest secrets of beauty. We select cold-pressed pure oils, authentic Yemeni sidr extracts, traditional Moroccan hammam recipes, and aged royal incense to offer you an elevated self-care experience.',
+    philosophyDesc: 'At Tulip, we believe pure nature holds the most effective and safest secrets of beauty. We select cold-pressed pure oils, authentic Yemeni sidr extracts, traditional Moroccan hammam recipes, and aged royal incense to offer you an elevated self-care experience.',
     noHarmfulChemicals: 'Zero Harmful Chemicals',
     noHarmfulChemicalsDesc: 'Carefully vetted recipes free from sulfates, parabens, and harsh steroids',
     contactTitle: 'We Are Always Here to Assist You',
-    contactSubtitle: 'The Tolipe Natural team is ready to answer inquiries and confirm your orders directly',
+    contactSubtitle: 'The Tulip Natural team is ready to answer inquiries and confirm your orders directly',
     ownerWhatsApp: 'Store Owner WhatsApp',
     ownerWhatsAppDesc: 'The official and approved channel for orders, inquiries, and delivery arrangements.',
     startChatNow: 'Start Instant WhatsApp Chat',
@@ -326,7 +326,7 @@ export const translations = {
     deliveryPolicy: 'Shipping & Delivery Policy',
     returnPolicy: 'Return & Exchange Policy',
     privacyPolicy: 'Privacy Policy',
-    allRightsReserved: 'All rights reserved © {year} Tolipe Natural Care',
+    allRightsReserved: 'All rights reserved © {year} Tulip Natural Care',
     footerLoveNote: 'Crafted with passion from nature’s purest botanical treasures',
   },
 };
