@@ -143,7 +143,7 @@ router.get('/api/products/:id', (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
+router.post('/api/products', requireAdmin, async (req: Request, res: Response) => {
   try {
     const parsed = parseProductWritePayload(req.body, false);
     if (parsed.error || !parsed.value) {
@@ -152,7 +152,7 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
     }
     const value = parsed.value;
     const slug = value.slug || 'product-' + crypto.randomUUID();
-    const newProduct = db.createProduct({
+    const newProduct = await db.createProductInStore({
       name: value.name,
       slug,
       categoryId: value.categoryId,
