@@ -1592,6 +1592,53 @@ class StoreDatabase {
     return newProduct;
   }
 
+  // Create a product directly in Neon when the request intentionally skips
+  // hydrating the full product collection.
+  public async createProductInStore(input: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.createProduct(input);
+
+    const id = `prod-${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
+    const product: Product = { ...input, id, createdAt: now, updatedAt: now };
+
+    await context.client.query(
+      'INSERT INTO tolip_products (id,name,slug,category_id,description,features,usage_instructions,images,is_featured,is_best_seller,is_active,in_stock,created_at,updated_at) VALUES ($1,$2,$3,NULLIF($4,\'\'),$5,$6::jsonb,$7,$8::jsonb,$9,$10,$11,$12,$13,$14)',
+      [
+        product.id, product.name, product.slug, product.categoryId || '',
+        product.description || '', JSON.stringify(product.features || []),
+        product.usageInstructions || '', JSON.stringify(product.images || []),
+        Boolean(product.isFeatured), Boolean(product.isBestSeller),
+        Boolean(product.isActive), Boolean(product.inStock), now, now,
+      ]
+    );
+
+    const variants = product.variants || [];
+    if (variants.length > 0) {
+      await context.client.query(
+        `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
+         SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+         FROM unnest(
+           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
+         ) AS v(id, name, price, original_price, stock, sku)`,
+        [
+          product.id,
+          variants.map((variant) => variant.id),
+          variants.map((variant) => variant.name),
+          variants.map((variant) => variant.price ?? null),
+          variants.map((variant) => variant.originalPrice ?? null),
+          variants.map((variant) => Number(variant.stock) || 0),
+          variants.map((variant) => variant.sku || null),
+        ]
+      );
+    }
+
+    return {
+      ...product,
+      categoryName: this.getCategoryById(product.categoryId)?.name || 'عام',
+    };
+  }
+
   public updateProduct(id: string, partial: Partial<Product>): Product | null {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return null;
@@ -1754,6 +1801,43 @@ class StoreDatabase {
     return offer;
   }
 
+  // Create an offer without hydrating the existing offer collection.
+  public async createOfferInStore(
+    input: Omit<StoreOffer, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<StoreOffer> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.createOffer(input);
+
+    const now = new Date().toISOString();
+    const offer: StoreOffer = {
+      ...input,
+      id: `offer-${crypto.randomUUID()}`,
+      productIds: [...input.productIds],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await context.client.query(
+      'INSERT INTO tolip_offers (id,title,description,image,type,value,bundle_price,buy_quantity,get_quantity,starts_at,ends_at,is_active,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      [
+        offer.id, offer.title, offer.description || '', offer.image || '',
+        offer.type, Number(offer.value) || 0, offer.bundlePrice ?? null,
+        Number(offer.buyQuantity) || 1, Number(offer.getQuantity) || 1,
+        offer.startsAt || null, offer.endsAt || null, Boolean(offer.isActive),
+        now, now,
+      ]
+    );
+
+    if (offer.productIds.length > 0) {
+      await context.client.query(
+        'INSERT INTO tolip_offer_products (offer_id, product_id) SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING',
+        [offer.id, offer.productIds]
+      );
+    }
+
+    return offer;
+  }
+
   public updateOffer(id: string, partial: Partial<StoreOffer>): StoreOffer | null {
     const offer = (this.data.offers || []).find((item) => item.id === id);
     if (!offer) return null;
@@ -1808,6 +1892,72 @@ class StoreDatabase {
     this.data.orders.unshift(newOrder);
     this.persist('orders', id);
     return newOrder;
+  }
+
+  // Checkout inserts the order and all of its items directly in one transaction.
+  // No order-history hydration is needed for a new public order.
+  public async createOrderInStore(
+    input: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>,
+    requestedOrderNumber?: string
+  ): Promise<Order> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) {
+      const localOrder = this.createOrder(input);
+      if (requestedOrderNumber) {
+        localOrder.orderNumber = requestedOrderNumber;
+        this.persist('orders', localOrder.id);
+      }
+      return localOrder;
+    }
+
+    const now = new Date().toISOString();
+    const order: Order = {
+      ...input,
+      id: `ord-${crypto.randomUUID()}`,
+      orderNumber: requestedOrderNumber || `TLP-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await context.client.query(
+      'INSERT INTO tolip_orders (id,order_number,customer_details,items_total,delivery_fee,delivery_fee_note,final_total,status,whatsapp_message,created_at,updated_at) VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [
+        order.id, order.orderNumber, JSON.stringify(order.customerDetails),
+        order.itemsTotal ?? null, order.deliveryFee ?? null, order.deliveryFeeNote ?? null,
+        order.finalTotal ?? null, order.status, order.whatsappMessage || '',
+        now, now,
+      ]
+    );
+
+    await context.client.query("SELECT set_config('app.created_order_id', $1, true)", [order.id]);
+    if (order.items.length > 0) {
+      const items = order.items;
+      await context.client.query(
+        `INSERT INTO tolip_order_items (
+           order_id,line_number,product_id,product_name,variant_id,variant_name,quantity,unit_price,total_price,image
+         )
+         SELECT $1, rows.line_number, rows.product_id, rows.product_name, rows.variant_id,
+                rows.variant_name, rows.quantity, rows.unit_price, rows.total_price, rows.image
+         FROM unnest(
+           $2::integer[], $3::text[], $4::text[], $5::text[], $6::text[],
+           $7::integer[], $8::numeric[], $9::numeric[], $10::text[]
+         ) AS rows(line_number, product_id, product_name, variant_id, variant_name, quantity, unit_price, total_price, image)`,
+        [
+          order.id,
+          items.map((_item, index) => index + 1),
+          items.map((item) => item.productId),
+          items.map((item) => item.productName),
+          items.map((item) => item.variantId),
+          items.map((item) => item.variantName),
+          items.map((item) => item.quantity),
+          items.map((item) => item.unitPrice ?? null),
+          items.map((item) => item.totalPrice ?? null),
+          items.map((item) => item.image ?? null),
+        ]
+      );
+    }
+
+    return order;
   }
 
   public getOrders(filters?: {
