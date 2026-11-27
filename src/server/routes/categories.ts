@@ -63,10 +63,10 @@ function parseCategoryWritePayload(body: any, partial: boolean): { value?: Recor
 // ==========================================
 // 2. Categories API
 // ==========================================
-router.get('/api/categories', (req: Request, res: Response) => {
+router.get('/api/categories', async (req: Request, res: Response) => {
   try {
     const includeInactive = req.query.includeInactive === 'true' && Boolean(getAdminPayload(req));
-    const categories = db.getCategories(includeInactive);
+    const categories = await db.getCategoriesWithCounts(includeInactive);
     res.json(categories);
   } catch (err) {
     res.status(500).json({ error: 'فشل في جلب الأقسام' });
@@ -109,7 +109,7 @@ router.put('/api/categories/:id', requireAdmin, (req: Request, res: Response) =>
 
 router.delete('/api/categories/:id', requireAdmin, (req: Request, res: Response) => {
   try {
-    const success = db.deleteCategory(req.params.id);
+    const success = await db.deleteCategoryFromStore(req.params.id);
     if (!success) {
       res.status(404).json({ error: 'القسم غير موجود' });
       return;
