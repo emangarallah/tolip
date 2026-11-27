@@ -177,6 +177,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // Refresh only the offers list after deletion; product choices do not need to be reloaded.
+  const refreshOffersAfterDelete = async () => {
+    if (!token) return;
+    const res = await fetch('/api/offers?includeInactive=true', {
+      headers: authHeaders(),
+      cache: 'no-store',
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!res.ok) throw new Error('تعذر تحديث قائمة العروض بعد الحذف.');
+    const data = await res.json();
+    setOffers(Array.isArray(data) ? data : []);
+  };
+
   const handleUnauthorized = () => {
     sessionStorage.removeItem('tulip_admin_token');
     setToken('');
@@ -1337,6 +1353,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   offers={offers}
                   onOffersChange={setOffers}
                   onLoadOffers={loadOffers}
+                  onRefreshAfterDelete={refreshOffersAfterDelete}
+                  onDeleteSuccess={() => showToast('تم حذف العرض بنجاح.')}
                   offersLoading={offersLoading}
                   offersError={offersError}
                   onUpdated={() => { loadAdminData(); onStoreUpdated(); }}
