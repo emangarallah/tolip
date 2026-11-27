@@ -50,7 +50,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.12 }}
                 whileHover={{ y: -5 }}
-                whileTap={{ scale: 0.99 }}
+                whileTap={{ scale: 0.975, y: -2, transition: { duration: 0.16, ease: "easeOut" } }}
                 transition={{ duration: 0.38, ease: "easeOut" }}
                 onClick={() => onSelectCategory(category.id)}
                 className={`group cursor-pointer rounded-2xl overflow-hidden bg-white dark:bg-[#191D1A] border transition-all duration-300 flex flex-col justify-between text-start ${
@@ -61,11 +61,13 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               >
                 {/* Category Image */}
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F7F4F0] dark:bg-[#202522]">
-                  <img
+                  <motion.img
                     src={category.image}
                     alt={category.name}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    whileTap={{ scale: 1.07 }}
+                    transition={{ duration: 0.32, ease: "easeOut" }}
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
