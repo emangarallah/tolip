@@ -178,14 +178,14 @@ router.post('/api/products', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+router.put('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const parsed = parseProductWritePayload(req.body, true);
     if (parsed.error || !parsed.value || Object.keys(parsed.value).length === 0) {
       res.status(400).json({ error: parsed.error || 'لا توجد تغييرات صالحة لحفظها.' });
       return;
     }
-    const updated = db.updateProduct(req.params.id, parsed.value);
+    const updated = await db.updateProductFromStore(req.params.id, parsed.value);
     if (!updated) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;
