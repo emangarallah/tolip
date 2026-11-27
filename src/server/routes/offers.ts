@@ -60,6 +60,8 @@ router.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
 
 router.delete('/api/offers/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
+    // Reassert the verified admin role in this transaction before SQL writes.
+    await db.authorizeAuthenticatedAdmin();
     if (!await db.deleteOffer(req.params.id)) {
       res.status(404).json({ error: 'العرض غير موجود.' });
       return;
