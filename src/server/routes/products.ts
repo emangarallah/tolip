@@ -192,9 +192,9 @@ router.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.delete('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+router.delete('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const success = db.deleteProduct(req.params.id);
+    const success = await db.deleteProductFromStore(req.params.id);
     if (!success) {
       res.status(404).json({ error: 'المنتج غير موجود' });
       return;
