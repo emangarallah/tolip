@@ -292,7 +292,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               </div>
               {!selectedVariant && (
-                <p className="text-xs text-red-600">{language === 'ar' ? 'لا توجد أحجام متاحة لهذا المنتج.' : 'No variants are available.'}</p>
+                <p className="text-xs text-red-600 dark:text-red-400">{language === 'ar' ? 'لا توجد أحجام متاحة لهذا المنتج.' : 'No variants are available.'}</p>
               )}
             </div>
           )}
