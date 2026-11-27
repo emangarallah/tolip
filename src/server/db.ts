@@ -1192,6 +1192,60 @@ class StoreDatabase {
     };
   }
 
+  public async consumePersistentRateLimits(
+    keys: string[],
+    max: number,
+    windowMs: number
+  ): Promise<Array<{ keyHash: string; allowed: boolean; remaining: number; retryAfterSeconds: number }> | null> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return null;
+    if (keys.length === 0) return [];
+
+    const keyHashes = [...new Set(keys.map((key) => this.hashRateLimitKey(key)))];
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    const result = await context.client.query(
+      `INSERT INTO tolip_security_rate_limits (key_hash, window_started_at, attempts, updated_at)
+       SELECT key_hash, now(), 1, now()
+       FROM unnest($1::text[]) AS requested(key_hash)
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN 1
+           ELSE tolip_security_rate_limits.attempts + 1
+         END,
+         window_started_at = CASE
+           WHEN tolip_security_rate_limits.window_started_at <= now() - ($2::int * interval '1 millisecond') THEN now()
+           ELSE tolip_security_rate_limits.window_started_at
+         END,
+         updated_at = now()
+       RETURNING key_hash, attempts,
+         GREATEST(1, CEIL(EXTRACT(EPOCH FROM (
+           window_started_at + ($2::int * interval '1 millisecond') - now()
+         ))))::int AS retry_after_seconds`,
+      [keyHashes, windowMs]
+    );
+
+    return result.rows.map((row: any) => {
+      const attempts = Number(row.attempts) || 1;
+      return {
+        keyHash: String(row.key_hash),
+        allowed: attempts <= max,
+        remaining: Math.max(0, max - attempts),
+        retryAfterSeconds: Math.max(1, Number(row.retry_after_seconds) || Math.ceil(windowMs / 1000)),
+      };
+    });
+  }
+
+  public async clearPersistentRateLimits(keys: string[]): Promise<void> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client || keys.length === 0) return;
+    const keyHashes = [...new Set(keys.map((key) => this.hashRateLimitKey(key)))];
+    await context.client.query("SELECT set_config('app.rate_limit_access', 'true', true)");
+    await context.client.query(
+      'DELETE FROM tolip_security_rate_limits WHERE key_hash = ANY($1::text[])',
+      [keyHashes]
+    );
+  }
+
   public async clearPersistentRateLimit(key: string): Promise<void> {
     const context = this.requestStorage.getStore();
     if (!context?.client) return;
