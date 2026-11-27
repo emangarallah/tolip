@@ -113,7 +113,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={onOpenSearch}
+              aria-haspopup="dialog"
+              aria-controls="tolip-product-search"
               aria-label={t.searchButton}
               className="flex h-11 w-11 items-center justify-center rounded-full text-[#4A4E4B] transition-colors hover:bg-[#F4EFEA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] dark:text-[#D1D8D3] dark:hover:bg-[#1C221E]"
             >
@@ -162,7 +165,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={onOpenSearch}
+              aria-haspopup="dialog"
+              aria-controls="tolip-product-search"
               aria-label={t.searchButton}
               className="flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-[#4A4E4B] transition-colors active:bg-[#F4EFEA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] dark:text-[#D1D8D3] dark:active:bg-[#1C221E]"
             >
