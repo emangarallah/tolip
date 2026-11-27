@@ -1,14 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Tag, Search, Upload } from 'lucide-react';
 import type { Product, StoreOffer, OfferType } from '../types/store.ts';
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog.tsx';
 
-interface Props { token: string; products: Product[]; onUpdated: () => void; }
+interface Props {
+  token: string;
+  products: Product[];
+  offers: StoreOffer[];
+  onOffersChange: React.Dispatch<React.SetStateAction<StoreOffer[]>>;
+  onLoadOffers: () => Promise<void>;
+  offersLoading: boolean;
+  offersError: string;
+  onUpdated: () => void;
+}
 const emptyOffer: Partial<StoreOffer> = { title:'', description:'', image:'', type:'percentage', productIds:[], value:10, bundlePrice:null, buyQuantity:2, getQuantity:1, startsAt:null, endsAt:null, isActive:true };
 
-export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => {
-  const [offers, setOffers] = useState<StoreOffer[]>([]);
+export const AdminOffers: React.FC<Props> = ({
+  token, products, offers, onOffersChange, onLoadOffers, offersLoading, offersError, onUpdated,
+}) => {
   const [editing, setEditing] = useState<Partial<StoreOffer> | null>(null);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
@@ -17,12 +27,6 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const headers = { 'Content-Type':'application/json', Authorization: `Bearer ${token}` };
-  const load = async () => {
-    const res = await fetch('/api/offers?includeInactive=true', { headers, cache:'no-store' });
-    if (!res.ok) throw new Error('تعذر تحميل العروض');
-    setOffers(await res.json());
-  };
-  useEffect(() => { load().catch(e => setError(e.message)); }, [token]);
   const startEdit = (offer?: StoreOffer) => {
     const o = offer || emptyOffer;
     const dateValue = (v?: string | null) => v ? new Date(v).toISOString().slice(0,16) : '';
@@ -37,7 +41,7 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       const payload = { ...editing, startsAt: editing.startsAt ? new Date(editing.startsAt).toISOString() : null, endsAt: editing.endsAt ? new Date(editing.endsAt).toISOString() : null };
       const res = await fetch(editing.id ? `/api/offers/${editing.id}` : '/api/offers', { method:editing.id?'PUT':'POST', headers, body:JSON.stringify(payload) });
       const data = await res.json(); if (!res.ok) throw new Error(data.error || 'تعذر حفظ العرض');
-      setEditing(null); await load(); onUpdated();
+      setEditing(null); await onLoadOffers(); onUpdated();
     } catch (e:any) { setError(e.message || 'تعذر حفظ العرض'); } finally { setBusy(false); }
   };
   const remove = (offer: StoreOffer) => {
@@ -49,16 +53,25 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
     setDeleteBusy(true);
     setDeleteError('');
     try {
-      const res = await fetch(`/api/offers/${pendingDelete.id}`, { method: 'DELETE', headers });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'تعذر حذف العرض');
+      const res = await fetch(`/api/offers/${encodeURIComponent(pendingDelete.id)}/delete`, {
+        method: 'POST',
+        headers,
+      });
+      const responseText = await res.text();
+      let data: { success?: boolean; error?: string } = {};
+      try { data = responseText ? JSON.parse(responseText) : {}; } catch { data = {}; }
+      if (res.status === 401) {
+        throw new Error(data.error || 'انتهت جلسة الإدارة. سجّلي الدخول مجددًا ثم أعيدي المحاولة.');
       }
-      // The API responds only after the Neon transaction has committed.
-      // Remove the confirmed record locally instead of issuing a second read
-      // that could time out and leave a deleted offer visible in the admin UI.
+      if (!res.ok) {
+        throw new Error(data.error || `تعذر حذف العرض (رمز الخادم ${res.status}).`);
+      }
+      if (data.success !== true) {
+        throw new Error(data.error || 'لم يؤكد الخادم حذف العرض.');
+      }
+      // The server confirms the database transaction before the UI removes the card.
       const deletedId = pendingDelete.id;
-      setOffers(current => current.filter(offer => offer.id !== deletedId));
+      onOffersChange(current => current.filter(offer => offer.id !== deletedId));
       setPendingDelete(null);
       setDeleteError('');
       onUpdated();
@@ -76,6 +89,8 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
   return <section className="space-y-5" dir="rtl">
     {!editing && (
     <>
+    {offersError && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{offersError}</div>}
+    {offersLoading && offers.length === 0 && <div className="rounded-xl border border-[#EFE9E2] bg-white p-5 text-center text-sm text-gray-500">جارٍ تحميل العروض والخصومات...</div>}
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h3 className="text-lg font-bold">إدارة العروض والخصومات</h3><p className="mt-1 text-xs text-gray-500">أنشئي العروض وحددي المنتجات ومدة نشرها.</p></div>
       <button onClick={()=>startEdit()} className="inline-flex items-center gap-2 rounded-xl bg-[#C74169] px-4 py-2.5 text-sm font-bold text-white"><Plus className="h-4 w-4"/> عرض جديد</button>
@@ -86,9 +101,9 @@ export const AdminOffers: React.FC<Props> = ({ token, products, onUpdated }) => 
       {filtered.map((o, index)=><motion.article key={o.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(index * 0.045, 0.24), ease: "easeOut" }} whileHover={{ y: -3 }} className="flex flex-col gap-3 rounded-2xl border border-[#EFE9E2] bg-white p-4 sm:flex-row sm:items-center">
         {o.image ? <img src={o.image} alt="" className="h-16 w-16 rounded-xl object-cover"/> : <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-pink-50 text-pink-600"><Tag/></div>}
         <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h4 className="font-bold">{o.title}</h4><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px]">{status(o)}</span></div><p className="mt-1 text-xs text-gray-500">{o.productIds.length} منتجات · {o.type==='percentage'? `خصم ${o.value}%`:o.type==='fixed'? `خصم ${o.value} ر.ي`:o.type==='bundle'? `حزمة بسعر ${o.bundlePrice} ر.ي`:`اشترِ ${o.buyQuantity} واحصلي على ${o.getQuantity}`}</p><p className="mt-1 text-[11px] text-gray-400">{o.endsAt ? `ينتهي ${new Date(o.endsAt).toLocaleString('ar-YE')}` : 'بدون تاريخ انتهاء'}</p></div>
-        <div className="flex gap-2"><button onClick={()=>startEdit(o)} className="rounded-lg border p-2 text-gray-600" aria-label="تعديل"><Edit className="h-4 w-4"/></button><button onClick={()=>remove(o)} className="rounded-lg border p-2 text-red-600" aria-label="حذف"><Trash2 className="h-4 w-4"/></button></div>
+        <div className="flex gap-2"><button type="button" onClick={()=>startEdit(o)} className="rounded-lg border p-2 text-gray-600" aria-label="تعديل"><Edit className="h-4 w-4"/></button><button type="button" onClick={()=>remove(o)} className="rounded-lg border p-2 text-red-600" aria-label="حذف"><Trash2 className="h-4 w-4"/></button></div>
       </motion.article>)}
-      {!filtered.length && <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-gray-500">لا توجد عروض بعد. أضيفي أول عرض للمتجر.</div>}
+      {!filtered.length && !offersLoading && !offersError && <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-gray-500">لا توجد عروض بعد. أضيفي أول عرض للمتجر.</div>}
     </div>
         </>
     )}

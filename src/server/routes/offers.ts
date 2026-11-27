@@ -58,19 +58,28 @@ router.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
   res.json(updated);
 });
 
-router.delete('/api/offers/:id', requireAdmin, async (req: Request, res: Response) => {
+const deleteOfferHandler = async (req: Request, res: Response) => {
   try {
     // Reassert the verified admin role in this transaction before SQL writes.
     await db.authorizeAuthenticatedAdmin();
-    if (!await db.deleteOffer(req.params.id)) {
-      res.status(404).json({ error: 'العرض غير موجود.' });
+    const deleted = await db.deleteOffer(req.params.id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: 'العرض غير موجود أو تم حذفه مسبقًا.' });
       return;
     }
-    res.json({ success: true });
+    res.status(200).json({ success: true, id: req.params.id });
   } catch (error) {
     console.error('Failed to delete offer:', error);
-    res.status(500).json({ error: 'تعذر حذف العرض. يرجى المحاولة مرة أخرى.' });
+    res.status(500).json({
+      success: false,
+      error: 'تعذر حذف العرض من قاعدة البيانات. أعيدي المحاولة، وإذا استمرت المشكلة تواصلي مع الدعم.',
+    });
   }
-});
+};
+
+// Keep DELETE for standard REST clients and expose a POST action as a
+// reliable fallback for hosting layers or proxies that restrict DELETE methods.
+router.delete('/api/offers/:id', requireAdmin, deleteOfferHandler);
+router.post('/api/offers/:id/delete', requireAdmin, deleteOfferHandler);
 
 export default router;

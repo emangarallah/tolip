@@ -30,8 +30,9 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
       >
         <motion.div
           animate={{
-            y: [0, -1.5, 0],
-            rotateZ: [0, 1.2, 0, -1.2, 0],
+            y: [0, -3.2, 0],
+            scale: [1, 1.025, 1],
+            rotateZ: [0, 1.45, 0, -1.45, 0],
             boxShadow: [
               '0 3px 12px rgba(199,65,105,0.16)',
               '0 5px 20px rgba(199,65,105,0.30)',
@@ -40,10 +41,10 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           }}
           whileHover={{ scale: 1.09, rotate: -5 }}
           transition={{
-            y: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
-            rotateZ: { duration: 9, repeat: Infinity, ease: 'easeInOut' },
+            y: { duration: 5.4, repeat: Infinity, ease: 'easeInOut' },
+            scale: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
+            rotateZ: { duration: 8.4, repeat: Infinity, ease: 'easeInOut' },
             boxShadow: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
-            scale: { type: 'spring', stiffness: 240, damping: 17 },
           }}
           className={`relative flex ${markSize} shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#F5D5E2] bg-gradient-to-br from-[#FFF8FA] via-[#FCE8EF] to-[#F0F6F1]`}
           aria-hidden="true"
@@ -103,13 +104,13 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           alt="شعار توليب للعناية الطبيعية"
           className={`${imgHeight} w-auto object-contain`}
           initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: [1, 1.025, 1], y: [0, -2, 0], rotate: [0, 0.8, 0, -0.8, 0] }}
+          animate={{ opacity: 1, scale: [1, 1.025, 1], y: [0, -3, 0], rotate: [0, 0.65, 0, -0.65, 0] }}
           whileHover={{ scale: 1.05 }}
           transition={{
             opacity: { duration: 0.5, ease: 'easeOut' },
-            scale: { duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
-            y: { duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
-            rotate: { duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            scale: { duration: 6.6, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            y: { duration: 5.8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
+            rotate: { duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 },
           }}
           onError={(event) => {
             (event.target as HTMLElement).style.display = 'none';
@@ -137,12 +138,12 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
       transition={{ duration: 0.45, ease: 'easeOut' }}
     >
       <motion.div
-        animate={{ y: [0, -1, 0], rotateZ: [0, 1.1, 0, -1.1, 0] }}
+        animate={{ y: [0, -2.8, 0], scale: [1, 1.02, 1], rotateZ: [0, 1.2, 0, -1.2, 0] }}
         whileHover={{ scale: 1.07, rotate: -4 }}
         transition={{
-          y: { duration: 6.5, repeat: Infinity, ease: 'easeInOut' },
-          rotateZ: { duration: 8.5, repeat: Infinity, ease: 'easeInOut' },
-          scale: { type: 'spring', stiffness: 240, damping: 16 },
+          y: { duration: 5.6, repeat: Infinity, ease: 'easeInOut' },
+          scale: { duration: 6.8, repeat: Infinity, ease: 'easeInOut' },
+          rotateZ: { duration: 8, repeat: Infinity, ease: 'easeInOut' },
         }}
         className={`relative ${iconSize} shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#FFF0F4] to-[#F2F8F4] p-1.5 shadow-sm border border-[#F5E1E8]`}
       >

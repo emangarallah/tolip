@@ -37,6 +37,7 @@ import type {
   AdminStats,
   OrderStatus,
   ProductVariant,
+  StoreOffer,
 } from '../types/store.ts';
 
 interface AdminDashboardProps {
@@ -91,6 +92,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Data states
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [offers, setOffers] = useState<StoreOffer[]>([]);
+  const [offerProducts, setOfferProducts] = useState<Product[]>([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [offersError, setOffersError] = useState('');
+  const offersRequestId = useRef(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
@@ -139,6 +145,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   });
+
+  // Load promotions and their product choices immediately after admin login,
+  // rather than waiting until the offers tab is opened.
+  const loadOffers = async () => {
+    if (!token) return;
+    const requestId = ++offersRequestId.current;
+    setOffersLoading(true);
+    setOffersError('');
+    try {
+      const [offersRes, productsRes] = await Promise.all([
+        fetch('/api/offers?includeInactive=true', { headers: authHeaders(), cache: 'no-store' }),
+        fetch('/api/products?includeInactive=true', { headers: authHeaders(), cache: 'no-store' }),
+      ]);
+      if (offersRes.status === 401 || productsRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      if (!offersRes.ok) throw new Error('تعذر تحميل العروض والخصومات.');
+      if (!productsRes.ok) throw new Error('تعذر تحميل المنتجات المرتبطة بالعروض.');
+      const [offersData, productsData] = await Promise.all([offersRes.json(), productsRes.json()]);
+      if (requestId !== offersRequestId.current) return;
+      setOffers(Array.isArray(offersData) ? offersData : []);
+      setOfferProducts(Array.isArray(productsData) ? productsData : []);
+    } catch (error: any) {
+      if (requestId === offersRequestId.current) {
+        setOffersError(error.message || 'تعذر تحميل العروض والخصومات.');
+      }
+    } finally {
+      if (requestId === offersRequestId.current) setOffersLoading(false);
+    }
+  };
 
   const handleUnauthorized = () => {
     sessionStorage.removeItem('tulip_admin_token');
@@ -258,7 +295,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   useEffect(() => {
     if (isOpen && token) {
-      loadAdminData();
+      // Finish the main dashboard requests first, then load offers and their
+      // product choices so the Neon pool is not flooded on initial entry.
+      void loadAdminData().finally(() => { void loadOffers(); });
     }
   }, [token, isOpen]);
 
@@ -278,23 +317,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => window.clearTimeout(timer);
   }, [isOpen, token, activeTab, ordersPage, ordersFilterStatus, ordersSearch]);
 
-  useEffect(() => {
-    if (!isOpen || !token || activeTab !== 'offers' || loading) return;
-    let cancelled = false;
-    fetch('/api/products?includeInactive=true', { headers: authHeaders() })
-      .then(async (res) => {
-        if (res.status === 401) {
-          handleUnauthorized();
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelled) setProducts(data);
-        }
-      })
-      .catch((err) => console.error('Error loading products for offers:', err));
-    return () => { cancelled = true; };
-  }, [isOpen, token, activeTab, loading]);
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -1309,7 +1331,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   TAB 5: STORE SETTINGS
               ------------------------------------------------------------- */}
               {activeTab === 'offers' && (
-                <AdminOffers token={token} products={products} onUpdated={() => { loadAdminData(); onStoreUpdated(); }} />
+                <AdminOffers
+                  token={token}
+                  products={offerProducts}
+                  offers={offers}
+                  onOffersChange={setOffers}
+                  onLoadOffers={loadOffers}
+                  offersLoading={offersLoading}
+                  offersError={offersError}
+                  onUpdated={() => { loadAdminData(); onStoreUpdated(); }}
+                />
               )}
 
               {activeTab === 'settings' && settings && (
