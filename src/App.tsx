@@ -61,7 +61,16 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
+  // Skip the branded opening screen when the visitor refreshes the current page.
+  const [isPageReload] = useState(() => {
+    try {
+      const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      return navigationEntry?.type === 'reload';
+    } catch {
+      return false;
+    }
+  });
+  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(isPageReload);
 
   // Navigation & View States
   const [activeTab, setActiveTab] = useState<'home' | 'products' | 'categories' | 'offers' | 'about' | 'contact'>('home');
@@ -114,12 +123,13 @@ export default function App() {
     }
   }, [theme]);
 
-  // Show the branded opening screen for at least 1.8 seconds on every fresh visit.
-  // If the API takes longer, the opening screen remains visible until the store is ready.
+  // Show the branded opening screen on a fresh visit, but not after a page refresh.
+  // If the API takes longer on a fresh visit, the opening screen remains until the store is ready.
   useEffect(() => {
+    if (isPageReload) return;
     const timer = window.setTimeout(() => setSplashMinimumElapsed(true), 1800);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [isPageReload]);
 
   // Language & Direction Sync effect
   useEffect(() => {
@@ -349,7 +359,7 @@ export default function App() {
     ? products.filter((p) => p.categoryId === selectedProduct.categoryId && p.id !== selectedProduct.id).slice(0, 4)
     : [];
 
-  if (isLoading || !settings || !splashMinimumElapsed) {
+  if (!isPageReload && (isLoading || !settings || !splashMinimumElapsed)) {
     return (
       <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#F3D0DC] px-5 py-8 text-[#5B2638] dark:bg-[#171B18] dark:text-[#E7ECE8]">
         <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-[#EAAFC4]/60 blur-3xl dark:bg-[#5C2940]/35" />
@@ -374,6 +384,8 @@ export default function App() {
       </main>
     );
   }
+
+  if (isLoading || !settings) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFF9F7] text-[#5B2638] dark:bg-[#111512] dark:text-[#E7ECE8] selection:bg-[#F8D7E3] dark:selection:bg-[#6A2035] selection:text-[#832742] dark:selection:text-[#FCE8EF] transition-colors duration-200">
