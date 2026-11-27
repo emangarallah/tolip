@@ -60,14 +60,23 @@ router.put('/api/offers/:id', requireAdmin, (req: Request, res: Response) => {
 
 const deleteOfferHandler = async (req: Request, res: Response) => {
   try {
+    const offerId = typeof req.params.id === 'string' && req.params.id
+      ? req.params.id
+      : typeof req.body?.id === 'string'
+        ? req.body.id.trim()
+        : '';
+    if (!offerId) {
+      res.status(400).json({ success: false, error: 'معرّف العرض غير صالح.' });
+      return;
+    }
     // Reassert the verified admin role in this transaction before SQL writes.
     await db.authorizeAuthenticatedAdmin();
-    const deleted = await db.deleteOffer(req.params.id);
+    const deleted = await db.deleteOffer(offerId);
     if (!deleted) {
       res.status(404).json({ success: false, error: 'العرض غير موجود أو تم حذفه مسبقًا.' });
       return;
     }
-    res.status(200).json({ success: true, id: req.params.id });
+    res.status(200).json({ success: true, id: offerId });
   } catch (error) {
     console.error('Failed to delete offer:', error);
     res.status(500).json({
@@ -81,5 +90,8 @@ const deleteOfferHandler = async (req: Request, res: Response) => {
 // reliable fallback for hosting layers or proxies that restrict DELETE methods.
 router.delete('/api/offers/:id', requireAdmin, deleteOfferHandler);
 router.post('/api/offers/:id/delete', requireAdmin, deleteOfferHandler);
+// Use a fixed endpoint for the admin UI to avoid catch-all serverless routing
+// interpreting a nested action path as a missing API route.
+router.post('/api/offers/delete', requireAdmin, deleteOfferHandler);
 
 export default router;
