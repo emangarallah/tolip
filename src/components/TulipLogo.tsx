@@ -83,7 +83,7 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
             className="flex flex-col text-right leading-none select-none"
           >
             <span className={`${titleSize} font-bold tracking-tight text-[#1F2421] dark:text-white`}>توليب</span>
-            <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>Tolipe Natural Care</span>
+            <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>Tulip Natural Care</span>
           </motion.div>
         )}
       </motion.div>
@@ -119,7 +119,7 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
         {showText && (
           <div className="flex flex-col text-right">
             <span className="text-lg font-bold tracking-tight text-[#1F2421] dark:text-white">توليب</span>
-            <span className="text-[10px] uppercase tracking-widest text-[#D45278] font-medium -mt-1">Tolipe Natural Care</span>
+            <span className="text-[10px] uppercase tracking-widest text-[#D45278] font-medium -mt-1">Tulip Natural Care</span>
           </div>
         )}
       </motion.div>
@@ -212,7 +212,7 @@ export const TulipLogo: React.FC<TulipLogoProps> = ({
           className="flex flex-col text-right leading-none select-none"
         >
           <span className={`${titleSize} font-bold tracking-tight text-[#1F2421] dark:text-white`}>توليب</span>
-          <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>Tolipe Natural Care</span>
+          <span className={`${subSize} tracking-[0.16em] uppercase text-[#C74169] dark:text-[#E06287] font-medium mt-1 font-sans`}>Tulip Natural Care</span>
         </motion.div>
       )}
     </motion.div>
