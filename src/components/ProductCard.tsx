@@ -38,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isAvailable = hasAvailableVariant;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} whileHover={{ y: -5 }} whileTap={{ scale: 0.975, y: -2, transition: { duration: 0.16, ease: "easeOut" } }} transition={{ duration: 0.38, ease: "easeOut" }} className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} whileHover={{ y: -5 }} whileTap={{ scale: 0.975, y: -2, transition: { duration: 0.16, ease: "easeOut" } }} transition={{ duration: 0.38, ease: "easeOut" }} className="group relative rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] hover:border-[#DFCFC3] dark:hover:border-[#3B443E] hover:shadow-lg active:border-[#DFCFC3] active:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden text-start">
       {/* Top Image Area */}
       <div
         className="relative aspect-[4/3] w-full bg-[#FAF7F2] dark:bg-[#202522] overflow-hidden cursor-pointer"
@@ -48,7 +48,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           src={product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg'}
           alt={product.name}
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-105"
           whileTap={{ scale: 1.07 }}
           transition={{ duration: 0.48, ease: 'easeOut' }}
           onError={(e) => {
@@ -87,7 +87,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Quick View Overlay on hover */}
-        <div className="absolute inset-0 bg-black/20 dark:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 bg-black/20 dark:bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <span className="bg-white/95 dark:bg-[#161917]/95 backdrop-blur-sm text-[#1F2421] dark:text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5" />
             <span>{t.viewDetails}</span>
@@ -100,7 +100,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div>
           {/* Category & Status */}
           <div className="flex items-center justify-between text-xs text-[#717772] dark:text-[#8D9690] mb-1.5">
-            <span className="hover:text-[#1F2421] dark:hover:text-white transition-colors">
+            <span className="hover:text-[#1F2421] dark:hover:text-white group-active:text-[#1F2421] dark:group-active:text-white transition-colors">
               {product.categoryName}
             </span>
             <span className={isAvailable ? 'text-[#2D5237] dark:text-[#42E67D]' : 'text-[#DC2626] dark:text-[#F87171]'}>
@@ -111,7 +111,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Product Title */}
           <h3
             onClick={() => onViewDetails(product)}
-            className="text-base font-bold text-[#1F2421] dark:text-white hover:text-[#C74169] dark:hover:text-[#E06287] cursor-pointer transition-colors leading-snug line-clamp-1"
+            className="text-base font-bold text-[#1F2421] dark:text-white hover:text-[#C74169] dark:hover:text-[#E06287] group-active:text-[#C74169] dark:group-active:text-[#E06287] cursor-pointer transition-colors leading-snug line-clamp-1"
           >
             {product.name}
           </h3>
