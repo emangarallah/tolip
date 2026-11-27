@@ -1541,25 +1541,31 @@ class StoreDatabase {
   }
 
   public async deleteOffer(id: string): Promise<boolean> {
-    if (!this.data.offers) this.data.offers = [];
-    const index = this.data.offers.findIndex((offer) => offer.id === id);
-    if (index < 0) return false;
-
     const context = this.requestStorage.getStore();
     if (context?.client) {
-      // Delete inside the active Neon request transaction. The foreign key
-      // removes the offer-product links atomically via ON DELETE CASCADE.
+      // Remove the join rows explicitly in the same Neon transaction before
+      // deleting the offer. This also works if an existing database's foreign
+      // key was created without ON DELETE CASCADE.
+      await context.client.query(
+        'DELETE FROM tolip_offer_products WHERE offer_id = $1',
+        [id]
+      );
       const result = await context.client.query(
         'DELETE FROM tolip_offers WHERE id = $1 RETURNING id',
         [id]
       );
       if (!result.rowCount) return false;
 
-      this.data.offers.splice(index, 1);
+      // The request-scoped cache may not contain this offer; SQL is authoritative.
+      const index = (this.data.offers || []).findIndex((offer) => offer.id === id);
+      if (index >= 0) this.data.offers.splice(index, 1);
       return true;
     }
 
     // Local development fallback uses the JSON store.
+    if (!this.data.offers) this.data.offers = [];
+    const index = this.data.offers.findIndex((offer) => offer.id === id);
+    if (index < 0) return false;
     this.data.offers.splice(index, 1);
     this.persist('offers', id);
     return true;
