@@ -17,12 +17,18 @@ function parseCategoryWritePayload(body: any, partial: boolean): { value?: Recor
     value.name = body.name.trim();
   }
 
-  if (body.slug !== undefined) {
-    if (typeof body.slug !== 'string' || body.slug.length > 160) return { error: 'رابط القسم المختصر غير صحيح.' };
-    const slug = body.slug.trim().toLowerCase();
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return { error: 'رابط القسم المختصر غير صحيح.' };
+  if (body.slug !== undefined && typeof body.slug !== 'string') {
+    return { error: 'رابط القسم المختصر غير صحيح.' };
+  }
+
+  const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
+  if (slug) {
+    if (body.slug!.length > 160 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      return { error: 'رابط القسم المختصر غير صحيح.' };
+    }
     value.slug = slug;
   } else if (!partial) {
+    // The admin form does not expose a slug field; generate one when it sends an empty value.
     value.slug = 'category-' + crypto.randomUUID();
   }
 
