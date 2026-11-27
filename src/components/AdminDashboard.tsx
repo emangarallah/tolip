@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Settings,
   Lock,
+  Mail,
   LogOut,
   Plus,
   Edit,
@@ -731,14 +732,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <label className="text-xs font-bold text-[#1F2421] dark:text-white block mb-1">
                     البريد الإلكتروني
                   </label>
-                  <input
-                    type="email"
-                    required
-                    dir="ltr"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-right bg-[#FCFCFA] dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      dir="ltr"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#D9D2C9] dark:border-[#2D332F] focus:border-[#C74169] text-xs text-right bg-[#FCFCFA] dark:bg-[#1E2320] text-[#1F2421] dark:text-white"
+                    />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717772] dark:text-[#A6AEA8]" aria-hidden="true" />
+                  </div>
                 </div>
 
                 <div>
