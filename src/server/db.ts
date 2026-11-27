@@ -1543,13 +1543,9 @@ class StoreDatabase {
   public async deleteOffer(id: string): Promise<boolean> {
     const context = this.requestStorage.getStore();
     if (context?.client) {
-      // Remove the join rows explicitly in the same Neon transaction before
-      // deleting the offer. This also works if an existing database's foreign
-      // key was created without ON DELETE CASCADE.
-      await context.client.query(
-        'DELETE FROM tolip_offer_products WHERE offer_id = $1',
-        [id]
-      );
+      // The normalized schema defines ON DELETE CASCADE on
+      // tolip_offer_products.offer_id, so deleting the parent removes its
+      // product links atomically in the same statement and transaction.
       const result = await context.client.query(
         'DELETE FROM tolip_offers WHERE id = $1 RETURNING id',
         [id]
