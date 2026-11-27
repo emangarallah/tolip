@@ -1553,6 +1553,106 @@ class StoreDatabase {
     return this.data.products[idx];
   }
 
+  // Update one product directly in Neon instead of hydrating every product
+  // (and all variants) for a single-row edit or stock toggle.
+  public async updateProductFromStore(id: string, partial: Partial<Product>): Promise<Product | null> {
+    const context = this.requestStorage.getStore();
+    if (!context?.client) return this.updateProduct(id, partial);
+
+    const result = await context.client.query(
+      `SELECT p.id, p.name, p.slug, p.category_id, p.description, p.features,
+              p.usage_instructions, p.images, p.is_featured, p.is_best_seller,
+              p.is_active, p.in_stock, p.created_at, p.updated_at,
+              COALESCE(c.name, 'عام') AS category_name
+       FROM tolip_products p
+       LEFT JOIN tolip_categories c ON c.id = p.category_id
+       WHERE p.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+
+    const variantsResult = await context.client.query(
+      'SELECT id, name, price, original_price, stock, sku FROM tolip_product_variants WHERE product_id = $1 ORDER BY id',
+      [id]
+    );
+    const current: Product = {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      categoryId: row.category_id || '',
+      categoryName: row.category_name || 'عام',
+      description: row.description || '',
+      features: Array.isArray(row.features) ? row.features : [],
+      usageInstructions: row.usage_instructions || '',
+      images: Array.isArray(row.images) ? row.images : [],
+      variants: variantsResult.rows.map((variant: any) => ({
+        id: variant.id,
+        name: variant.name,
+        price: variant.price === null ? null : Number(variant.price),
+        originalPrice: variant.original_price === null ? null : Number(variant.original_price),
+        stock: Number(variant.stock) || 0,
+        ...(variant.sku ? { sku: variant.sku } : {}),
+      })),
+      isFeatured: Boolean(row.is_featured),
+      isBestSeller: Boolean(row.is_best_seller),
+      isActive: Boolean(row.is_active),
+      inStock: Boolean(row.in_stock),
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
+    };
+
+    const updated: Product = {
+      ...current,
+      ...partial,
+      id: current.id,
+      createdAt: current.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await context.client.query(
+      `UPDATE tolip_products
+       SET name = $2, slug = $3, category_id = NULLIF($4, ''),
+           description = $5, features = $6::jsonb, usage_instructions = $7,
+           images = $8::jsonb, is_featured = $9, is_best_seller = $10,
+           is_active = $11, in_stock = $12, updated_at = $13
+       WHERE id = $1`,
+      [
+        updated.id, updated.name, updated.slug, updated.categoryId || '',
+        updated.description || '', JSON.stringify(updated.features || []),
+        updated.usageInstructions || '', JSON.stringify(updated.images || []),
+        Boolean(updated.isFeatured), Boolean(updated.isBestSeller),
+        Boolean(updated.isActive), Boolean(updated.inStock), updated.updatedAt,
+      ]
+    );
+
+    if (partial.variants !== undefined) {
+      await context.client.query('DELETE FROM tolip_product_variants WHERE product_id = $1', [id]);
+      const variants = updated.variants || [];
+      if (variants.length > 0) {
+        await context.client.query(
+          `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
+           SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+           FROM unnest(
+             $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
+           ) AS v(id, name, price, original_price, stock, sku)`,
+          [
+            id,
+            variants.map((variant) => variant.id),
+            variants.map((variant) => variant.name),
+            variants.map((variant) => variant.price ?? null),
+            variants.map((variant) => variant.originalPrice ?? null),
+            variants.map((variant) => Number(variant.stock) || 0),
+            variants.map((variant) => variant.sku || null),
+          ]
+        );
+      }
+    }
+
+    return updated;
+  }
+
   public deleteProduct(id: string): boolean {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) return false;
