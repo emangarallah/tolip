@@ -13,10 +13,8 @@ export function getRequiredStoreDataSections(
   if (path.startsWith('/api/settings')) {
     scopes.add('settings');
   } else if (path === '/api/categories' || path.startsWith('/api/categories/')) {
-    // Category lists need product counts. Category writes are narrower:
-    // create/update only need categories, while deletion uses a set-based SQL update.
-    // Product counts are calculated by a SQL aggregate in the category endpoint.
-    scopes.add('categories');
+    // Category reads and create/update need category rows. Deletion is a set-based SQL operation.
+    if (normalizedMethod !== 'DELETE') scopes.add('categories');
   } else if (path === '/api/products' || path.startsWith('/api/products/')) {
     if (normalizedMethod === 'GET') {
       // Legacy full-catalog reads use the in-memory mapper. Paginated reads
