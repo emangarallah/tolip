@@ -1930,9 +1930,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254]"
+                    disabled={savingProduct}
+                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    حفظ المنتج
+                    {savingProduct ? 'جارٍ حفظ المنتج...' : 'حفظ المنتج'}
                   </button>
                 </div>
               </form>
@@ -2031,9 +2032,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254]"
+                    disabled={savingCategory}
+                    className="px-6 py-2 rounded-xl bg-[#1F2421] dark:bg-[#C74169] text-white text-xs font-bold hover:bg-[#C74169] dark:hover:bg-[#a53254] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    حفظ القسم
+                    {savingCategory ? 'جارٍ حفظ القسم...' : 'حفظ القسم'}
                   </button>
                 </div>
               </form>
