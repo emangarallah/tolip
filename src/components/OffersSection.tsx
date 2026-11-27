@@ -45,6 +45,22 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
     (!offer.startsAt || Date.parse(offer.startsAt) <= Date.now()) &&
     (!offer.endsAt || Date.parse(offer.endsAt) >= Date.now())
   );
+
+  // When the offers tab opens, move the visitor to the available offers
+  // after the active offers have finished loading.
+  useEffect(() => {
+    if (!visible.length) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('available-offers')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [visible.length]);
+
   if (!visible.length) return null;
 
   const currency = language === 'ar' ? 'ر.ي' : 'YER';
@@ -77,7 +93,8 @@ export const OffersSection: React.FC<Props> = ({ products, settings, onOrder, la
 
   return (
     <section
-      className="border-y border-[#F0EBE6] bg-[#FFF4F7] py-12 sm:py-16 dark:border-[#2B2025] dark:bg-[#1B1518]"
+      id="available-offers"
+      className="scroll-mt-24 border-y border-[#F0EBE6] bg-[#FFF4F7] py-12 sm:py-16 dark:border-[#2B2025] dark:bg-[#1B1518]"
       dir={language === 'ar' ? 'rtl' : 'ltr'}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
