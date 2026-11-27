@@ -577,7 +577,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] h-dvh w-full overflow-hidden bg-[#FCFCFA] dark:bg-[#161917]">
+    <div className="admin-dashboard fixed inset-0 z-[80] h-dvh w-full overflow-hidden bg-[#FCFCFA] dark:bg-[#161917]">
       <div
         className="relative h-full w-full max-w-none overflow-hidden rounded-none border-0 bg-white text-right shadow-none dark:bg-[#161917] flex flex-col"
         onClick={(e) => e.stopPropagation()}
