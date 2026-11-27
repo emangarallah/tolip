@@ -38,11 +38,8 @@ test('checkout and order tracking load the data required by each operation', () 
   assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/orders')].sort(), ['adminUser', 'orders'].sort());
 });
 
-test('admin analytics loads only the data it currently calculates', () => {
-  assert.deepEqual(
-    [...getRequiredStoreDataSections('GET', '/api/admin/stats')].sort(),
-    ['adminUser', 'categories', 'products', 'orders'].sort()
-  );
+test('admin analytics uses SQL aggregates without hydrating store collections', () => {
+  assert.deepEqual([...getRequiredStoreDataSections('GET', '/api/admin/stats')], ['adminUser']);
 });
 
 test('admin authentication endpoints only require the admin record', () => {
