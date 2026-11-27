@@ -52,12 +52,15 @@ export const AdminOffers: React.FC<Props> = ({
     if (!pendingDelete || deleteBusy) return;
     setDeleteBusy(true);
     setDeleteError('');
+    console.info('[Tolip offers] delete confirmation handler started', { offerId: pendingDelete.id });
     try {
+      console.info('[Tolip offers] sending delete request', { method: 'POST', path: '/api/offers/delete' });
       const res = await fetch('/api/offers/delete', {
         method: 'POST',
         headers,
         body: JSON.stringify({ id: pendingDelete.id }),
       });
+      console.info('[Tolip offers] delete response received', { status: res.status, ok: res.ok });
       const responseText = await res.text();
       let data: { success?: boolean; error?: string } = {};
       try { data = responseText ? JSON.parse(responseText) : {}; } catch { data = {}; }
@@ -77,6 +80,7 @@ export const AdminOffers: React.FC<Props> = ({
       setDeleteError('');
       onUpdated();
     } catch (e: any) {
+      console.error('[Tolip offers] delete request failed', e);
       setDeleteError(e.message || 'تعذر حذف العرض. حاولي مرة أخرى.');
     } finally {
       setDeleteBusy(false);
