@@ -216,10 +216,11 @@ export default function App() {
       return response.json() as Promise<T>;
     };
 
+    const storefrontHeaders = { 'X-Tolip-Storefront': '1' };
     const [settingsResult, categoriesResult, productsResult] = await Promise.allSettled([
-      requestJson<StoreSettings>('/api/settings'),
-      requestJson<Category[]>('/api/categories', { cache: 'no-store' }),
-      requestJson<Product[]>('/api/products'),
+      requestJson<StoreSettings>('/api/settings', { headers: storefrontHeaders }),
+      requestJson<Category[]>('/api/categories', { cache: 'no-store', headers: storefrontHeaders }),
+      requestJson<Product[]>('/api/products', { headers: storefrontHeaders }),
     ]);
 
     if (settingsResult.status === 'fulfilled') {
