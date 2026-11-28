@@ -548,10 +548,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     );
 
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PATCH',
+      const res = await fetch('/api/orders/status', {
+        method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ orderId, status }),
       });
       const data = await res.json().catch(() => ({}));
 
