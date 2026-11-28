@@ -43,6 +43,7 @@ export interface NeonInitializationReadiness {
   migrationsReady: boolean;
   rowLevelSecurityReady: boolean;
   perfumeCategoryReady: boolean;
+  productCurrencyPricesReady?: boolean;
 }
 
 /**
@@ -54,7 +55,8 @@ export function getNeonInitializationLockQuery(readiness: NeonInitializationRead
   const canInitializeConcurrently = readiness.schemaReady &&
     readiness.migrationsReady &&
     readiness.rowLevelSecurityReady &&
-    readiness.perfumeCategoryReady;
+    readiness.perfumeCategoryReady &&
+    readiness.productCurrencyPricesReady !== false;
 
   return canInitializeConcurrently
     ? 'SELECT pg_advisory_xact_lock_shared(7319462027)'
@@ -931,13 +933,23 @@ class StoreDatabase {
       let migrationsReady = false;
       let rowLevelSecurityReady = false;
       let perfumeCategoryReady = false;
+      let productCurrencyPricesReady = false;
 
       if (schemaReady) {
         const migrationResult = await client.query(
-          'SELECT version FROM tolip_schema_migrations WHERE version IN (1, 2) ORDER BY version'
+          'SELECT version FROM tolip_schema_migrations WHERE version IN (1, 2, 3) ORDER BY version'
         );
         const installedVersions = new Set(migrationResult.rows.map((row: any) => Number(row.version)));
         migrationsReady = installedVersions.has(1) && installedVersions.has(2);
+
+        const variantPriceColumnsResult = await client.query(
+          "SELECT count(*)::int AS present FROM information_schema.columns " +
+          "WHERE table_schema = 'public' AND table_name = 'tolip_product_variants' " +
+          "AND column_name = ANY($1::text[])",
+          [['price_sar', 'price_yer_south', 'price_yer_north']]
+        );
+        productCurrencyPricesReady = installedVersions.has(3) &&
+          Number(variantPriceColumnsResult.rows[0]?.present) === 3;
 
         const rlsResult = await client.query(
           "SELECT count(*)::int AS enabled FROM pg_class c " +
@@ -976,6 +988,7 @@ class StoreDatabase {
         migrationsReady,
         rowLevelSecurityReady,
         perfumeCategoryReady,
+        productCurrencyPricesReady,
       }));
 
       if (!schemaReady || !migrationsReady) {
@@ -983,6 +996,22 @@ class StoreDatabase {
       }
       if (!rowLevelSecurityReady) {
         throw new Error('Tolip database Row Level Security is not fully enabled.');
+      }
+
+      // Add optional regional currency prices without changing existing product
+      // prices. The exclusive startup lock ensures this migration runs once safely.
+      if (!productCurrencyPricesReady) {
+        await client.query(
+          `ALTER TABLE tolip_product_variants
+             ADD COLUMN IF NOT EXISTS price_sar numeric(12,2),
+             ADD COLUMN IF NOT EXISTS price_yer_south numeric(12,2),
+             ADD COLUMN IF NOT EXISTS price_yer_north numeric(12,2)`
+        );
+        await client.query(
+          "INSERT INTO tolip_schema_migrations (version, name) " +
+          "VALUES (3, 'product-variant-regional-currency-prices') " +
+          "ON CONFLICT (version) DO NOTHING"
+        );
       }
 
       this.baseData = await loadRelationalStore(client, this.baseData, ALL_STORE_SECTIONS);
@@ -1675,7 +1704,7 @@ class StoreDatabase {
     if (!row) return null;
 
     const variantsResult = await context.client.query(
-      'SELECT id, name, price, original_price, stock, sku FROM tolip_product_variants WHERE product_id = $1 ORDER BY id',
+      'SELECT id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku FROM tolip_product_variants WHERE product_id = $1 ORDER BY id',
       [id]
     );
     const current: Product = {
@@ -1692,6 +1721,9 @@ class StoreDatabase {
         id: variant.id,
         name: variant.name,
         price: variant.price === null ? null : Number(variant.price),
+        priceSar: variant.price_sar === null ? null : Number(variant.price_sar),
+        priceYerSouth: variant.price_yer_south === null ? null : Number(variant.price_yer_south),
+        priceYerNorth: variant.price_yer_north === null ? null : Number(variant.price_yer_north),
         originalPrice: variant.original_price === null ? null : Number(variant.original_price),
         stock: Number(variant.stock) || 0,
         ...(variant.sku ? { sku: variant.sku } : {}),
@@ -1733,16 +1765,20 @@ class StoreDatabase {
       const variants = updated.variants || [];
       if (variants.length > 0) {
         await context.client.query(
-          `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
-           SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+          `INSERT INTO tolip_product_variants (id,product_id,name,price,price_sar,price_yer_south,price_yer_north,original_price,stock,sku)
+           SELECT v.id, $1, v.name, v.price, v.price_sar, v.price_yer_south, v.price_yer_north, v.original_price, v.stock, v.sku
            FROM unnest(
-             $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
-           ) AS v(id, name, price, original_price, stock, sku)`,
+             $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::numeric[],
+             $7::numeric[], $8::numeric[], $9::integer[], $10::text[]
+           ) AS v(id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku)`,
           [
             id,
             variants.map((variant) => variant.id),
             variants.map((variant) => variant.name),
             variants.map((variant) => variant.price ?? null),
+            variants.map((variant) => variant.priceSar ?? null),
+            variants.map((variant) => variant.priceYerSouth ?? null),
+            variants.map((variant) => variant.priceYerNorth ?? null),
             variants.map((variant) => variant.originalPrice ?? null),
             variants.map((variant) => Number(variant.stock) || 0),
             variants.map((variant) => variant.sku || null),
