@@ -1268,16 +1268,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <h3 className="text-lg font-bold text-[#1F2421]">إدارة الطلبات الواردة</h3>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
                       <select
                         value={ordersFilterStatus}
                         onChange={(e) => { setOrdersFilterStatus(e.target.value); setOrdersPage(1); }}
-                        className="px-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white"
+                        className="w-full max-w-full px-3 py-2 rounded-xl border border-[#D9D2C9] text-xs bg-white sm:w-auto"
                       >
                         <option value="all">جميع الحالات</option>
                         {Object.entries(statusLabels).map(([key, val]) => (
                           <option key={key} value={key}>
-                            {val.text}
+                            {key === 'awaiting_whatsapp_confirmation' ? 'بانتظار تأكيد الواتساب' : val.text}
                           </option>
                         ))}
                       </select>
@@ -1317,16 +1317,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
                               {/* Order Status Select */}
                               <select
                                 value={ord.status}
                                 onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                className={`px-2.5 py-1 rounded-xl text-xs font-bold border ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
+                                className={`w-full min-w-0 rounded-xl border px-2.5 py-2 text-xs font-bold sm:w-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
                               >
                                 {Object.entries(statusLabels).map(([stKey, stVal]) => (
                                   <option key={stKey} value={stKey}>
-                                    {stVal.text}
+                                    {stKey === 'awaiting_whatsapp_confirmation' ? 'بانتظار تأكيد الواتساب' : stVal.text}
                                   </option>
                                 ))}
                               </select>
@@ -1334,7 +1334,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               {/* WhatsApp Direct Chat button */}
                               <button
                                 onClick={() => handleChatWithCustomer(ord)}
-                                className="px-3 py-1 rounded-xl bg-[#25D366]/10 text-[#1B8340] hover:bg-[#25D366]/20 font-bold border border-[#25D366]/30 flex items-center gap-1"
+                                className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-3 py-2 font-bold text-[#1B8340] hover:bg-[#25D366]/20 sm:flex-none sm:py-1"
                               >
                                 <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
                                 <span>محادثة واتساب</span>
@@ -1343,7 +1343,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               {/* View Details */}
                               <button
                                 onClick={() => setViewingOrder(ord)}
-                                className="px-3 py-1 rounded-xl border border-[#D9D2C9] hover:bg-[#FAF8F5] font-semibold"
+                                className="flex flex-1 items-center justify-center rounded-xl border border-[#D9D2C9] px-3 py-2 font-semibold hover:bg-[#FAF8F5] sm:flex-none sm:py-1"
                               >
                                 تفاصيل
                               </button>
