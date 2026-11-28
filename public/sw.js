@@ -79,18 +79,17 @@ self.addEventListener('fetch', (event) => {
   // Keep the public storefront catalog available from the last successful
   // visit. Never cache admin queries, filtered/private data, or order APIs.
   if (isSameOrigin && url.search === '' && PUBLIC_DATA_PATHS.has(url.pathname)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(DATA_CACHE);
-      const cached = await cache.match(request);
-      const update = fetchAndStore(DATA_CACHE, request, 20);
+    const cachePromise = caches.open(DATA_CACHE);
+    const updatePromise = fetchAndStore(DATA_CACHE, request, 20);
+    event.waitUntil(updatePromise.catch(() => undefined));
 
-      if (cached) {
-        event.waitUntil(update.catch(() => undefined));
-        return cached;
-      }
+    event.respondWith((async () => {
+      const cache = await cachePromise;
+      const cached = await cache.match(request);
+      if (cached) return cached;
 
       try {
-        return await update;
+        return await updatePromise;
       } catch {
         return new Response(url.pathname === '/api/settings' ? '{}' : '[]', {
           status: 503,
@@ -104,27 +103,32 @@ self.addEventListener('fetch', (event) => {
   // Return the last downloaded page immediately, then refresh the app shell
   // quietly in the background when the network is available.
   if (request.mode === 'navigate' && isSameOrigin) {
+    const cachePromise = caches.open(SHELL_CACHE);
+    const updatePromise = fetch(request).then(async (response) => {
+      if (response.ok) {
+        const cache = await cachePromise;
+        try {
+          await cache.put('/', response.clone());
+        } catch {
+          // A cache write failure must not block page navigation.
+        }
+      }
+      return response;
+    }).catch(() => null);
+    event.waitUntil(updatePromise.then(() => undefined));
+
     event.respondWith((async () => {
-      const cache = await caches.open(SHELL_CACHE);
+      const cache = await cachePromise;
       const cached = await cache.match('/');
-      const update = fetch(request).then(async (response) => {
-        if (response.ok) await cache.put('/', response.clone());
-        return response;
-      });
+      if (cached) return cached;
 
-      if (cached) {
-        event.waitUntil(update.catch(() => undefined));
-        return cached;
-      }
+      const networkResponse = await updatePromise;
+      if (networkResponse) return networkResponse;
 
-      try {
-        return await update;
-      } catch {
-        return new Response(
-          '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>توليب</title><body style="font-family:Arial,sans-serif;padding:24px;text-align:center"><h2>لا يوجد اتصال بالإنترنت</h2><p>افتحي المتجر مرة أخرى عند توفر الاتصال.</p></body></html>',
-          { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-        );
-      }
+      return new Response(
+        '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>توليب</title><body style="font-family:Arial,sans-serif;padding:24px;text-align:center"><h2>لا يوجد اتصال بالإنترنت</h2><p>افتحي المتجر مرة أخرى عند توفر الاتصال.</p></body></html>',
+        { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+      );
     })());
     return;
   }
