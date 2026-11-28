@@ -9,6 +9,8 @@ interface CategoriesSectionProps {
   selectedCategoryId?: string;
   language: Language;
   onSelectCategory: (categoryId: string) => void;
+  compact?: boolean;
+  onViewAll?: () => void;
 }
 
 export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
@@ -16,12 +18,14 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   selectedCategoryId,
   language,
   onSelectCategory,
+  compact = false,
+  onViewAll,
 }) => {
   const t = translations[language];
   const isRtl = language === 'ar';
 
   return (
-    <section className="py-14 sm:py-20 bg-[#FCFCFA] dark:bg-[#121513] transition-colors duration-200">
+    <section className={`${compact ? "py-10 sm:py-14" : "py-14 sm:py-20"} bg-[#FCFCFA] dark:bg-[#121513] transition-colors duration-200`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 text-start">
@@ -34,13 +38,25 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               {t.storeCategories}
             </h2>
           </div>
-          <p className="text-sm text-[#555C57] dark:text-[#A8B0AA] max-w-md">
-            {t.categoriesSub}
-          </p>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <p className="text-sm text-[#555C57] dark:text-[#A8B0AA] max-w-md">
+              {t.categoriesSub}
+            </p>
+            {onViewAll && (
+              <button
+                type="button"
+                onClick={onViewAll}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#E8D8DE] bg-white px-4 py-2 text-xs font-bold text-[#C74169] shadow-sm transition-colors hover:border-[#C74169] hover:bg-[#FFF0F4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C74169] dark:border-[#3D2931] dark:bg-[#1A1E1B] dark:text-[#E98EAD] dark:hover:bg-[#2A161E]"
+              >
+                <span>{language === 'ar' ? 'عرض جميع التصنيفات' : 'View all categories'}</span>
+                {isRtl ? <ArrowLeft className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Categories Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className={`grid ${compact ? "grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4" : "grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
           {categories.map((category) => {
             const isSelected = selectedCategoryId === category.id;
             return (
@@ -60,7 +76,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                 }`}
               >
                 {/* Category Image */}
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F7F4F0] dark:bg-[#202522]">
+                <div className={`relative w-full overflow-hidden bg-[#F7F4F0] dark:bg-[#202522] ${compact ? "aspect-[5/4] sm:aspect-[4/3]" : "aspect-[4/3]"}`}>
                   <motion.img
                     src={category.image}
                     alt={category.name}
@@ -83,15 +99,15 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
 
                   {/* Category Title on image bottom */}
                   <div className="absolute bottom-3 right-3 left-3 text-white">
-                    <h3 className="text-base sm:text-lg font-bold leading-snug drop-shadow-sm">
+                    <h3 className={`${compact ? "text-sm sm:text-lg" : "text-base sm:text-lg"} font-bold leading-snug drop-shadow-sm`}>
                       {category.name}
                     </h3>
                   </div>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-4 flex-1 flex flex-col justify-between gap-3 bg-white dark:bg-[#191D1A]">
-                  <p className="text-xs text-[#6B7280] dark:text-[#9DA6A0] line-clamp-2 leading-relaxed">
+                <div className={`${compact ? "p-3 sm:p-4" : "p-4"} flex-1 flex flex-col justify-between gap-2 sm:gap-3 bg-white dark:bg-[#191D1A]`}>
+                  <p className={`${compact ? "text-[11px] sm:text-xs" : "text-xs"} text-[#6B7280] dark:text-[#9DA6A0] line-clamp-2 leading-relaxed`}>
                     {category.description}
                   </p>
 
