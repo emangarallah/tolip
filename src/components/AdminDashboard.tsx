@@ -101,6 +101,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const offersRequestId = useRef(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [updatingOrderStatusId, setUpdatingOrderStatusId] = useState<string | null>(null);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -529,21 +530,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Order Operations
   // -------------------------------------------------------------
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    if (updatingOrderStatusId === orderId) return;
+
+    const previousStatus = orders.find((order) => order.id === orderId)?.status
+      || (viewingOrder?.id === orderId ? viewingOrder.status : status);
+    if (previousStatus === status) return;
+
+    // Reflect the administrator's selection immediately on mobile, then keep it
+    // only if the server confirms that the status was saved.
+    setUpdatingOrderStatusId(orderId);
+    setOrders((current) => current.map((order) =>
+      order.id === orderId ? { ...order, status } : order
+    ));
+    setViewingOrder((current) =>
+      current?.id === orderId ? { ...current, status } : current
+    );
+
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify({ status }),
       });
-      if (res.ok) {
-        showToast('تم تحديث حالة الطلب بنجاح');
-        loadAdminData();
-        if (viewingOrder && viewingOrder.id === orderId) {
-          setViewingOrder({ ...viewingOrder, status });
-        }
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        handleUnauthorized();
+        throw new Error('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.');
       }
+      if (!res.ok) {
+        throw new Error(data.error || 'تعذر حفظ حالة الطلب. يرجى المحاولة مرة أخرى.');
+      }
+
+      setOrders((current) => current.map((order) =>
+        order.id === orderId ? { ...order, status: data.status || status } : order
+      ));
+      setViewingOrder((current) =>
+        current?.id === orderId
+          ? { ...current, status: data.status || status }
+          : current
+      );
+
+      await loadAdminData();
+      showToast('تم تحديث حالة الطلب بنجاح');
     } catch (err) {
-      alert('فشل تحديث حالة الطلب');
+      setOrders((current) => current.map((order) =>
+        order.id === orderId ? { ...order, status: previousStatus } : order
+      ));
+      setViewingOrder((current) =>
+        current?.id === orderId ? { ...current, status: previousStatus } : current
+      );
+      alert(err instanceof Error ? err.message : 'فشل تحديث حالة الطلب');
+    } finally {
+      setUpdatingOrderStatusId(null);
     }
   };
 
@@ -1321,8 +1360,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               {/* Order Status Select */}
                               <select
                                 value={ord.status}
+                                disabled={updatingOrderStatusId === ord.id}
                                 onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                className={`w-full min-w-max basis-full shrink-0 whitespace-nowrap rounded-xl border px-2.5 py-2 text-xs font-bold sm:w-auto sm:basis-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
+                                className={`w-full min-w-max basis-full shrink-0 whitespace-nowrap rounded-xl border px-2.5 py-2 text-xs font-bold disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:basis-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
                               >
                                 {Object.entries(statusLabels).map(([stKey, stVal]) => (
                                   <option key={stKey} value={stKey}>
@@ -2094,8 +2134,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span className="font-bold text-[#1F2421] dark:text-white">حالة الطلب الحالية:</span>
                 <select
                   value={viewingOrder.status}
+                  disabled={updatingOrderStatusId === viewingOrder.id}
                   onChange={(e) => handleUpdateOrderStatus(viewingOrder.id, e.target.value as OrderStatus)}
-                  className={`px-3 py-1.5 rounded-xl font-bold border ${statusLabels[viewingOrder.status]?.color || 'bg-gray-100 dark:bg-zinc-800'}`}
+                  className={`px-3 py-1.5 rounded-xl font-bold border disabled:cursor-wait disabled:opacity-70 ${statusLabels[viewingOrder.status]?.color || 'bg-gray-100 dark:bg-zinc-800'}`}
                 >
                   {Object.entries(statusLabels).map(([stKey, stVal]) => (
                     <option key={stKey} value={stKey} className="dark:bg-[#1A1F1C]">
