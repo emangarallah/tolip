@@ -2113,15 +2113,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p><strong className="text-[#1F2421] dark:text-white">رقم الهاتف:</strong> <span dir="ltr">{viewingOrder.customerDetails.phone}</span></p>
                   <p><strong className="text-[#1F2421] dark:text-white">المدينة:</strong> {viewingOrder.customerDetails.city}</p>
                   <p><strong className="text-[#1F2421] dark:text-white">الحي/المنطقة:</strong> {viewingOrder.customerDetails.area || 'غير محدد'}</p>
-                  <p className="col-span-2"><strong className="text-[#1F2421] dark:text-white">العنوان التفصيلي:</strong> {viewingOrder.customerDetails.detailedAddress}</p>
+                  <p className="col-span-full sm:col-span-2"><strong className="text-[#1F2421] dark:text-white">العنوان التفصيلي:</strong> {viewingOrder.customerDetails.detailedAddress}</p>
                   {viewingOrder.customerDetails.nearestLandmark && (
-                    <p className="col-span-2"><strong className="text-[#1F2421] dark:text-white">أقرب معلم:</strong> {viewingOrder.customerDetails.nearestLandmark}</p>
+                    <p className="col-span-full sm:col-span-2"><strong className="text-[#1F2421] dark:text-white">أقرب معلم:</strong> {viewingOrder.customerDetails.nearestLandmark}</p>
                   )}
                   {viewingOrder.customerDetails.notes && (
-                    <p className="col-span-2"><strong className="text-[#1F2421] dark:text-white">ملاحظات التوصيل:</strong> {viewingOrder.customerDetails.notes}</p>
+                    <p className="col-span-full sm:col-span-2"><strong className="text-[#1F2421] dark:text-white">ملاحظات التوصيل:</strong> {viewingOrder.customerDetails.notes}</p>
                   )}
                   {viewingOrder.customerDetails.googleMapsUrl && (
-                    <p className="col-span-2">
+                    <p className="col-span-full sm:col-span-2">
                       <strong className="text-[#1F2421] dark:text-white">رابط الموقع:</strong>{' '}
                       <a
                         href={viewingOrder.customerDetails.googleMapsUrl}
