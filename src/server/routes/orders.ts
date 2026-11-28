@@ -312,7 +312,7 @@ router.get('/api/orders/:id', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.patch('/api/orders/:id/status', requireAdmin, (req: Request, res: Response) => {
+router.patch('/api/orders/:id/status', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
     const allowedStatuses: OrderStatus[] = [
@@ -328,7 +328,7 @@ router.patch('/api/orders/:id/status', requireAdmin, (req: Request, res: Respons
       res.status(400).json({ error: 'حالة الطلب غير صحيحة.' });
       return;
     }
-    const updated = db.updateOrderStatus(req.params.id, status as OrderStatus);
+    const updated = await db.updateOrderStatus(req.params.id, status as OrderStatus);
     if (!updated) {
       res.status(404).json({ error: 'الطلب غير موجود' });
       return;
