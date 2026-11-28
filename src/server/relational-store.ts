@@ -266,7 +266,7 @@ export async function getRelationalProductPage(
   const ids = result.rows.map((row: any) => row.id);
   const variantsResult = ids.length
     ? await client.query(
-      'SELECT id, product_id, name, price, original_price, stock, sku FROM tolip_product_variants WHERE product_id = ANY($1::text[]) ORDER BY product_id, id',
+      'SELECT id, product_id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku FROM tolip_product_variants WHERE product_id = ANY($1::text[]) ORDER BY product_id, id',
       [ids]
     )
     : { rows: [] };
@@ -278,6 +278,9 @@ export async function getRelationalProductPage(
       id: row.id,
       name: row.name,
       price: toNumberOrNull(row.price),
+      priceSar: toNumberOrNull(row.price_sar),
+      priceYerSouth: toNumberOrNull(row.price_yer_south),
+      priceYerNorth: toNumberOrNull(row.price_yer_north),
       originalPrice: toNumberOrNull(row.original_price),
       stock: Number(row.stock) || 0,
       ...(row.sku ? { sku: row.sku } : {}),
