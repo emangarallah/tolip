@@ -2012,25 +2012,32 @@ class StoreDatabase {
     return this.data.orders.find((o) => o.id === id || o.orderNumber === id);
   }
 
-  public async updateOrderStatus(id: string, status: OrderStatus): Promise<Order | null> {
+  // Keep the synchronous in-memory method for local use and existing callers.
+  public updateOrderStatus(id: string, status: OrderStatus): Order | null {
+    const order = this.data.orders.find((item) => item.id === id || item.orderNumber === id);
+    if (!order) return null;
+    order.status = status;
+    order.updatedAt = new Date().toISOString();
+    this.persist('orders', order.id);
+    return order;
+  }
+
+  // In production, update only the status columns in PostgreSQL. This avoids
+  // rewriting the order items when the administrator changes its progress.
+  public async updateOrderStatusInStore(id: string, status: OrderStatus): Promise<Order | null> {
     const context = this.requestStorage.getStore();
     const store = context?.data || this.data;
     const order = store.orders.find((item) => item.id === id || item.orderNumber === id);
     if (!order) return null;
 
-    const updatedAt = new Date().toISOString();
+    if (!context?.client) return this.updateOrderStatus(id, status);
 
-    // A status change must update only the order row. Rewriting its items here
-    // is unnecessary and can make a simple status change fail on item policies.
-    if (context?.client) {
-      const result = await context.client.query(
-        'UPDATE tolip_orders SET status = $2, updated_at = $3 WHERE id = $1 RETURNING id',
-        [order.id, status, updatedAt]
-      );
-      if (!result.rows.length) return null;
-    } else {
-      this.persist('orders', order.id);
-    }
+    const updatedAt = new Date().toISOString();
+    const result = await context.client.query(
+      'UPDATE tolip_orders SET status = $2, updated_at = $3 WHERE id = $1 RETURNING id',
+      [order.id, status, updatedAt]
+    );
+    if (!result.rows.length) return null;
 
     order.status = status;
     order.updatedAt = updatedAt;
