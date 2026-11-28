@@ -1817,8 +1817,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="space-y-2">
                     {(editingProduct.variants || []).map((v, vIdx) => (
-                      <div key={v.id || vIdx} className="grid grid-cols-6 items-center gap-2 rounded-xl border border-[#EAE3DC] bg-white p-2 dark:border-[#2D3830] dark:bg-[#1A1F1C] sm:grid-cols-12">
-                        <div className="col-span-6 min-w-0 sm:col-span-4">
+                      <div key={v.id || vIdx} className="grid grid-cols-2 items-center gap-2 rounded-xl border border-[#EAE3DC] bg-white p-2 dark:border-[#2D3830] dark:bg-[#1A1F1C] sm:grid-cols-12">
+                        <div className="col-span-2 min-w-0 sm:col-span-4">
                           <input
                             type="text"
                             value={v.name}
@@ -1831,7 +1831,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs text-[#1F2421] dark:text-white"
                           />
                         </div>
-                        <div className="col-span-2 min-w-0">
+                        <div className="col-span-1 min-w-0 sm:col-span-2">
                           <input
                             type="number"
                             value={v.price === null || v.price === undefined ? '' : v.price}
@@ -1846,7 +1846,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             dir="ltr"
                           />
                         </div>
-                        <div className="col-span-2 min-w-0">
+                        <div className="col-span-1 min-w-0 sm:col-span-2">
                           <input
                             type="number"
                             min="0"
@@ -1863,7 +1863,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             dir="ltr"
                           />
                         </div>
-                        <div className="col-span-2 min-w-0">
+                        <div className="col-span-1 min-w-0 sm:col-span-2">
                           <input
                             type="number"
                             min="0"
@@ -1881,7 +1881,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             dir="ltr"
                           />
                         </div>
-                        <div className="col-span-6 flex justify-start sm:col-span-2 sm:justify-end">
+                        <div className="col-span-2 flex justify-start sm:col-span-2 sm:justify-end">
                           <button
                             type="button"
                             onClick={() => {
