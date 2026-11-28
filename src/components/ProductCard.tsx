@@ -47,6 +47,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <motion.img
           src={product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg'}
           alt={product.name}
+          loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-105"
           whileTap={{ scale: 1.07 }}
