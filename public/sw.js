@@ -78,7 +78,12 @@ self.addEventListener('fetch', (event) => {
 
   // Keep the public storefront catalog available from the last successful
   // visit. Never cache admin queries, filtered/private data, or order APIs.
-  if (isSameOrigin && url.search === '' && PUBLIC_DATA_PATHS.has(url.pathname)) {
+  if (
+    isSameOrigin &&
+    request.headers.get('X-Tolip-Storefront') === '1' &&
+    url.search === '' &&
+    PUBLIC_DATA_PATHS.has(url.pathname)
+  ) {
     const cachePromise = caches.open(DATA_CACHE);
     const updatePromise = fetchAndStore(DATA_CACHE, request, 20);
     event.waitUntil(updatePromise.catch(() => undefined));
