@@ -1221,15 +1221,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {categories.map((cat) => (
                       <div
                         key={cat.id}
-                        className="p-4 rounded-2xl bg-white border border-[#EFE9E2] flex items-center justify-between gap-4"
+                        className="min-w-0 rounded-2xl bg-white border border-[#EFE9E2] p-4 flex flex-wrap items-center justify-between gap-3"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
                           <img
                             src={cat.image}
                             alt=""
                             className="w-16 h-16 rounded-xl object-cover border border-[#EAE3DC] shrink-0"
                           />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <h4 className="text-xs font-bold text-[#1F2421] truncate">{cat.name}</h4>
                             <p className="text-[11px] text-[#717772] line-clamp-1">{cat.description}</p>
                             <span className="text-[10px] bg-[#FAF8F5] text-[#555C57] px-2 py-0.5 rounded-full inline-block mt-1">
@@ -1238,20 +1238,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
                           <button
                             onClick={() => setEditingCategory({ ...cat })}
-                            className="p-1.5 rounded-lg border border-[#D9D2C9] hover:bg-[#FAF8F5]"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D9D2C9] p-0 hover:bg-[#FAF8F5]"
                             title="تعديل القسم"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                            className="p-1.5 rounded-lg border border-[#D9D2C9] text-[#DC2626] hover:bg-[#FEE2E2]"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D9D2C9] p-0 text-[#DC2626] hover:bg-[#FEE2E2]"
                             title="حذف القسم"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
