@@ -386,6 +386,8 @@ export default function App() {
   // Featured and Best Sellers
   const featuredProducts = products.filter((p) => p.isFeatured && p.isActive);
   const bestSellerProducts = products.filter((p) => p.isBestSeller && p.isActive);
+  const hasFeaturedProducts = featuredProducts.length > 0;
+  const homeShowcaseProducts = hasFeaturedProducts ? featuredProducts : bestSellerProducts;
 
   // Similar products for active detail modal
   const similarProducts = selectedProduct
@@ -477,26 +479,28 @@ export default function App() {
             {/* Categories Section Preview */}
             <div id="categories-preview">
               <CategoriesSection
-                categories={categories}
+                categories={categories.slice(0, 4)}
                 selectedCategoryId={selectedCategoryId}
                 language={language}
+                compact
+                onViewAll={() => handleNavigate('categories')}
                 onSelectCategory={(catId) => handleNavigate('products', catId)}
               />
             </div>
 
 
             {/* Featured Products Showcase */}
-            {featuredProducts.length > 0 && (
+            {homeShowcaseProducts.length > 0 && (
               <section className="py-14 sm:py-20 bg-[#FAF7F3] dark:bg-[#151816] border-y border-[#F0EBE6] dark:border-[#222724] transition-colors duration-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-start">
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
                     <div>
                       <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3 py-1 rounded-full mb-3 border border-[#F5E1E8] dark:border-[#3D202B]">
                         <Sparkles className="w-3.5 h-3.5 text-[#C74169] dark:text-[#E06287]" />
-                        <span>{t.exceptionalPicks}</span>
+                        <span>{hasFeaturedProducts ? t.exceptionalPicks : t.trustedLove}</span>
                       </div>
                       <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1F2421] dark:text-white tracking-tight">
-                        {t.featuredProducts}
+                        {hasFeaturedProducts ? t.featuredProducts : t.bestSellers}
                       </h2>
                     </div>
                     <button
@@ -509,7 +513,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {featuredProducts.slice(0, 4).map((product) => (
+                    {homeShowcaseProducts.slice(0, 4).map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
@@ -525,91 +529,7 @@ export default function App() {
               </section>
             )}
 
-            {/* Best Sellers Section */}
-            {bestSellerProducts.length > 0 && (
-              <section className="py-14 sm:py-20 bg-[#FCFCFA] dark:bg-[#121513] transition-colors duration-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-start">
-                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-                    <div>
-                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase text-[#3B6948] dark:text-[#529E67] bg-[#F0F5F1] dark:bg-[#1A2E20] px-3 py-1 rounded-full mb-3 border border-[#E0EBE2] dark:border-[#2A4833]">
-                        <Flower2 className="w-3.5 h-3.5 text-[#3B6948] dark:text-[#529E67]" />
-                        <span>{t.trustedLove}</span>
-                      </div>
-                      <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1F2421] dark:text-white tracking-tight">
-                        {t.bestSellers}
-                      </h2>
-                    </div>
-                    <button
-                      onClick={() => {
-                        handleNavigate('products');
-                        setFilterBestSellersOnly(true);
-                      }}
-                      className="text-xs font-bold text-[#3B6948] dark:text-[#529E67] hover:text-[#2D5237] flex items-center gap-1.5 transition-colors self-start sm:self-auto"
-                    >
-                      <span>{t.bestSellers}</span>
-                      {isRtl ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                    </button>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {bestSellerProducts.slice(0, 4).map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        isFavorite={favorites.includes(product.id)}
-                        language={language}
-                        onToggleFavorite={handleToggleFavorite}
-                        onViewDetails={(p) => setSelectedProduct(p)}
-                        onOrder={(p) => handleStartOrder(p)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Brand Philosophy & Craftsmanship Section */}
-            <section className="py-16 sm:py-24 bg-gradient-to-b from-[#FFFDFD] to-[#FAF6F3] dark:from-[#151917] dark:to-[#121513] border-t border-[#F0EBE6] dark:border-[#222724] transition-colors duration-200">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                  <div className="lg:col-span-6 space-y-6 text-start">
-                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-1.5 rounded-full border border-[#F5E1E8] dark:border-[#3D202B]">
-                      <Leaf className="w-3.5 h-3.5" />
-                      <span>{language === 'ar' ? 'فلسفة توليب للعناية الطبيعية' : 'Tulip Natural Care Philosophy'}</span>
-                    </div>
-
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#1F2421] dark:text-white leading-tight">
-                      {t.philosophyTitle}
-                    </h2>
-
-                    <p className="text-sm sm:text-base text-[#555C57] dark:text-[#A8B0AA] leading-relaxed">
-                      {t.philosophyDesc}
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] space-y-1">
-                        <h4 className="text-xs font-bold text-[#1F2421] dark:text-white">{t.noHarmfulChemicals}</h4>
-                        <p className="text-xs text-[#717772] dark:text-[#8D9690]">{t.noHarmfulChemicalsDesc}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#181C19] border border-[#EFE9E2] dark:border-[#262C28] space-y-1">
-                        <h4 className="text-xs font-bold text-[#1F2421] dark:text-white">{t.fastOrder}</h4>
-                        <p className="text-xs text-[#717772] dark:text-[#8D9690]">{t.codDisclaimer}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="lg:col-span-6">
-                    <div className="relative rounded-3xl overflow-hidden shadow-xl border border-[#EDE4DE] dark:border-[#2D332F] aspect-[4/3] bg-white dark:bg-[#181C19]">
-                      <img
-                        src="/src/assets/images/product_moroccan_collection_1795590419516.jpg"
-                        alt="Natural care"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
           </div>
         )}
 
