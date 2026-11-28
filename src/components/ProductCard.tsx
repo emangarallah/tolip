@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Heart, MessageCircle, Eye } from 'lucide-react';
 import type { Product } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
+import { getRegionalPrices } from '../utils/regional-prices.ts';
 
 interface ProductCardProps {
   product: Product;
@@ -133,26 +134,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Pricing & Actions */}
         <div className="pt-4 mt-3 border-t border-[#F2ECE6] dark:border-[#262C28] space-y-3">
-          {/* Price */}
-          <div className="flex items-baseline gap-2">
-            {minPrice !== null ? (
-              <>
-                <span className="text-lg font-extrabold text-[#1F2421] dark:text-white tabular-nums">
-                  {hasVariants ? t.startsFrom : ''}
-                  {minPrice.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}
-                </span>
-                <span className="text-xs font-medium text-[#717772] dark:text-[#8D9690]">{t.currency}</span>
-                {originalPrice && originalPrice > minPrice && (
-                  <span className="text-xs text-[#9CA3AF] line-through tabular-nums ms-1">
-                    {originalPrice.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} {t.currencyShort}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-xs font-semibold text-[#8C4A5E] dark:text-[#E06287]">
-                {t.contactForPrice}
-              </span>
-            )}
+          {/* All recorded regional prices are shown together for each variant. */}
+          <div className="space-y-2">
+            {product.variants.map((variant) => {
+              const regionalPrices = getRegionalPrices(variant);
+              return (
+                <div key={variant.id} className="space-y-1.5">
+                  {hasVariants && (
+                    <p className="text-[11px] font-semibold text-[#555C57] dark:text-[#A8B0AA]">
+                      {variant.name}
+                    </p>
+                  )}
+                  {regionalPrices.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {regionalPrices.map(({ label, value }) => (
+                        <div key={label} className="min-w-0 rounded-lg bg-[#FAF7F2] dark:bg-[#202522] px-2 py-1.5">
+                          <span className="block text-[10px] font-semibold text-[#717772] dark:text-[#8D9690]">{label}</span>
+                          <span className="block text-xs font-extrabold text-[#1F2421] dark:text-white tabular-nums truncate">
+                            {value.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-semibold text-[#8C4A5E] dark:text-[#E06287]">
+                      {t.contactForPrice}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Single order action: product details allow the customer to choose a size before delivery details. */}
