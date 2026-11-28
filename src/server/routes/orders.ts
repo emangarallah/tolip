@@ -312,9 +312,12 @@ router.get('/api/orders/:id', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-router.patch('/api/orders/:id/status', requireAdmin, async (req: Request, res: Response) => {
+const handleAdminOrderStatusUpdate = async (req: Request, res: Response) => {
   try {
-    const { status } = req.body;
+    const orderId = typeof req.body?.orderId === 'string'
+      ? req.body.orderId
+      : req.params.id;
+    const status = req.body?.status;
     const allowedStatuses: OrderStatus[] = [
       'new',
       'awaiting_whatsapp_confirmation',
@@ -324,19 +327,30 @@ router.patch('/api/orders/:id/status', requireAdmin, async (req: Request, res: R
       'delivered',
       'cancelled',
     ];
-    if (typeof status !== 'string' || !allowedStatuses.includes(status as OrderStatus)) {
-      res.status(400).json({ error: 'حالة الطلب غير صحيحة.' });
+
+    if (!orderId || typeof status !== 'string' || !allowedStatuses.includes(status as OrderStatus)) {
+      res.status(400).json({ error: 'بيانات حالة الطلب غير صحيحة.' });
       return;
     }
-    const updated = await db.updateOrderStatusInStore(req.params.id, status as OrderStatus);
+
+    const updated = await db.updateOrderStatusInStore(orderId, status as OrderStatus);
     if (!updated) {
-      res.status(404).json({ error: 'الطلب غير موجود' });
+      res.status(404).json({ error: 'الطلب غير موجود.' });
       return;
     }
+
+    res.setHeader('Cache-Control', 'no-store');
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'فشل في تحديث حالة الطلب' });
+    console.error('Admin order status update failed:', err);
+    res.status(500).json({ error: 'فشل في تحديث حالة الطلب. يرجى المحاولة مرة أخرى.' });
   }
-});
+};
+
+// Stable POST endpoint used by the admin orders tab.
+router.post('/api/orders/status', requireAdmin, handleAdminOrderStatusUpdate);
+
+// Keep the previous PATCH endpoint available for existing clients.
+router.patch('/api/orders/:id/status', requireAdmin, handleAdminOrderStatusUpdate);
 
 export default router;
