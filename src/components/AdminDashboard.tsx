@@ -102,6 +102,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [updatingOrderStatusId, setUpdatingOrderStatusId] = useState<string | null>(null);
+  const [openOrderStatusMenuId, setOpenOrderStatusMenuId] = useState<string | null>(null);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -1357,19 +1358,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
 
                             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
-                              {/* Order Status Select */}
-                              <select
-                                value={ord.status}
-                                disabled={updatingOrderStatusId === ord.id}
-                                onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                className={`w-full min-w-max basis-full shrink-0 whitespace-nowrap rounded-xl border px-2.5 py-2 text-xs font-bold disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:basis-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
-                              >
-                                {Object.entries(statusLabels).map(([stKey, stVal]) => (
-                                  <option key={stKey} value={stKey}>
-                                    {stKey === 'awaiting_whatsapp_confirmation' ? 'بانتظار تأكيد الواتساب' : stVal.text}
-                                  </option>
-                                ))}
-                              </select>
+                              {/* Order Status Menu: touch-friendly on mobile and independent of the browser's native select popup */}
+                              <div className="relative w-full min-w-0 basis-full shrink-0 sm:w-auto sm:min-w-[180px] sm:basis-auto">
+                                <button
+                                  type="button"
+                                  aria-expanded={openOrderStatusMenuId === ord.id}
+                                  aria-haspopup="true"
+                                  disabled={updatingOrderStatusId === ord.id}
+                                  onClick={() => setOpenOrderStatusMenuId((current) => current === ord.id ? null : ord.id)}
+                                  className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right text-xs font-bold disabled:cursor-wait disabled:opacity-70 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
+                                >
+                                  <span className="min-w-0 flex-1 whitespace-normal">
+                                    {updatingOrderStatusId === ord.id ? 'جارٍ حفظ الحالة...' : statusLabels[ord.status]?.text || 'اختر الحالة'}
+                                  </span>
+                                  <span aria-hidden="true" className="shrink-0 text-base leading-none">⌄</span>
+                                </button>
+
+                                {openOrderStatusMenuId === ord.id && (
+                                  <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-full min-w-[190px] overflow-y-auto rounded-xl border border-[#D9D2C9] bg-white p-1 text-[#1F2421] shadow-xl dark:border-[#354039] dark:bg-[#202622] dark:text-white sm:w-56">
+                                    {Object.entries(statusLabels).map(([stKey, stVal]) => {
+                                      const isSelected = ord.status === stKey;
+                                      return (
+                                        <button
+                                          key={stKey}
+                                          type="button"
+                                          disabled={updatingOrderStatusId === ord.id}
+                                          aria-pressed={isSelected}
+                                          onClick={() => {
+                                            setOpenOrderStatusMenuId(null);
+                                            void handleUpdateOrderStatus(ord.id, stKey as OrderStatus);
+                                          }}
+                                          className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-right text-sm font-semibold transition-colors disabled:cursor-wait disabled:opacity-60 ${isSelected ? 'bg-[#F8E8ED] text-[#A92F53] dark:bg-[#3A2029] dark:text-[#F08AA7]' : 'hover:bg-[#FAF8F5] dark:hover:bg-[#2B342E]'}`}
+                                        >
+                                          <span className="min-w-0 flex-1 whitespace-normal">
+                                            {stKey === 'awaiting_whatsapp_confirmation' ? 'بانتظار تأكيد الواتساب' : stVal.text}
+                                          </span>
+                                          {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
 
                               {/* WhatsApp Direct Chat button */}
                               <button
