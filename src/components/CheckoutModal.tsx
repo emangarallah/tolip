@@ -233,6 +233,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <img
                   src={product.images[0] || '/src/assets/images/product_skincare_cream_1795590418002.jpg'}
                   alt={product.name}
+                  decoding="async"
                   className="w-16 h-16 rounded-xl object-cover bg-white dark:bg-[#202522]"
                 />
                 <div className="min-w-0">
