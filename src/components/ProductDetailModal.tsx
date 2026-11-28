@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, Heart, MessageCircle, Plus, Minus, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Heart, MessageCircle, Plus, Minus, Check, Sparkles } from 'lucide-react';
 import type { Product, ProductVariant } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
+import { getRegionalPrices } from '../utils/regional-prices.ts';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -39,12 +40,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const selectedVariant: ProductVariant | undefined =
     product?.variants.find((v) => v.id === selectedVariantId) || product?.variants[0];
 
-  const currentPrice = selectedVariant?.price ?? null;
-  const originalPrice = selectedVariant?.originalPrice ?? null;
-  const hasDiscount = currentPrice !== null && originalPrice !== null && originalPrice > currentPrice;
-
-  // Total for selected quantity
-  const totalPrice = currentPrice !== null ? currentPrice * quantity : null;
+  const selectedRegionalPrices = getRegionalPrices(selectedVariant);
 
   const handleWhatsAppOrder = () => {
     if (!product || !selectedVariant || !product.inStock || selectedVariant.stock <= 0) return;
@@ -160,28 +156,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.name}
               </h2>
 
-              {/* Price Calculation */}
-              <div className="flex items-baseline gap-2 pt-1 pb-3 border-b border-[#F0EBE6] dark:border-[#262C28]">
-                {currentPrice !== null ? (
-                  <>
-                    <span className="text-2xl sm:text-3xl font-black text-[#1F2421] dark:text-white tabular-nums">
-                      {(currentPrice * quantity).toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}
-                    </span>
-                    <span className="text-sm font-semibold text-[#717772] dark:text-[#8D9690]">{t.currency}</span>
-                    {hasDiscount && (
-                      <span className="text-sm text-[#9CA3AF] line-through tabular-nums ms-2">
-                        {(originalPrice * quantity).toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} {t.currencyShort}
+              {/* The selected variant's regional prices, shown together. */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 pb-3 border-b border-[#F0EBE6] dark:border-[#262C28]">
+                {selectedRegionalPrices.length > 0 ? (
+                  selectedRegionalPrices.map(({ label, value }) => (
+                    <div key={label} className="rounded-xl bg-[#FAF7F2] dark:bg-[#202522] px-3 py-2">
+                      <span className="block text-xs font-semibold text-[#717772] dark:text-[#8D9690]">{label}</span>
+                      <span className="block text-lg font-black text-[#1F2421] dark:text-white tabular-nums">
+                        {(value * quantity).toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}
                       </span>
-                    )}
-                    {quantity > 1 && (
-                      <span className="text-xs text-[#8C938E] dark:text-[#78827A] ms-2">
-                        ({currentPrice.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} {t.currencyShort} {t.perPiece})
-                      </span>
-                    )}
-                  </>
+                      {quantity > 1 && (
+                        <span className="block text-[10px] text-[#8C938E] dark:text-[#78827A]">
+                          {value.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} × {quantity}
+                        </span>
+                      )}
+                    </div>
+                  ))
                 ) : (
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-1.5 rounded-xl">
-                    <AlertCircle className="w-4 h-4" />
+                  <div className="sm:col-span-3 flex items-center gap-2 text-sm font-semibold text-[#C74169] dark:text-[#E06287] bg-[#FFF0F4] dark:bg-[#2A161E] px-3.5 py-2 rounded-xl">
                     <span>{t.consultPriceWhatsApp}</span>
                   </div>
                 )}
@@ -201,6 +193,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {product.variants.map((variant) => {
                       const isSelected = selectedVariantId === variant.id;
+                      const regionalPrices = getRegionalPrices(variant);
                       return (
                         <button
                           key={variant.id}
@@ -213,10 +206,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           }`}
                         >
                           <span>{variant.name}</span>
-                          <span className="text-[11px] opacity-80 tabular-nums">
-                            {variant.price !== null
-                              ? `${variant.price.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
-                              : t.determinedAfterAgreement}
+                          <span className="w-full text-[10px] opacity-90 tabular-nums flex flex-col gap-0.5">
+                            {regionalPrices.length > 0 ? regionalPrices.map(({ label, value }) => (
+                              <span key={label} className="flex items-center justify-between gap-1">
+                                <span>{label}</span>
+                                <span>{value.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}</span>
+                              </span>
+                            )) : t.determinedAfterAgreement}
                           </span>
                         </button>
                       );
