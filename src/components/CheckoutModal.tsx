@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, MapPin, Phone, User, MessageCircle, AlertCircle, Navigation, Loader2 } from 'lucide-react';
 import type { OrderDraftItem, CustomerDetails, StoreSettings, Order, Product, StoreOffer } from '../types/store.ts';
 import { Language, translations } from '../utils/i18n.ts';
+import { getRegionalPrices } from '../utils/regional-prices.ts';
 import { getDeliveryOptionForGovernorate, YEMEN_GOVERNORATES } from '../utils/yemen-governorates.ts';
 
 interface CheckoutModalProps {
@@ -55,6 +56,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const selectedVariant =
     product?.variants.find((variant) => variant.id === selectedVariantId) || product?.variants[0];
+  const selectedRegionalPrices = getRegionalPrices(selectedVariant);
 
   const checkoutPrice = selectedVariant?.price !== null && selectedVariant?.price !== undefined && offer
     ? Math.round(Math.max(0, offer.type === 'percentage' ? selectedVariant.price * (1 - offer.value / 100) : selectedVariant.price - offer.value))
@@ -258,9 +260,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   >
                     {product.variants.map((variant) => (
                       <option key={variant.id} value={variant.id} disabled={variant.stock <= 0}>
-                        {variant.name} — {variant.price !== null
-                          ? `${variant.price.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} ${t.currencyShort}`
-                          : t.determinedAfterAgreement}
+                        {variant.name}
                         {variant.stock <= 0 ? (language === 'ar' ? ' (غير متوفر)' : ' (Unavailable)') : ''}
                       </option>
                     ))}
@@ -292,6 +292,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </div>
                 </div>
               </div>
+              {selectedVariant && selectedRegionalPrices.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {selectedRegionalPrices.map(({ label, value }) => (
+                    <div key={label} className="rounded-xl bg-white dark:bg-[#202522] border border-[#EFE9E2] dark:border-[#2D332F] px-3 py-2">
+                      <span className="block text-xs font-semibold text-[#717772] dark:text-[#8D9690]">{label}</span>
+                      <span className="block text-sm font-extrabold text-[#1F2421] dark:text-white tabular-nums">
+                        {(value * quantity).toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')}
+                      </span>
+                      {quantity > 1 && (
+                        <span className="block text-[10px] text-[#8C938E] dark:text-[#78827A]">
+                          {value.toLocaleString(language === 'ar' ? 'ar-YE' : 'en-US')} × {quantity}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {!selectedVariant && (
                 <p className="text-xs text-red-600 dark:text-red-400">{language === 'ar' ? 'لا توجد أحجام متاحة لهذا المنتج.' : 'No variants are available.'}</p>
               )}
