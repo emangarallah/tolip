@@ -25,7 +25,10 @@ export interface StoreOffer {
 export interface ProductVariant {
   id: string;
   name: string; // e.g., "حجم كبير", "حجم وسط", "حجم صغير", "النوع الأول"
-  price: number | null; // null if owner hasn't set price yet -> shows "تواصل لمعرفة السعر"
+  price: number | null; // Existing storefront price
+  priceSar?: number | null; // Saudi riyal price
+  priceYerSouth?: number | null; // Southern Yemeni riyal price
+  priceYerNorth?: number | null; // Northern Yemeni riyal price
   originalPrice?: number | null; // For discounts
   stock: number;
   sku?: string;
