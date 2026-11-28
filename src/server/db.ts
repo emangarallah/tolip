@@ -2022,26 +2022,47 @@ class StoreDatabase {
     return order;
   }
 
-  // In production, update only the status columns in PostgreSQL. This avoids
-  // rewriting the order items when the administrator changes its progress.
-  public async updateOrderStatusInStore(id: string, status: OrderStatus): Promise<Order | null> {
+  // Update only the order status columns; do not rewrite order items or
+  // depend on the request's in-memory order list for the row lookup.
+  public async updateOrderStatusInStore(
+    id: string,
+    status: OrderStatus
+  ): Promise<{ id: string; orderNumber: string; status: OrderStatus; updatedAt: string } | null> {
     const context = this.requestStorage.getStore();
-    const store = context?.data || this.data;
-    const order = store.orders.find((item) => item.id === id || item.orderNumber === id);
-    if (!order) return null;
 
-    if (!context?.client) return this.updateOrderStatus(id, status);
+    if (!context?.client) {
+      const order = this.updateOrderStatus(id, status);
+      return order
+        ? { id: order.id, orderNumber: order.orderNumber, status: order.status, updatedAt: order.updatedAt }
+        : null;
+    }
 
-    const updatedAt = new Date().toISOString();
     const result = await context.client.query(
-      'UPDATE tolip_orders SET status = $2, updated_at = $3 WHERE id = $1 RETURNING id',
-      [order.id, status, updatedAt]
+      `UPDATE tolip_orders
+       SET status = $2, updated_at = now()
+       WHERE id = $1 OR order_number = $1
+       RETURNING id, order_number, status, updated_at`,
+      [id, status]
     );
-    if (!result.rows.length) return null;
+    const row = result.rows[0];
+    if (!row) return null;
 
-    order.status = status;
-    order.updatedAt = updatedAt;
-    return order;
+    const updatedAt = row.updated_at instanceof Date
+      ? row.updated_at.toISOString()
+      : new Date(row.updated_at).toISOString();
+
+    const cachedOrder = context.data.orders.find((item) => item.id === row.id);
+    if (cachedOrder) {
+      cachedOrder.status = row.status;
+      cachedOrder.updatedAt = updatedAt;
+    }
+
+    return {
+      id: row.id,
+      orderNumber: row.order_number,
+      status: row.status,
+      updatedAt,
+    };
   }
 
   public updateOrderWhatsAppMessage(id: string, whatsappMessage: string): Order | null {
