@@ -92,6 +92,8 @@ export const Hero: React.FC<HeroProps> = ({
                 <img
                   src={settings.heroImage || '/src/assets/images/hero_tulip_botanical_1795590417391.jpg'}
                   alt="Tulip Natural Care Collection"
+                  fetchPriority="high"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
                   onError={(e) => {
