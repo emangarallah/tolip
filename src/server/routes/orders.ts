@@ -328,7 +328,7 @@ router.patch('/api/orders/:id/status', requireAdmin, async (req: Request, res: R
       res.status(400).json({ error: 'حالة الطلب غير صحيحة.' });
       return;
     }
-    const updated = await db.updateOrderStatus(req.params.id, status as OrderStatus);
+    const updated = await db.updateOrderStatusInStore(req.params.id, status as OrderStatus);
     if (!updated) {
       res.status(404).json({ error: 'الطلب غير موجود' });
       return;
