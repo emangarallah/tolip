@@ -1322,7 +1322,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <select
                                 value={ord.status}
                                 onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                                className={`w-full min-w-0 basis-full shrink-0 rounded-xl border px-2.5 py-2 text-xs font-bold sm:w-auto sm:basis-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
+                                className={`w-full min-w-max basis-full shrink-0 whitespace-nowrap rounded-xl border px-2.5 py-2 text-xs font-bold sm:w-auto sm:basis-auto sm:py-1 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}
                               >
                                 {Object.entries(statusLabels).map(([stKey, stVal]) => (
                                   <option key={stKey} value={stKey}>
