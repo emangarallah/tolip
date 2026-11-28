@@ -36,6 +36,23 @@ const TrackingModal = lazy(() => import('./components/TrackingModal.tsx').then((
 import type { Product, Category, StoreSettings, Order, StoreOffer } from './types/store.ts';
 import { Language, Theme, translations } from './utils/i18n.ts';
 
+const readStoreCache = <T,>(key: string): T | null => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as T) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoreCache = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Keep the storefront usable when browser storage is full or unavailable.
+  }
+};
+
 export default function App() {
   // Restore the visitor's saved theme; light remains the default for first-time visitors.
   const [theme, setTheme] = useState<Theme>(() => {
@@ -56,11 +73,18 @@ export default function App() {
     }
   });
 
+  // Restore the last public catalog snapshot immediately on slow or unavailable networks.
+  const [initialStoreCache] = useState(() => ({
+    settings: readStoreCache<StoreSettings>('tulip_store_settings'),
+    categories: readStoreCache<Category[]>('tulip_store_categories') ?? [],
+    products: readStoreCache<Product[]>('tulip_store_products') ?? [],
+  }));
+
   // Main Data States
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [settings, setSettings] = useState<StoreSettings | null>(initialStoreCache.settings);
+  const [categories, setCategories] = useState<Category[]>(initialStoreCache.categories);
+  const [products, setProducts] = useState<Product[]>(initialStoreCache.products);
+  const [isLoading, setIsLoading] = useState(!initialStoreCache.settings);
   // Skip the branded opening screen when the visitor refreshes the current page.
   const [isPageReload] = useState(() => {
     try {
@@ -184,23 +208,34 @@ export default function App() {
     }
   }, [favorites]);
 
-  // Fetch initial store data from backend API
+  // Fetch public catalog data independently so one slow endpoint does not block the others.
   const fetchStoreData = async () => {
-    try {
-      const [settingsRes, catsRes, prodsRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/categories', { cache: 'no-store' }),
-        fetch('/api/products'),
-      ]);
+    const requestJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
+      const response = await fetch(url, init);
+      if (!response.ok) throw new Error(`Store request failed: ${url} (${response.status})`);
+      return response.json() as Promise<T>;
+    };
 
-      if (settingsRes.ok) setSettings(await settingsRes.json());
-      if (catsRes.ok) setCategories(await catsRes.json());
-      if (prodsRes.ok) setProducts(await prodsRes.json());
-    } catch (err) {
-      console.error('Error fetching initial store data:', err);
-    } finally {
-      setIsLoading(false);
+    const [settingsResult, categoriesResult, productsResult] = await Promise.allSettled([
+      requestJson<StoreSettings>('/api/settings'),
+      requestJson<Category[]>('/api/categories', { cache: 'no-store' }),
+      requestJson<Product[]>('/api/products'),
+    ]);
+
+    if (settingsResult.status === 'fulfilled') {
+      setSettings(settingsResult.value);
+      writeStoreCache('tulip_store_settings', settingsResult.value);
     }
+    if (categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value)) {
+      setCategories(categoriesResult.value);
+      writeStoreCache('tulip_store_categories', categoriesResult.value);
+    }
+    if (productsResult.status === 'fulfilled' && Array.isArray(productsResult.value)) {
+      setProducts(productsResult.value);
+      writeStoreCache('tulip_store_products', productsResult.value);
+    }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {
