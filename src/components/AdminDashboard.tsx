@@ -1004,20 +1004,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {orders.slice(0, 5).map((ord) => (
                           <div
                             key={ord.id}
-                            className="p-3.5 rounded-xl bg-white border border-[#EFE9E2] flex items-center justify-between text-xs"
+                            className="flex min-w-0 flex-col gap-3 rounded-xl border border-[#EFE9E2] bg-white p-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3.5"
                           >
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono font-bold text-[#1F2421]">{ord.orderNumber}</span>
-                              <span className="text-[#6B7280]">{ord.customerDetails.fullName}</span>
-                              <span className="text-[#8C938E]">({ord.customerDetails.city})</span>
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+                              <span className="shrink-0 font-mono font-bold text-[#1F2421]">{ord.orderNumber}</span>
+                              <span className="min-w-0 break-words text-[#6B7280]">{ord.customerDetails.fullName}</span>
+                              <span className="text-[#8C938E]">{ord.customerDetails.city}</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}>
+                            <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:shrink-0 sm:justify-end sm:gap-3">
+                              <span className={`rounded-full px-2.5 py-1 font-bold text-[11px] leading-5 ${statusLabels[ord.status]?.color || 'bg-gray-100'}`}>
                                 {statusLabels[ord.status]?.text || ord.status}
                               </span>
                               <button
                                 onClick={() => setViewingOrder(ord)}
-                                className="px-3 py-1 rounded-lg border border-[#D9D2C9] hover:bg-[#FAF8F5]"
+                                className="shrink-0 rounded-lg border border-[#D9D2C9] px-3 py-1.5 hover:bg-[#FAF8F5]"
                               >
                                 عرض
                               </button>
