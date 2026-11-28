@@ -1001,7 +1001,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           features: ['طبيعي 100%'],
                           usageInstructions: '',
                           images: ['/src/assets/images/product_skincare_cream_1795590418002.jpg'],
-                          variants: [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, stock: 10 }],
+                          variants: [{ id: `v-${crypto.randomUUID()}`, name: 'حجم قياسي', price: null, priceSar: null, priceYerSouth: null, priceYerNorth: null, stock: 10 }],
                           isFeatured: false,
                           isBestSeller: false,
                           isActive: true,
@@ -1874,7 +1874,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           ...editingProduct,
                           variants: [
                             ...curVariants,
-                            { id: `v-${crypto.randomUUID()}`, name: `حجم ${curVariants.length + 1}`, price: null, stock: 10 },
+                            { id: `v-${crypto.randomUUID()}`, name: `حجم ${curVariants.length + 1}`, price: null, priceSar: null, priceYerSouth: null, priceYerNorth: null, stock: 10 },
                           ],
                         });
                       }}
@@ -1888,7 +1888,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="space-y-2">
                     {(editingProduct.variants || []).map((v, vIdx) => (
                       <div key={v.id || vIdx} className="grid grid-cols-2 items-center gap-2 rounded-xl border border-[#EAE3DC] bg-white p-2 dark:border-[#2D3830] dark:bg-[#1A1F1C] sm:grid-cols-12">
-                        <div className="col-span-2 min-w-0 sm:col-span-4">
+                        <div className="col-span-2 min-w-0 sm:col-span-3">
                           <input
                             type="text"
                             value={v.name}
@@ -1901,9 +1901,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs text-[#1F2421] dark:text-white"
                           />
                         </div>
-                        <div className="col-span-1 min-w-0 sm:col-span-2">
+                        <div className="col-span-1 min-w-0 sm:col-span-1">
                           <input
                             type="number"
+                            min="0"
+                            step="0.01"
                             value={v.price === null || v.price === undefined ? '' : v.price}
                             onChange={(e) => {
                               const newV = [...(editingProduct.variants || [])];
@@ -1912,6 +1914,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               setEditingProduct({ ...editingProduct, variants: newV });
                             }}
                             placeholder="السعر (ر.ي)"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="col-span-1 min-w-0 sm:col-span-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={v.priceSar === null || v.priceSar === undefined ? '' : v.priceSar}
+                            onChange={(e) => {
+                              const newV = [...(editingProduct.variants || [])];
+                              const val = e.target.value === '' ? null : Number(e.target.value);
+                              newV[vIdx] = { ...newV[vIdx], priceSar: val };
+                              setEditingProduct({ ...editingProduct, variants: newV });
+                            }}
+                            placeholder="السعودي (ر.س)"
+                            aria-label="السعر بالريال السعودي"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="col-span-1 min-w-0 sm:col-span-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={v.priceYerSouth === null || v.priceYerSouth === undefined ? '' : v.priceYerSouth}
+                            onChange={(e) => {
+                              const newV = [...(editingProduct.variants || [])];
+                              const val = e.target.value === '' ? null : Number(e.target.value);
+                              newV[vIdx] = { ...newV[vIdx], priceYerSouth: val };
+                              setEditingProduct({ ...editingProduct, variants: newV });
+                            }}
+                            placeholder="الجنوبي (ر.ي)"
+                            aria-label="السعر بالريال اليمني الجنوبي"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="col-span-1 min-w-0 sm:col-span-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={v.priceYerNorth === null || v.priceYerNorth === undefined ? '' : v.priceYerNorth}
+                            onChange={(e) => {
+                              const newV = [...(editingProduct.variants || [])];
+                              const val = e.target.value === '' ? null : Number(e.target.value);
+                              newV[vIdx] = { ...newV[vIdx], priceYerNorth: val };
+                              setEditingProduct({ ...editingProduct, variants: newV });
+                            }}
+                            placeholder="الشمالي (ر.ي)"
+                            aria-label="السعر بالريال اليمني الشمالي"
                             className="w-full px-2 py-1.5 rounded-lg border border-[#D9D2C9] dark:border-[#2D3830] bg-white dark:bg-[#121513] text-xs tabular-nums text-left text-[#1F2421] dark:text-white"
                             dir="ltr"
                           />
@@ -1933,7 +1989,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             dir="ltr"
                           />
                         </div>
-                        <div className="col-span-1 min-w-0 sm:col-span-2">
+                        <div className="col-span-1 min-w-0 sm:col-span-1">
                           <input
                             type="number"
                             min="0"
