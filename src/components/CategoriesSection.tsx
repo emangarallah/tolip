@@ -80,6 +80,8 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                   <motion.img
                     src={category.image}
                     alt={category.name}
+                    loading="lazy"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-105"
                     whileTap={{ scale: 1.07 }}
