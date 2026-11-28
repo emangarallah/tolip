@@ -2012,12 +2012,28 @@ class StoreDatabase {
     return this.data.orders.find((o) => o.id === id || o.orderNumber === id);
   }
 
-  public updateOrderStatus(id: string, status: OrderStatus): Order | null {
-    const order = this.data.orders.find((o) => o.id === id || o.orderNumber === id);
+  public async updateOrderStatus(id: string, status: OrderStatus): Promise<Order | null> {
+    const context = this.requestStorage.getStore();
+    const store = context?.data || this.data;
+    const order = store.orders.find((item) => item.id === id || item.orderNumber === id);
     if (!order) return null;
+
+    const updatedAt = new Date().toISOString();
+
+    // A status change must update only the order row. Rewriting its items here
+    // is unnecessary and can make a simple status change fail on item policies.
+    if (context?.client) {
+      const result = await context.client.query(
+        'UPDATE tolip_orders SET status = $2, updated_at = $3 WHERE id = $1 RETURNING id',
+        [order.id, status, updatedAt]
+      );
+      if (!result.rows.length) return null;
+    } else {
+      this.persist('orders', order.id);
+    }
+
     order.status = status;
-    order.updatedAt = new Date().toISOString();
-    this.persist('orders', order.id);
+    order.updatedAt = updatedAt;
     return order;
   }
 
