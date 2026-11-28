@@ -66,7 +66,7 @@ export async function loadRelationalStore(
 
   if (scopes.has('products')) {
     const productsResult = await client.query('SELECT id, name, slug, category_id, description, features, usage_instructions, images, is_featured, is_best_seller, is_active, in_stock, created_at, updated_at FROM tolip_products ORDER BY created_at DESC, id');
-    const variantsResult = await client.query('SELECT id, product_id, name, price, original_price, stock, sku FROM tolip_product_variants ORDER BY product_id, id');
+    const variantsResult = await client.query('SELECT id, product_id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku FROM tolip_product_variants ORDER BY product_id, id');
 
     const variantsByProduct = new Map<string, ProductVariant[]>();
     for (const row of variantsResult.rows) {
@@ -75,6 +75,9 @@ export async function loadRelationalStore(
         id: row.id,
         name: row.name,
         price: toNumberOrNull(row.price),
+        priceSar: toNumberOrNull(row.price_sar),
+        priceYerSouth: toNumberOrNull(row.price_yer_south),
+        priceYerNorth: toNumberOrNull(row.price_yer_north),
         originalPrice: toNumberOrNull(row.original_price),
         stock: Number(row.stock) || 0,
         ...(row.sku ? { sku: row.sku } : {}),
@@ -410,16 +413,20 @@ export async function persistRelationalChanges(
     if (variants.length > 0) {
       // Batch all variant rows into one statement to shorten exclusive write-lock time.
       await client.query(
-        `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
-         SELECT rows.id, $1, rows.name, rows.price, rows.original_price, rows.stock, rows.sku
+        `INSERT INTO tolip_product_variants (id,product_id,name,price,price_sar,price_yer_south,price_yer_north,original_price,stock,sku)
+         SELECT rows.id, $1, rows.name, rows.price, rows.price_sar, rows.price_yer_south, rows.price_yer_north, rows.original_price, rows.stock, rows.sku
          FROM unnest(
-           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
-         ) AS rows(id, name, price, original_price, stock, sku)`,
+           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::numeric[],
+           $7::numeric[], $8::numeric[], $9::integer[], $10::text[]
+         ) AS rows(id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku)`,
         [
           product.id,
           variants.map((variant) => variant.id),
           variants.map((variant) => variant.name),
           variants.map((variant) => variant.price ?? null),
+          variants.map((variant) => variant.priceSar ?? null),
+          variants.map((variant) => variant.priceYerSouth ?? null),
+          variants.map((variant) => variant.priceYerNorth ?? null),
           variants.map((variant) => variant.originalPrice ?? null),
           variants.map((variant) => Number(variant.stock) || 0),
           variants.map((variant) => variant.sku || null),
