@@ -83,6 +83,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     '/src/assets/images/product_skincare_cream_1795590418002.jpg'
                   }
                   alt={product.name}
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover transition-all duration-300"
                 />
