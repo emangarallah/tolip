@@ -1645,16 +1645,20 @@ class StoreDatabase {
     const variants = product.variants || [];
     if (variants.length > 0) {
       await context.client.query(
-        `INSERT INTO tolip_product_variants (id,product_id,name,price,original_price,stock,sku)
-         SELECT v.id, $1, v.name, v.price, v.original_price, v.stock, v.sku
+        `INSERT INTO tolip_product_variants (id,product_id,name,price,price_sar,price_yer_south,price_yer_north,original_price,stock,sku)
+         SELECT v.id, $1, v.name, v.price, v.price_sar, v.price_yer_south, v.price_yer_north, v.original_price, v.stock, v.sku
          FROM unnest(
-           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::integer[], $7::text[]
-         ) AS v(id, name, price, original_price, stock, sku)`,
+           $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::numeric[],
+           $7::numeric[], $8::numeric[], $9::integer[], $10::text[]
+         ) AS v(id, name, price, price_sar, price_yer_south, price_yer_north, original_price, stock, sku)`,
         [
           product.id,
           variants.map((variant) => variant.id),
           variants.map((variant) => variant.name),
           variants.map((variant) => variant.price ?? null),
+          variants.map((variant) => variant.priceSar ?? null),
+          variants.map((variant) => variant.priceYerSouth ?? null),
+          variants.map((variant) => variant.priceYerNorth ?? null),
           variants.map((variant) => variant.originalPrice ?? null),
           variants.map((variant) => Number(variant.stock) || 0),
           variants.map((variant) => variant.sku || null),
