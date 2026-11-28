@@ -126,6 +126,9 @@ router.post('/api/orders', async (req: Request, res: Response) => {
         quantity,
         unitPrice: price,
         totalPrice: itemSubtotal,
+        priceYerNorth: typeof variant.priceYerNorth === 'number' ? variant.priceYerNorth : null,
+        priceYerSouth: typeof variant.priceYerSouth === 'number' ? variant.priceYerSouth : null,
+        priceSar: typeof variant.priceSar === 'number' ? variant.priceSar : null,
         image: product.images?.[0],
       };
     });
@@ -144,7 +147,17 @@ router.post('/api/orders', async (req: Request, res: Response) => {
     const itemsListText = formattedItems.map((item, idx) => {
       const priceStr = item.unitPrice !== null ? `${item.unitPrice.toLocaleString('ar-YE')} ر.ي` : 'يحدد عبر واتساب';
       const totalStr = item.totalPrice !== null ? `${item.totalPrice.toLocaleString('ar-YE')} ر.ي` : 'يحدد عبر واتساب';
-      return `${idx + 1}. *${item.productName}*\n   الحجم/النوع: ${item.variantName}\n   الكمية: ${item.quantity}\n   السعر: ${priceStr}\n   الإجمالي: ${totalStr}`;
+      const regionalPricesText = [
+        { label: 'الريال اليمني الشمالي (ري)', value: item.priceYerNorth },
+        { label: 'الريال اليمني الجنوبي (ري ج)', value: item.priceYerSouth },
+        { label: 'الريال السعودي (رس)', value: item.priceSar },
+      ]
+        .filter((entry): entry is { label: string; value: number } =>
+          typeof entry.value === 'number' && Number.isFinite(entry.value)
+        )
+        .map((entry) => `   ${entry.label}: ${entry.value.toLocaleString('ar-YE')}`)
+        .join('\n');
+      return `${idx + 1}. *${item.productName}*\n   الحجم/النوع: ${item.variantName}\n   الكمية: ${item.quantity}\n   الأسعار بالعملات المسجلة:\n${regionalPricesText || '   لا توجد أسعار مسجلة بالعملات الثلاث'}\n   السعر: ${priceStr}\n   الإجمالي: ${totalStr}`;
     }).join('\n\n');
 
     const itemsTotalStr = itemsTotal !== null ? `${itemsTotal.toLocaleString('ar-YE')} ريال يمني` : 'تحدد الأسعار بعد التأكيد';
