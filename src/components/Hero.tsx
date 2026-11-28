@@ -21,9 +21,9 @@ export const Hero: React.FC<HeroProps> = ({
   const isRtl = language === 'ar';
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-[#FFFDFD] via-[#FAF6F3] to-[#FCFCFA] dark:from-[#161A18] dark:via-[#131614] dark:to-[#121513] pt-8 pb-16 lg:pt-14 lg:pb-24 border-b border-[#F0EBE6] dark:border-[#222724] transition-colors duration-200">
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#FFFDFD] via-[#FAF6F3] to-[#FCFCFA] dark:from-[#161A18] dark:via-[#131614] dark:to-[#121513] pt-6 pb-10 sm:pt-8 sm:pb-16 lg:pt-14 lg:pb-24 border-b border-[#F0EBE6] dark:border-[#222724] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-8 items-center">
           {/* Text Content Column */}
           <motion.div className="lg:col-span-6 space-y-6 text-start" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.58, ease: "easeOut" }}>
             {/* Subtle editorial kicker */}
